@@ -869,6 +869,8 @@ class MarkdownEditor(QMainWindow):
             # Trigger initial updates
             tab.editor._update_word_count()
             tab.editor._on_cursor_position_changed()
+            # Focus the editor
+            tab.editor.setFocus()
 
     def _update_word_count(self, words: int, chars: int):
         """Update word count in status bar."""
@@ -1264,6 +1266,7 @@ class MarkdownEditor(QMainWindow):
         tab = DocumentTab(self)
         index = self.tab_widget.addTab(tab, tab.get_tab_title())
         self.tab_widget.setCurrentIndex(index)
+        tab.editor.setFocus()
         self.status_bar.showMessage("New tab created")
         return tab
 
@@ -1485,6 +1488,13 @@ def main():
 
     for arg in sys.argv[1:]:
         editor.open_file(arg)
+
+    # Grab focus and set cursor in editor
+    editor.activateWindow()
+    editor.raise_()
+    tab = editor.current_tab()
+    if tab:
+        tab.editor.setFocus()
 
     sys.exit(app.exec_())
 
