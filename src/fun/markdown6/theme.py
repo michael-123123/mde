@@ -1,0 +1,386 @@
+"""Centralized theme system for the Markdown editor."""
+
+from dataclasses import dataclass
+from typing import ClassVar
+
+from PySide6.QtGui import QColor
+
+
+@dataclass
+class ThemeColors:
+    """Color definitions for a theme."""
+    # Backgrounds
+    bg_primary: str
+    bg_secondary: str
+    bg_tertiary: str
+    bg_input: str
+
+    # Text
+    text_primary: str
+    text_secondary: str
+    text_muted: str
+
+    # Accents
+    accent: str
+    accent_hover: str
+
+    # Selection
+    selection_bg: str
+    selection_text: str
+
+    # Borders
+    border: str
+    border_light: str
+
+    # Status
+    success: str
+    warning: str
+    error: str
+    info: str
+
+    # Code
+    code_bg: str
+
+    # Links
+    link: str
+
+
+# Dark theme colors
+DARK_THEME = ThemeColors(
+    bg_primary="#1e1e1e",
+    bg_secondary="#252526",
+    bg_tertiary="#2d2d2d",
+    bg_input="#3c3c3c",
+    text_primary="#cccccc",
+    text_secondary="#999999",
+    text_muted="#808080",
+    accent="#0e639c",
+    accent_hover="#1177bb",
+    selection_bg="#094771",
+    selection_text="#ffffff",
+    border="#454545",
+    border_light="#333333",
+    success="#3fb950",
+    warning="#d29922",
+    error="#f85149",
+    info="#58a6ff",
+    code_bg="#2d2d2d",
+    link="#4ec9b0",
+)
+
+# Light theme colors
+LIGHT_THEME = ThemeColors(
+    bg_primary="#ffffff",
+    bg_secondary="#f3f3f3",
+    bg_tertiary="#e8e8e8",
+    bg_input="#ffffff",
+    text_primary="#333333",
+    text_secondary="#666666",
+    text_muted="#999999",
+    accent="#0078d4",
+    accent_hover="#106ebe",
+    selection_bg="#cce8ff",
+    selection_text="#000000",
+    border="#cccccc",
+    border_light="#e0e0e0",
+    success="#1a7f37",
+    warning="#9a6700",
+    error="#cf222e",
+    info="#0969da",
+    code_bg="#f6f8fa",
+    link="#0366d6",
+)
+
+
+def get_theme(dark_mode: bool) -> ThemeColors:
+    """Get the theme colors for the given mode."""
+    return DARK_THEME if dark_mode else LIGHT_THEME
+
+
+def get_theme_from_settings() -> ThemeColors:
+    """Get theme colors based on current settings."""
+    from fun.markdown6.settings import get_settings
+    settings = get_settings()
+    dark_mode = settings.get("view.theme", "light") == "dark"
+    return get_theme(dark_mode)
+
+
+class StyleSheets:
+    """Pre-built stylesheets for common widget types."""
+
+    @staticmethod
+    def dialog(theme: ThemeColors) -> str:
+        """Stylesheet for dialog windows."""
+        return f"""
+            QDialog {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+            }}
+            QLabel {{
+                color: {theme.text_primary};
+            }}
+            QGroupBox {{
+                border: 1px solid {theme.border};
+                margin-top: 8px;
+                padding-top: 8px;
+                color: {theme.text_primary};
+            }}
+            QGroupBox::title {{
+                color: {theme.text_primary};
+            }}
+        """
+
+    @staticmethod
+    def line_edit(theme: ThemeColors) -> str:
+        """Stylesheet for line edits."""
+        return f"""
+            QLineEdit {{
+                background-color: {theme.bg_input};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border};
+                padding: 6px;
+                border-radius: 2px;
+            }}
+            QLineEdit:focus {{
+                border-color: {theme.accent};
+            }}
+        """
+
+    @staticmethod
+    def button(theme: ThemeColors) -> str:
+        """Stylesheet for buttons."""
+        return f"""
+            QPushButton {{
+                background-color: {theme.accent};
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 2px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme.accent_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {theme.accent};
+            }}
+            QPushButton:disabled {{
+                background-color: {theme.bg_tertiary};
+                color: {theme.text_muted};
+            }}
+        """
+
+    @staticmethod
+    def flat_button(theme: ThemeColors) -> str:
+        """Stylesheet for flat/text buttons."""
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {theme.text_primary};
+                border: none;
+                padding: 4px 8px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme.bg_tertiary};
+            }}
+        """
+
+    @staticmethod
+    def list_widget(theme: ThemeColors) -> str:
+        """Stylesheet for list widgets."""
+        return f"""
+            QListWidget {{
+                background-color: {theme.bg_primary};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border};
+                outline: none;
+            }}
+            QListWidget::item {{
+                padding: 6px 8px;
+                color: {theme.text_primary};
+            }}
+            QListWidget::item:selected {{
+                background-color: {theme.selection_bg};
+                color: {theme.selection_text};
+            }}
+            QListWidget::item:hover {{
+                background-color: {theme.bg_tertiary};
+            }}
+        """
+
+    @staticmethod
+    def tree_widget(theme: ThemeColors) -> str:
+        """Stylesheet for tree widgets."""
+        return f"""
+            QTreeWidget {{
+                background-color: {theme.bg_primary};
+                color: {theme.text_primary};
+                border: none;
+                outline: none;
+            }}
+            QTreeWidget::item {{
+                padding: 4px;
+                color: {theme.text_primary};
+            }}
+            QTreeWidget::item:selected {{
+                background-color: {theme.selection_bg};
+                color: {theme.selection_text};
+            }}
+            QTreeWidget::item:hover {{
+                background-color: {theme.bg_tertiary};
+            }}
+        """
+
+    @staticmethod
+    def table_widget(theme: ThemeColors) -> str:
+        """Stylesheet for table widgets."""
+        return f"""
+            QTableWidget {{
+                background-color: {theme.bg_primary};
+                color: {theme.text_primary};
+                gridline-color: {theme.border};
+            }}
+            QTableWidget::item {{
+                padding: 4px;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {theme.selection_bg};
+                color: {theme.selection_text};
+            }}
+            QHeaderView::section {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+                padding: 4px;
+                border: 1px solid {theme.border};
+            }}
+        """
+
+    @staticmethod
+    def combo_box(theme: ThemeColors) -> str:
+        """Stylesheet for combo boxes."""
+        return f"""
+            QComboBox {{
+                background-color: {theme.bg_input};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border};
+                padding: 4px 8px;
+                border-radius: 2px;
+            }}
+            QComboBox:hover {{
+                border-color: {theme.accent};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {theme.bg_primary};
+                color: {theme.text_primary};
+                selection-background-color: {theme.selection_bg};
+            }}
+        """
+
+    @staticmethod
+    def spin_box(theme: ThemeColors) -> str:
+        """Stylesheet for spin boxes."""
+        return f"""
+            QSpinBox {{
+                background-color: {theme.bg_input};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border};
+                padding: 4px;
+                border-radius: 2px;
+            }}
+            QSpinBox:hover {{
+                border-color: {theme.accent};
+            }}
+        """
+
+    @staticmethod
+    def check_box(theme: ThemeColors) -> str:
+        """Stylesheet for check boxes."""
+        return f"""
+            QCheckBox {{
+                color: {theme.text_primary};
+                spacing: 8px;
+            }}
+            QCheckBox::indicator {{
+                width: 16px;
+                height: 16px;
+            }}
+        """
+
+    @staticmethod
+    def scroll_area(theme: ThemeColors) -> str:
+        """Stylesheet for scroll areas."""
+        return f"""
+            QScrollArea {{
+                background-color: {theme.bg_primary};
+                border: none;
+            }}
+            QScrollBar:vertical {{
+                background-color: {theme.bg_secondary};
+                width: 12px;
+            }}
+            QScrollBar::handle:vertical {{
+                background-color: {theme.bg_tertiary};
+                border-radius: 4px;
+                min-height: 20px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background-color: {theme.text_muted};
+            }}
+        """
+
+    @staticmethod
+    def panel(theme: ThemeColors) -> str:
+        """Stylesheet for side panels."""
+        return f"""
+            QWidget {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+            }}
+        """
+
+    @staticmethod
+    def popup(theme: ThemeColors) -> str:
+        """Stylesheet for popup dialogs."""
+        return f"""
+            QDialog {{
+                background-color: {theme.bg_secondary};
+                border: 1px solid {theme.border};
+                border-radius: 6px;
+            }}
+            QLineEdit {{
+                background-color: {theme.bg_input};
+                color: {theme.text_primary};
+                border: none;
+                padding: 12px;
+                font-size: 14px;
+            }}
+            QListWidget {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+                border: none;
+                outline: none;
+            }}
+            QListWidget::item {{
+                padding: 8px 12px;
+                color: {theme.text_primary};
+            }}
+            QListWidget::item:selected {{
+                background-color: {theme.selection_bg};
+                color: {theme.selection_text};
+            }}
+            QListWidget::item:hover {{
+                background-color: {theme.bg_tertiary};
+            }}
+        """
+
+
+def apply_theme(widget, theme: ThemeColors, *style_funcs):
+    """Apply multiple stylesheet functions to a widget.
+
+    Example:
+        apply_theme(dialog, theme, StyleSheets.dialog, StyleSheets.button)
+    """
+    styles = "\n".join(func(theme) for func in style_funcs)
+    widget.setStyleSheet(styles)
