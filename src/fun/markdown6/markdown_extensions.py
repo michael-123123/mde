@@ -397,3 +397,100 @@ def get_mermaid_js() -> str:
         }
     </script>
     """
+
+
+class GraphvizPreprocessor(Preprocessor):
+    """Preprocessor to convert graphviz/dot code blocks to rendered SVG.
+
+    Reads dark_mode from md.graphviz_dark_mode attribute (set before convert).
+    """
+
+    GRAPHVIZ_PATTERN = re.compile(
+        r'^```(?:dot|graphviz)\s*\n(.*?)^```',
+        re.MULTILINE | re.DOTALL
+    )
+
+    def run(self, lines):
+        from fun.markdown6 import graphviz_service
+
+        # Get dark_mode from markdown instance (set by caller before convert)
+        dark_mode = getattr(self.md, 'graphviz_dark_mode', False)
+
+        text = '\n'.join(lines)
+
+        def replace_graphviz(m):
+            source = m.group(1).strip()
+
+            # Try to render with Python graphviz
+            if graphviz_service.has_graphviz():
+                svg, error = graphviz_service.render_dot(source, dark_mode)
+                if error:
+                    return svg  # Error HTML
+                return f'<div class="graphviz-diagram">{svg}</div>'
+            else:
+                # Fall back to JS rendering - mark as pending
+                import html
+                escaped = html.escape(source)
+                return f'<div class="graphviz-pending">{escaped}</div>'
+
+        text = self.GRAPHVIZ_PATTERN.sub(replace_graphviz, text)
+        return text.split('\n')
+
+
+class GraphvizImagePostprocessor(Postprocessor):
+    """Postprocessor to handle .dot file references in images.
+
+    Reads dark_mode and base_path from md attributes (set before convert).
+    """
+
+    DOT_IMAGE_PATTERN = re.compile(
+        r'<img\s+[^>]*src=["\']([^"\']+\.dot)["\'][^>]*>',
+        re.IGNORECASE
+    )
+
+    def run(self, text):
+        from fun.markdown6 import graphviz_service
+        from pathlib import Path
+
+        # Get config from markdown instance (set by caller before convert)
+        dark_mode = getattr(self.md, 'graphviz_dark_mode', False)
+        base_path = getattr(self.md, 'graphviz_base_path', None)
+
+        def replace_dot_image(m):
+            dot_path = m.group(1)
+
+            # Resolve path relative to base_path if provided
+            if base_path:
+                full_path = Path(base_path) / dot_path
+            else:
+                full_path = Path(dot_path)
+
+            # Render the .dot file
+            svg, error = graphviz_service.render_dot_file(full_path, dark_mode)
+            if error:
+                return svg  # Error HTML
+            return f'<div class="graphviz-diagram">{svg}</div>'
+
+        text = self.DOT_IMAGE_PATTERN.sub(replace_dot_image, text)
+        return text
+
+
+class GraphvizExtension(Extension):
+    """Extension for Graphviz diagram support.
+
+    Before calling md.convert(), set these attributes on the markdown instance:
+        md.graphviz_dark_mode = True/False
+        md.graphviz_base_path = "/path/to/file/directory"
+    """
+
+    def extendMarkdown(self, md):
+        md.preprocessors.register(
+            GraphvizPreprocessor(md),
+            'graphviz',
+            27  # After mermaid (26)
+        )
+        md.postprocessors.register(
+            GraphvizImagePostprocessor(md),
+            'graphviz_image',
+            24  # After math_post (25)
+        )

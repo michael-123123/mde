@@ -38,6 +38,7 @@ DEFAULT_SHORTCUTS = {
     # File operations
     "file.new": "Ctrl+N",
     "file.open": "Ctrl+O",
+    "file.open_project": "Ctrl+Shift+O",
     "file.save": "Ctrl+S",
     "file.save_as": "Ctrl+Shift+S",
     "file.close_tab": "Ctrl+W",
@@ -78,7 +79,7 @@ DEFAULT_SHORTCUTS = {
     "view.zoom_out": "Ctrl+-",
     "view.zoom_reset": "Ctrl+0",
     "view.command_palette": "Ctrl+Shift+P",
-    "view.toggle_outline": "Ctrl+Shift+O",
+    "view.toggle_outline": "Ctrl+Alt+O",
     "view.toggle_project": "Ctrl+Shift+E",
     "view.toggle_references": "Ctrl+Shift+R",
     "view.fold_all": "Ctrl+Shift+[",

@@ -132,7 +132,8 @@ mde /path/to/file.md
 |----------|--------|
 | Ctrl+Shift+P | Command palette |
 | Ctrl+Shift+V | Toggle preview |
-| Ctrl+Shift+O | Toggle outline |
+| Ctrl+Shift+O | Open project folder |
+| Ctrl+Alt+O | Toggle outline |
 | Ctrl+Shift+E | Toggle project panel |
 | Ctrl+Shift+R | Toggle references |
 | Ctrl+Shift+L | Toggle line numbers |

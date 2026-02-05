@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
+from PySide6.QtGui import QDesktopServices, QFont, QIcon, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -47,7 +47,7 @@ from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 from pygments.formatters import HtmlFormatter
 
-from . import export_service
+from fun.markdown6 import export_service
 
 # Cache HtmlFormatter instances to avoid recreation on every render
 _html_formatter_cache: dict[str, HtmlFormatter] = {}
@@ -159,10 +159,12 @@ from fun.markdown6.markdown_extensions import (
     WikiLinkExtension,
     MathExtension,
     MermaidExtension,
+    GraphvizExtension,
     get_callout_css,
     get_math_js,
     get_mermaid_js,
 )
+from fun.markdown6 import graphviz_service
 
 
 class FindReplaceBar(QWidget):
@@ -470,6 +472,7 @@ class DocumentTab(QWidget):
             # Use custom page to intercept link clicks
             self._custom_page = LinkInterceptPage(self.preview)
             self._custom_page.link_clicked.connect(self._on_link_clicked)
+            self._custom_page.linkHovered.connect(self._on_link_hovered)
             self.preview.setPage(self._custom_page)
             self._use_webengine = True
         else:
@@ -477,6 +480,9 @@ class DocumentTab(QWidget):
             # Don't auto-open external links, handle them manually
             self.preview.setOpenExternalLinks(False)
             self.preview.anchorClicked.connect(self._on_link_clicked)
+            # Enable mouse tracking for link tooltips
+            self.preview.setMouseTracking(True)
+            self.preview.mouseMoveEvent = self._preview_mouse_move
             self._use_webengine = False
         self._apply_preview_style()
 
@@ -541,6 +547,23 @@ class DocumentTab(QWidget):
         """Handle link clicks in the preview, forwarding to the main window."""
         self.link_clicked.emit(url)
 
+    def _on_link_hovered(self, url: str):
+        """Handle link hover in the preview, showing URL as tooltip."""
+        if url:
+            self.preview.setToolTip(url)
+        else:
+            self.preview.setToolTip("")
+
+    def _preview_mouse_move(self, event):
+        """Handle mouse move in QTextBrowser to show link tooltips."""
+        anchor = self.preview.anchorAt(event.pos())
+        if anchor:
+            self.preview.setToolTip(anchor)
+        else:
+            self.preview.setToolTip("")
+        # Call the parent class method
+        QTextBrowser.mouseMoveEvent(self.preview, event)
+
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""
         if key == "view.show_preview":
@@ -596,6 +619,12 @@ class DocumentTab(QWidget):
         """Convert markdown to HTML and display in preview pane."""
         text = self.editor.toPlainText()
         self.main_window.md.reset()
+
+        # Set graphviz config before conversion
+        dark_mode = self.settings.get("view.theme") == "dark"
+        self.main_window.md.graphviz_dark_mode = dark_mode
+        self.main_window.md.graphviz_base_path = str(self.file_path.parent) if self.file_path else None
+
         html_content = self.main_window.md.convert(text)
         # Convert lists for QTextBrowser since it doesn't render <ul>/<li> properly
         if not self._use_webengine:
@@ -644,6 +673,7 @@ class MarkdownEditor(QMainWindow):
         super().__init__()
         self.settings = get_settings()
         self._is_fullscreen = False
+        self._set_application_icon()
         self._init_markdown()
         self._init_ui()
         self._init_actions()
@@ -652,6 +682,33 @@ class MarkdownEditor(QMainWindow):
         self.new_tab()
         self._update_recent_files_menu()
         self._restore_last_project()
+
+    def _set_application_icon(self):
+        """Set the application icon for window and taskbar."""
+        # Get the icons directory path
+        icons_dir = Path(__file__).parent / "icons"
+
+        # Create icon with multiple sizes for different displays
+        icon = QIcon()
+
+        # Add available PNG sizes (Qt will choose appropriate size)
+        for png_file in ["208x128-solid.png", "66x40-solid.png", "48x30-solid.png"]:
+            png_path = icons_dir / png_file
+            if png_path.exists():
+                icon.addFile(str(png_path))
+
+        # Also try ICO file (contains multiple sizes, good for Windows)
+        ico_path = icons_dir / "markdown-mark-solid-win10.ico"
+        if ico_path.exists():
+            icon.addFile(str(ico_path))
+
+        # Set as window icon (appears in title bar and alt+tab)
+        self.setWindowIcon(icon)
+
+        # Also set as application icon for consistency
+        app = QApplication.instance()
+        if app:
+            app.setWindowIcon(icon)
 
     def _init_markdown(self):
         """Initialize the Markdown converter with extensions."""
@@ -667,6 +724,7 @@ class MarkdownEditor(QMainWindow):
                 WikiLinkExtension(),
                 MathExtension(),
                 MermaidExtension(),
+                GraphvizExtension(),
             ]
         )
 
@@ -775,6 +833,10 @@ class MarkdownEditor(QMainWindow):
         self.open_action = file_menu.addAction("&Open...")
         self.open_action.triggered.connect(self.open_file)
 
+        self.open_project_action = file_menu.addAction("Open &Project Folder...")
+        self.open_project_action.setShortcut(self.settings.get_shortcut("file.open_project"))
+        self.open_project_action.triggered.connect(self._open_project)
+
         # Recent files submenu
         self.recent_menu = QMenu("Open &Recent", self)
         file_menu.addMenu(self.recent_menu)
@@ -801,12 +863,6 @@ class MarkdownEditor(QMainWindow):
 
         self.export_docx_action = export_menu.addAction("Export to &DOCX...")
         self.export_docx_action.triggered.connect(self._export_docx)
-
-        file_menu.addSeparator()
-
-        # Open project folder
-        self.open_project_action = file_menu.addAction("Open &Project Folder...")
-        self.open_project_action.triggered.connect(self._open_project)
 
         file_menu.addSeparator()
 
@@ -1038,6 +1094,7 @@ class MarkdownEditor(QMainWindow):
         action_map = {
             "file.new": self.new_action,
             "file.open": self.open_action,
+            "file.open_project": self.open_project_action,
             "file.save": self.save_action,
             "file.save_as": self.save_as_action,
             "file.close_tab": self.close_tab_action,
@@ -1195,8 +1252,6 @@ class MarkdownEditor(QMainWindow):
                 self._update_outline()
             # Update references panel
             self._update_references()
-            # Sync view toggle buttons with current tab's visibility
-            self._sync_view_toggle_buttons()
 
     def _update_word_count(self, words: int, chars: int):
         """Update word count in status bar."""
@@ -1272,6 +1327,10 @@ class MarkdownEditor(QMainWindow):
 
         # Get callout CSS
         callout_css = get_callout_css(dark_mode)
+
+        # Get graphviz CSS and JS
+        graphviz_css = graphviz_service.get_graphviz_css(dark_mode)
+        graphviz_js = graphviz_service.get_graphviz_js() if not graphviz_service.has_graphviz() else ""
 
         # Get math and mermaid JS
         math_js = get_math_js()
@@ -1458,11 +1517,14 @@ class MarkdownEditor(QMainWindow):
                 {pygments_css}
                 /* Callouts */
                 {callout_css}
+                /* Graphviz */
+                {graphviz_css}
             </style>
         </head>
         <body class="{body_class}">
             {content}
             {mermaid_js}
+            {graphviz_js}
         </body>
         </html>
         """
@@ -1699,6 +1761,8 @@ class MarkdownEditor(QMainWindow):
         self._connect_tab_signals(tab)
         index = self.tab_widget.addTab(tab, tab.get_tab_title())
         self.tab_widget.setCurrentIndex(index)
+        # Apply global visibility state to new tab
+        self._apply_visibility_to_tab(tab)
         tab.editor.setFocus()
         self.status_bar.showMessage("New tab created")
         return tab
@@ -1752,6 +1816,9 @@ class MarkdownEditor(QMainWindow):
                 self._connect_tab_signals(tab)
                 index = self.tab_widget.addTab(tab, "")
                 self.tab_widget.setCurrentIndex(index)
+
+                # Apply global visibility state to new tab
+                self._apply_visibility_to_tab(tab)
 
             tab.editor.setPlainText(content)
             tab.file_path = path
@@ -1949,6 +2016,7 @@ class MarkdownEditor(QMainWindow):
         # File commands
         commands.append(Command("file.new", "New Tab", self.settings.get_shortcut("file.new"), self.new_tab, "File"))
         commands.append(Command("file.open", "Open File", self.settings.get_shortcut("file.open"), self.open_file, "File"))
+        commands.append(Command("file.open_project", "Open Project Folder", self.settings.get_shortcut("file.open_project"), self._open_project, "File"))
         commands.append(Command("file.save", "Save", self.settings.get_shortcut("file.save"), self.save_file, "File"))
         commands.append(Command("file.save_as", "Save As", self.settings.get_shortcut("file.save_as"), self.save_file_as, "File"))
 
@@ -2387,15 +2455,30 @@ class MarkdownEditor(QMainWindow):
         self._update_editor_preview_visibility()
 
     def _update_editor_preview_visibility(self):
-        """Update editor and preview visibility for current tab."""
-        tab = self.current_tab()
-        if not tab:
-            return
-
+        """Update editor and preview visibility for ALL tabs."""
         editor_visible = self.editor_toggle_btn.isChecked()
         preview_visible = self.preview_toggle_btn.isChecked()
 
-        # Get the editor container (first widget in splitter) and preview (second widget)
+        # Apply to all tabs
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if tab:
+                editor_container = tab.splitter.widget(0)
+                preview_widget = tab.splitter.widget(1)
+
+                if editor_container:
+                    editor_container.setVisible(editor_visible)
+                if preview_widget:
+                    preview_widget.setVisible(preview_visible)
+
+        # Sync with menu action
+        self.toggle_preview_action.setChecked(preview_visible)
+
+    def _apply_visibility_to_tab(self, tab):
+        """Apply the global editor/preview visibility state to a single tab."""
+        editor_visible = self.editor_toggle_btn.isChecked()
+        preview_visible = self.preview_toggle_btn.isChecked()
+
         editor_container = tab.splitter.widget(0)
         preview_widget = tab.splitter.widget(1)
 
@@ -2403,9 +2486,6 @@ class MarkdownEditor(QMainWindow):
             editor_container.setVisible(editor_visible)
         if preview_widget:
             preview_widget.setVisible(preview_visible)
-
-        # Sync with menu action
-        self.toggle_preview_action.setChecked(preview_visible)
 
     def _sync_view_toggle_buttons(self):
         """Sync toggle button states with current tab's visibility."""
