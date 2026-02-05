@@ -23,9 +23,11 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSplitter,
+    QStyle,
     QTabWidget,
     QTextBrowser,
     QToolBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -597,6 +599,9 @@ class MarkdownEditor(QMainWindow):
         self.tab_widget.setAccessibleName("Document Tabs")
         self.setCentralWidget(self.tab_widget)
 
+        # View toggle buttons (editor/preview) in tab bar corner
+        self._create_view_toggle_buttons()
+
         # Left dock widget with toolbox for panels
         self.left_dock = QDockWidget("Explorer", self)
         self.left_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
@@ -1083,6 +1088,8 @@ class MarkdownEditor(QMainWindow):
             # Update outline panel
             if self.outline_panel.isVisible():
                 self._update_outline()
+            # Sync view toggle buttons with current tab's visibility
+            self._sync_view_toggle_buttons()
 
     def _update_word_count(self, words: int, chars: int):
         """Update word count in status bar."""
@@ -1479,8 +1486,18 @@ class MarkdownEditor(QMainWindow):
             tab.render_markdown()
 
     def _toggle_preview(self):
+        """Toggle preview visibility via menu - syncs with toggle button."""
         value = self.toggle_preview_action.isChecked()
-        self.settings.set("view.show_preview", value)
+
+        # Check if we can hide (editor must remain visible)
+        if not value and not self.editor_toggle_btn.isChecked():
+            # Can't hide both - re-check the action
+            self.toggle_preview_action.setChecked(True)
+            return
+
+        # Update the toggle button (which will update visibility)
+        self.preview_toggle_btn.setChecked(value)
+        self._update_editor_preview_visibility()
 
     def _toggle_line_numbers(self):
         value = self.toggle_line_numbers_action.isChecked()
@@ -1967,6 +1984,146 @@ class MarkdownEditor(QMainWindow):
         # This matches the swp_project_explorer approach
         self.left_dock.setStyleSheet("")
         self.side_toolbox.setStyleSheet("")
+
+    # ==================== VIEW TOGGLE BUTTONS ====================
+
+    def _create_view_toggle_buttons(self):
+        """Create editor/preview toggle buttons in the tab bar corner."""
+        # Container widget for the buttons
+        corner_widget = QWidget()
+        layout = QHBoxLayout(corner_widget)
+        layout.setContentsMargins(0, 0, 4, 0)
+        layout.setSpacing(0)
+
+        # Editor toggle button
+        self.editor_toggle_btn = QToolButton()
+        self.editor_toggle_btn.setCheckable(True)
+        self.editor_toggle_btn.setChecked(True)
+        self.editor_toggle_btn.setToolTip("Show/Hide Editor")
+        self.editor_toggle_btn.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
+        )
+        self.editor_toggle_btn.setAutoRaise(True)
+        self.editor_toggle_btn.clicked.connect(self._on_editor_toggle)
+
+        # Preview toggle button
+        self.preview_toggle_btn = QToolButton()
+        self.preview_toggle_btn.setCheckable(True)
+        self.preview_toggle_btn.setChecked(True)
+        self.preview_toggle_btn.setToolTip("Show/Hide Preview")
+        self.preview_toggle_btn.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogContentsView)
+        )
+        self.preview_toggle_btn.setAutoRaise(True)
+        self.preview_toggle_btn.clicked.connect(self._on_preview_toggle)
+
+        # Style the buttons to appear joined
+        self.editor_toggle_btn.setStyleSheet("""
+            QToolButton {
+                border: 1px solid #ccc;
+                border-right: none;
+                border-top-left-radius: 3px;
+                border-bottom-left-radius: 3px;
+                padding: 4px 8px;
+            }
+            QToolButton:checked {
+                background-color: #d0d0d0;
+            }
+            QToolButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+        self.preview_toggle_btn.setStyleSheet("""
+            QToolButton {
+                border: 1px solid #ccc;
+                border-top-right-radius: 3px;
+                border-bottom-right-radius: 3px;
+                padding: 4px 8px;
+            }
+            QToolButton:checked {
+                background-color: #d0d0d0;
+            }
+            QToolButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+
+        layout.addWidget(self.editor_toggle_btn)
+        layout.addWidget(self.preview_toggle_btn)
+
+        # Add to tab widget corner
+        self.tab_widget.setCornerWidget(corner_widget, Qt.Corner.TopRightCorner)
+
+    def _on_editor_toggle(self):
+        """Handle editor toggle button click."""
+        editor_visible = self.editor_toggle_btn.isChecked()
+        preview_visible = self.preview_toggle_btn.isChecked()
+
+        # Prevent hiding both - if trying to hide editor and preview is already hidden
+        if not editor_visible and not preview_visible:
+            # Re-check the editor button, can't hide both
+            self.editor_toggle_btn.setChecked(True)
+            return
+
+        self._update_editor_preview_visibility()
+
+    def _on_preview_toggle(self):
+        """Handle preview toggle button click."""
+        editor_visible = self.editor_toggle_btn.isChecked()
+        preview_visible = self.preview_toggle_btn.isChecked()
+
+        # Prevent hiding both - if trying to hide preview and editor is already hidden
+        if not preview_visible and not editor_visible:
+            # Re-check the preview button, can't hide both
+            self.preview_toggle_btn.setChecked(True)
+            return
+
+        self._update_editor_preview_visibility()
+
+    def _update_editor_preview_visibility(self):
+        """Update editor and preview visibility for current tab."""
+        tab = self.current_tab()
+        if not tab:
+            return
+
+        editor_visible = self.editor_toggle_btn.isChecked()
+        preview_visible = self.preview_toggle_btn.isChecked()
+
+        # Get the editor container (first widget in splitter) and preview (second widget)
+        editor_container = tab.splitter.widget(0)
+        preview_widget = tab.splitter.widget(1)
+
+        if editor_container:
+            editor_container.setVisible(editor_visible)
+        if preview_widget:
+            preview_widget.setVisible(preview_visible)
+
+        # Sync with menu action
+        self.toggle_preview_action.setChecked(preview_visible)
+
+    def _sync_view_toggle_buttons(self):
+        """Sync toggle button states with current tab's visibility."""
+        tab = self.current_tab()
+        if not tab:
+            return
+
+        editor_container = tab.splitter.widget(0)
+        preview_widget = tab.splitter.widget(1)
+
+        # Block signals to prevent recursive updates
+        self.editor_toggle_btn.blockSignals(True)
+        self.preview_toggle_btn.blockSignals(True)
+
+        # Use isVisibleTo(parent) which works before window is shown
+        # or check if explicitly hidden via .isHidden()
+        if editor_container:
+            # If not explicitly hidden, consider it visible
+            self.editor_toggle_btn.setChecked(not editor_container.isHidden())
+        if preview_widget:
+            self.preview_toggle_btn.setChecked(not preview_widget.isHidden())
+
+        self.editor_toggle_btn.blockSignals(False)
+        self.preview_toggle_btn.blockSignals(False)
 
     def _restore_last_project(self):
         """Restore the last opened project on startup."""
