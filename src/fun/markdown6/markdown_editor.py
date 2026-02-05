@@ -1,8 +1,6 @@
 """A feature-rich Qt6 Markdown editor with split-screen editing and preview."""
 
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
@@ -48,6 +46,8 @@ from markdown.extensions.fenced_code import FencedCodeExtension
 from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 from pygments.formatters import HtmlFormatter
+
+from . import export_service
 
 # Cache HtmlFormatter instances to avoid recreation on every render
 _html_formatter_cache: dict[str, HtmlFormatter] = {}
@@ -1209,8 +1209,22 @@ class MarkdownEditor(QMainWindow):
     def update_window_title(self):
         """Update the window title to reflect current tab."""
         tab = self.current_tab()
-        if tab:
-            title = f"{tab.get_tab_title()} - Markdown Editor"
+        if tab and tab.file_path:
+            full_path = tab.file_path.resolve()
+            project_root = self.project_panel.project_path
+
+            # Try to get relative path from project root
+            if project_root:
+                try:
+                    relative_path = full_path.relative_to(project_root)
+                    title = f"{project_root.name}/{relative_path}  ({full_path})"
+                except ValueError:
+                    # File is not under project root
+                    title = f"{full_path.name}  ({full_path})"
+            else:
+                title = f"{full_path.name}  ({full_path})"
+        elif tab:
+            title = tab.get_tab_title()
         else:
             title = "Markdown Editor"
         self.setWindowTitle(title)
@@ -2461,7 +2475,7 @@ class MarkdownEditor(QMainWindow):
     # ==================== EXPORT ====================
 
     def _export_pdf(self):
-        """Export the current document to PDF using pandoc."""
+        """Export the current document to PDF."""
         tab = self.current_tab()
         if not tab:
             return
@@ -2475,10 +2489,17 @@ class MarkdownEditor(QMainWindow):
         if not file_path:
             return
 
-        self._export_with_pandoc(tab.editor.toPlainText(), file_path, "pdf")
+        title = tab.file_path.stem if tab.file_path else "Document"
+        try:
+            export_service.export_pdf(tab.editor.toPlainText(), file_path, title)
+            self.status_bar.showMessage(f"Exported to: {file_path}")
+        except export_service.ExportError as e:
+            QMessageBox.warning(self, "Export Error", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Export failed: {e}")
 
     def _export_docx(self):
-        """Export the current document to DOCX using pandoc."""
+        """Export the current document to DOCX."""
         tab = self.current_tab()
         if not tab:
             return
@@ -2492,61 +2513,14 @@ class MarkdownEditor(QMainWindow):
         if not file_path:
             return
 
-        self._export_with_pandoc(tab.editor.toPlainText(), file_path, "docx")
-
-    def _export_with_pandoc(self, content: str, output_path: str, format_type: str):
-        """Export content using pandoc."""
-        # Write markdown to temp file
+        title = tab.file_path.stem if tab.file_path else "Document"
         try:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
-                f.write(content)
-                temp_path = f.name
-        except OSError as e:
-            QMessageBox.critical(self, "Error", f"Could not create temporary file: {e}")
-            return
-
-        try:
-            cmd = ["pandoc", temp_path, "-o", output_path]
-            if format_type == "pdf":
-                cmd.extend(["--pdf-engine=xelatex"])
-
-            # Add timeout to prevent hanging (2 minutes max)
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-
-            if result.returncode == 0:
-                self.status_bar.showMessage(f"Exported to: {output_path}")
-            else:
-                error = result.stderr or "Unknown error"
-                if "pandoc" in error.lower() or result.returncode == 127:
-                    QMessageBox.warning(
-                        self,
-                        "Pandoc Not Found",
-                        "Pandoc is required for PDF/DOCX export.\n"
-                        "Install it from: https://pandoc.org/installing.html"
-                    )
-                else:
-                    QMessageBox.warning(self, "Export Error", f"Error: {error}")
-        except FileNotFoundError:
-            QMessageBox.warning(
-                self,
-                "Pandoc Not Found",
-                "Pandoc is required for PDF/DOCX export.\n"
-                "Install it from: https://pandoc.org/installing.html"
-            )
-        except subprocess.TimeoutExpired:
-            QMessageBox.warning(
-                self,
-                "Export Timeout",
-                "The export process timed out. The document may be too complex\n"
-                "or pandoc may have encountered an issue."
-            )
-        except OSError as e:
+            export_service.export_docx(tab.editor.toPlainText(), file_path, title)
+            self.status_bar.showMessage(f"Exported to: {file_path}")
+        except export_service.ExportError as e:
+            QMessageBox.warning(self, "Export Error", str(e))
+        except Exception as e:
             QMessageBox.critical(self, "Error", f"Export failed: {e}")
-        finally:
-            try:
-                Path(temp_path).unlink()
-            except OSError:
-                pass  # Ignore cleanup errors
 
     # ==================== INSERT FEATURES ====================
 

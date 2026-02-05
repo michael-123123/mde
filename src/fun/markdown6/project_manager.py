@@ -8,6 +8,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal, QDir
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon
 from PySide6.QtWidgets import (
+    QApplication,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -27,10 +28,12 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QLineEdit,
     QComboBox,
+    QProgressDialog,
 )
 
 from fun.markdown6.settings import get_settings
 from fun.markdown6.theme import get_theme, StyleSheets
+from fun.markdown6 import export_service
 
 
 @dataclass
@@ -316,6 +319,15 @@ class ProjectExportDialog(QDialog):
         self.page_breaks.setChecked(True)
         options_layout.addWidget(self.page_breaks)
 
+        self.use_pandoc = QCheckBox("Use Pandoc for export (requires LaTeX for PDF)")
+        self.use_pandoc.setChecked(False)
+        if not export_service.has_pandoc():
+            self.use_pandoc.setEnabled(False)
+            self.use_pandoc.setToolTip("Pandoc is not installed on this system")
+        else:
+            self.use_pandoc.setToolTip("Use Pandoc instead of built-in exporters")
+        options_layout.addWidget(self.use_pandoc)
+
         layout.addWidget(options_group)
 
         # Buttons
@@ -387,6 +399,16 @@ class ProjectExportDialog(QDialog):
         if not output_path:
             return
 
+        # Create progress dialog
+        # Steps: 1 per file for reading + 1 for final conversion
+        total_steps = len(files) + 1
+        progress = QProgressDialog("Preparing export...", "Cancel", 0, total_steps, self)
+        progress.setWindowTitle("Exporting Project")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        QApplication.processEvents()
+
         # Combine files
         combined_content = []
 
@@ -397,7 +419,14 @@ class ProjectExportDialog(QDialog):
                 combined_content.append(f"{i}. [{name}](#{name.lower().replace(' ', '-')})")
             combined_content.append("\n---\n")
 
-        for file_path in files:
+        for i, file_path in enumerate(files):
+            if progress.wasCanceled():
+                return
+
+            progress.setLabelText(f"Reading: {file_path.name} ({i + 1}/{len(files)})")
+            progress.setValue(i)
+            QApplication.processEvents()
+
             content = file_path.read_text(encoding="utf-8")
 
             if self.page_breaks.isChecked() and format_type == "html":
@@ -408,91 +437,35 @@ class ProjectExportDialog(QDialog):
             combined_content.append(content)
             combined_content.append("\n\n")
 
+        if progress.wasCanceled():
+            return
+
         combined = "\n".join(combined_content)
+        title = self.project_path.name
 
-        if format_type == "markdown":
-            # Direct markdown output
-            Path(output_path).write_text(combined, encoding="utf-8")
-            QMessageBox.information(self, "Export Complete", f"Exported to {output_path}")
-            self.accept()
-        elif format_type == "html":
-            # Convert to HTML
-            self._export_html(combined, output_path)
-            self.accept()
-        else:
-            # For PDF and DOCX, try pandoc
-            self._export_with_pandoc(combined, output_path, format_type)
-            self.accept()
+        # Final conversion step
+        progress.setLabelText(f"Converting to {format_type.upper()}...")
+        progress.setValue(len(files))
+        QApplication.processEvents()
 
-    def _export_html(self, content: str, output_path: str):
-        """Export content to HTML."""
-        import markdown as md
-
-        html_content = md.markdown(
-            content,
-            extensions=["extra", "codehilite", "tables", "toc"]
-        )
-
-        html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{self.project_path.name}</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }}
-        pre {{ background: #f6f8fa; padding: 16px; border-radius: 6px; overflow: auto; }}
-        code {{ font-family: monospace; }}
-        table {{ border-collapse: collapse; width: 100%; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; }}
-        @media print {{
-            .page-break {{ page-break-before: always; }}
-        }}
-    </style>
-</head>
-<body>
-{html_content}
-</body>
-</html>"""
-
-        Path(output_path).write_text(html, encoding="utf-8")
-        QMessageBox.information(self, "Export Complete", f"Exported to {output_path}")
-
-    def _export_with_pandoc(self, content: str, output_path: str, format_type: str):
-        """Export using pandoc for PDF/DOCX."""
-        import subprocess
-        import tempfile
-
-        # Write markdown to temp file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
-            f.write(content)
-            temp_path = f.name
+        use_pandoc = self.use_pandoc.isChecked()
 
         try:
-            # Run pandoc
-            cmd = ["pandoc", temp_path, "-o", output_path]
-            if format_type == "pdf":
-                cmd.extend(["--pdf-engine=xelatex"])
+            if format_type == "markdown":
+                Path(output_path).write_text(combined, encoding="utf-8")
+            elif format_type == "html":
+                export_service.export_html(combined, output_path, title)
+            elif format_type == "pdf":
+                export_service.export_pdf(combined, output_path, title, use_pandoc)
+            elif format_type == "docx":
+                export_service.export_docx(combined, output_path, title, use_pandoc)
 
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode == 0:
-                QMessageBox.information(self, "Export Complete", f"Exported to {output_path}")
-            else:
-                error = result.stderr or "Unknown error"
-                if "pandoc" in error.lower() or result.returncode == 127:
-                    QMessageBox.warning(
-                        self,
-                        "Pandoc Not Found",
-                        "Pandoc is required for PDF/DOCX export.\n"
-                        "Install it from: https://pandoc.org/installing.html"
-                    )
-                else:
-                    QMessageBox.warning(self, "Export Error", f"Error: {error}")
-        finally:
-            Path(temp_path).unlink()
+            progress.setValue(total_steps)
+            QMessageBox.information(self, "Export Complete", f"Exported to {output_path}")
+            self.accept()
+        except export_service.ExportError as e:
+            progress.close()
+            QMessageBox.warning(self, "Export Error", str(e))
+        except Exception as e:
+            progress.close()
+            QMessageBox.critical(self, "Error", f"Export failed: {e}")
