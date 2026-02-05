@@ -112,12 +112,22 @@ class Settings(QObject):
     shortcut_changed = Signal(str, str)  # action, new_shortcut
     theme_changed = Signal(str)  # theme name
 
-    def __init__(self, config_dir: Path | None = None):
+    def __init__(self, config_dir: Path | None = None, ephemeral: bool = False):
+        """Initialize settings.
+
+        Args:
+            config_dir: Directory to store settings. Defaults to ~/.config/markdown-editor
+            ephemeral: If True, use default settings in memory only - don't load or save.
+        """
         super().__init__()
+        self._ephemeral = ephemeral
+
         if config_dir is None:
             config_dir = Path.home() / ".config" / "markdown-editor"
         self.config_dir = config_dir
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        if not ephemeral:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
 
         self.settings_file = self.config_dir / "settings.json"
         self.shortcuts_file = self.config_dir / "shortcuts.json"
@@ -128,9 +138,16 @@ class Settings(QObject):
         self.load()
 
     def load(self):
-        """Load settings from disk."""
-        # Load settings
+        """Load settings from disk (or use defaults if ephemeral)."""
+        # Start with defaults
         self._settings = DEFAULT_SETTINGS.copy()
+        self._shortcuts = DEFAULT_SHORTCUTS.copy()
+
+        # In ephemeral mode, don't load from disk
+        if self._ephemeral:
+            return
+
+        # Load settings from disk
         if self.settings_file.exists():
             try:
                 with open(self.settings_file) as f:
@@ -139,8 +156,7 @@ class Settings(QObject):
             except (json.JSONDecodeError, OSError):
                 pass
 
-        # Load shortcuts
-        self._shortcuts = DEFAULT_SHORTCUTS.copy()
+        # Load shortcuts from disk
         if self.shortcuts_file.exists():
             try:
                 with open(self.shortcuts_file) as f:
@@ -150,7 +166,11 @@ class Settings(QObject):
                 pass
 
     def save(self):
-        """Save settings to disk."""
+        """Save settings to disk (no-op if ephemeral)."""
+        # In ephemeral mode, don't save to disk
+        if self._ephemeral:
+            return
+
         # Only save non-default values
         settings_to_save = {
             k: v for k, v in self._settings.items()
@@ -269,6 +289,23 @@ class Settings(QObject):
 
 # Global settings instance
 _settings: Settings | None = None
+
+
+def init_settings(config_dir: Path | None = None, ephemeral: bool = False) -> Settings:
+    """Initialize the global settings instance.
+
+    Call this before get_settings() to customize settings behavior.
+
+    Args:
+        config_dir: Directory to store settings. Defaults to ~/.config/markdown-editor
+        ephemeral: If True, use default settings in memory only - don't load or save.
+
+    Returns:
+        The initialized Settings instance.
+    """
+    global _settings
+    _settings = Settings(config_dir=config_dir, ephemeral=ephemeral)
+    return _settings
 
 
 def get_settings() -> Settings:

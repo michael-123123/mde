@@ -447,7 +447,10 @@ class GraphExportDialog(QDialog):
             StyleSheets.list_widget(theme) +
             StyleSheets.button(theme) +
             StyleSheets.combo_box(theme) +
-            StyleSheets.line_edit(theme)
+            StyleSheets.line_edit(theme) +
+            StyleSheets.check_box(theme) +
+            StyleSheets.radio_button(theme) +
+            StyleSheets.splitter(theme)
         )
 
     def _load_files(self):

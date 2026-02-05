@@ -103,6 +103,8 @@ def _apply_dark_mode(svg: str) -> str:
 
     Inverts common colors used by Graphviz.
     """
+    import re
+
     # Replace common light colors with dark equivalents
     replacements = [
         ('fill="white"', 'fill="#1e1e1e"'),
@@ -117,6 +119,18 @@ def _apply_dark_mode(svg: str) -> str:
 
     for old, new in replacements:
         svg = svg.replace(old, new)
+
+    # Add fill color to text elements that don't have one
+    # Graphviz text elements often inherit black color without explicit fill
+    def add_text_fill(match):
+        tag = match.group(0)
+        # Check if fill is already present
+        if 'fill=' in tag:
+            return tag
+        # Add fill color before the closing >
+        return tag[:-1] + ' fill="#d4d4d4">'
+
+    svg = re.sub(r'<text[^>]*>', add_text_fill, svg)
 
     return svg
 

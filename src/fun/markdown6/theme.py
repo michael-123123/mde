@@ -108,10 +108,16 @@ class StyleSheets:
                 background-color: {theme.bg_secondary};
                 color: {theme.text_primary};
             }}
-            QLabel {{
+            QWidget {{
+                background-color: {theme.bg_secondary};
                 color: {theme.text_primary};
             }}
+            QLabel {{
+                color: {theme.text_primary};
+                background-color: transparent;
+            }}
             QGroupBox {{
+                background-color: {theme.bg_secondary};
                 border: 1px solid {theme.border};
                 border-radius: 4px;
                 margin-top: 12px;
@@ -124,6 +130,16 @@ class StyleSheets:
                 left: 8px;
                 padding: 0 4px;
                 color: {theme.text_primary};
+                background-color: {theme.bg_secondary};
+            }}
+            QStackedWidget {{
+                background-color: {theme.bg_secondary};
+            }}
+            QScrollArea {{
+                background-color: {theme.bg_secondary};
+                border: none;
+            }}
+            QScrollArea > QWidget > QWidget {{
                 background-color: {theme.bg_secondary};
             }}
         """
@@ -310,6 +326,38 @@ class StyleSheets:
         """
 
     @staticmethod
+    def radio_button(theme: ThemeColors) -> str:
+        """Stylesheet for radio buttons."""
+        return f"""
+            QRadioButton {{
+                color: {theme.text_primary};
+                spacing: 8px;
+            }}
+            QRadioButton::indicator {{
+                width: 16px;
+                height: 16px;
+            }}
+        """
+
+    @staticmethod
+    def splitter(theme: ThemeColors) -> str:
+        """Stylesheet for QSplitter."""
+        return f"""
+            QSplitter {{
+                background-color: {theme.bg_secondary};
+            }}
+            QSplitter::handle {{
+                background-color: {theme.border};
+            }}
+            QSplitter::handle:horizontal {{
+                width: 2px;
+            }}
+            QSplitter::handle:vertical {{
+                height: 2px;
+            }}
+        """
+
+    @staticmethod
     def scroll_area(theme: ThemeColors) -> str:
         """Stylesheet for scroll areas."""
         return f"""
@@ -333,11 +381,177 @@ class StyleSheets:
 
     @staticmethod
     def panel(theme: ThemeColors) -> str:
-        """Stylesheet for side panels - returns empty string.
-
-        Background colors are set via tree_widget and line_edit styles.
+        """Stylesheet for side panels."""
+        return f"""
+            QWidget {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+            }}
         """
-        return ""
+
+    @staticmethod
+    def toolbox(theme: ThemeColors) -> str:
+        """Stylesheet for QToolBox (sidebar container)."""
+        return f"""
+            QToolBox {{
+                background-color: {theme.bg_secondary};
+            }}
+            QToolBox::tab {{
+                background-color: {theme.bg_tertiary};
+                color: {theme.text_primary};
+                padding: 6px 12px;
+                border: none;
+                border-bottom: 1px solid {theme.border};
+            }}
+            QToolBox::tab:selected {{
+                background-color: {theme.bg_secondary};
+                font-weight: bold;
+            }}
+            QToolBox::tab:hover {{
+                background-color: {theme.bg_input};
+            }}
+        """
+
+    @staticmethod
+    def dock_widget(theme: ThemeColors) -> str:
+        """Stylesheet for QDockWidget."""
+        return f"""
+            QDockWidget {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+                titlebar-close-icon: none;
+                titlebar-normal-icon: none;
+            }}
+            QDockWidget::title {{
+                background-color: {theme.bg_tertiary};
+                color: {theme.text_primary};
+                padding: 6px;
+                border-bottom: 1px solid {theme.border};
+            }}
+        """
+
+    @staticmethod
+    def menu_bar(theme: ThemeColors) -> str:
+        """Stylesheet for QMenuBar."""
+        return f"""
+            QMenuBar {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+                border-bottom: 1px solid {theme.border};
+                padding: 2px;
+            }}
+            QMenuBar::item {{
+                background-color: transparent;
+                color: {theme.text_primary};
+                padding: 4px 8px;
+            }}
+            QMenuBar::item:selected {{
+                background-color: {theme.bg_tertiary};
+            }}
+            QMenuBar::item:pressed {{
+                background-color: {theme.selection_bg};
+            }}
+        """
+
+    @staticmethod
+    def menu(theme: ThemeColors) -> str:
+        """Stylesheet for QMenu (dropdown menus)."""
+        return f"""
+            QMenu {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border};
+                padding: 4px;
+            }}
+            QMenu::item {{
+                background-color: transparent;
+                color: {theme.text_primary};
+                padding: 6px 24px 6px 8px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme.selection_bg};
+                color: {theme.selection_text};
+            }}
+            QMenu::item:disabled {{
+                color: {theme.text_muted};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {theme.border};
+                margin: 4px 8px;
+            }}
+        """
+
+    @staticmethod
+    def tab_widget(theme: ThemeColors) -> str:
+        """Stylesheet for QTabWidget and QTabBar."""
+        return f"""
+            QTabWidget::pane {{
+                background-color: {theme.bg_primary};
+                border: 1px solid {theme.border};
+                border-top: none;
+            }}
+            QTabBar {{
+                background-color: {theme.bg_secondary};
+            }}
+            QTabBar::tab {{
+                background-color: {theme.bg_tertiary};
+                color: {theme.text_secondary};
+                border: 1px solid {theme.border};
+                border-bottom: none;
+                padding: 6px 12px;
+                margin-right: 2px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {theme.bg_primary};
+                color: {theme.text_primary};
+                border-bottom: 1px solid {theme.bg_primary};
+            }}
+            QTabBar::tab:hover:!selected {{
+                background-color: {theme.bg_input};
+            }}
+            QTabBar::close-button {{
+                image: none;
+                subcontrol-position: right;
+            }}
+            QTabBar QToolButton {{
+                background-color: {theme.bg_secondary};
+                border: none;
+            }}
+        """
+
+    @staticmethod
+    def main_window(theme: ThemeColors) -> str:
+        """Stylesheet for QMainWindow."""
+        return f"""
+            QMainWindow {{
+                background-color: {theme.bg_primary};
+                color: {theme.text_primary};
+            }}
+            QMainWindow::separator {{
+                background-color: {theme.border};
+                width: 1px;
+                height: 1px;
+            }}
+        """
+
+    @staticmethod
+    def status_bar(theme: ThemeColors) -> str:
+        """Stylesheet for QStatusBar."""
+        return f"""
+            QStatusBar {{
+                background-color: {theme.bg_secondary};
+                color: {theme.text_primary};
+                border-top: 1px solid {theme.border};
+            }}
+            QStatusBar::item {{
+                border: none;
+            }}
+            QStatusBar QLabel {{
+                color: {theme.text_secondary};
+                padding: 2px 4px;
+            }}
+        """
 
     @staticmethod
     def popup(theme: ThemeColors) -> str:

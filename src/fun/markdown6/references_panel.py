@@ -40,6 +40,8 @@ class ReferencesPanel(QWidget):
         self.current_file: Path | None = None
         self._references: list[Reference] = []
         self._init_ui()
+        self._apply_theme()
+        self.settings.settings_changed.connect(self._on_setting_changed)
 
     def _init_ui(self):
         """Initialize the UI."""
@@ -248,3 +250,26 @@ class ReferencesPanel(QWidget):
             else:
                 # Just open the file (no specific line)
                 self.reference_clicked.emit(file_path, 0)
+
+    def _apply_theme(self):
+        """Apply the current theme."""
+        from fun.markdown6.theme import get_theme, StyleSheets
+
+        theme_name = self.settings.get("view.theme", "light")
+        theme = get_theme(theme_name == "dark")
+
+        self.setStyleSheet(
+            StyleSheets.panel(theme) +
+            StyleSheets.tree_widget(theme) +
+            StyleSheets.flat_button(theme)
+        )
+
+        # Update status label color based on theme
+        self.status_label.setStyleSheet(
+            f"color: {theme.text_muted}; font-size: 11px; background-color: transparent;"
+        )
+
+    def _on_setting_changed(self, key: str, value):
+        """Handle setting changes."""
+        if key == "view.theme":
+            self._apply_theme()

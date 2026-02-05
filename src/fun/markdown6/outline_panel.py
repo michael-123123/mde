@@ -49,9 +49,16 @@ class OutlinePanel(QWidget):
         layout.addWidget(self.tree)
 
     def _apply_theme(self):
-        """Apply the current theme - uses minimal styling for native Qt look."""
-        # Use default Qt styling to match swp_project_explorer appearance
-        self.setStyleSheet("")
+        """Apply the current theme."""
+        from fun.markdown6.theme import get_theme, StyleSheets
+
+        theme_name = self.settings.get("view.theme", "light")
+        theme = get_theme(theme_name == "dark")
+
+        self.setStyleSheet(
+            StyleSheets.panel(theme) +
+            StyleSheets.tree_widget(theme)
+        )
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""

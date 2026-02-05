@@ -66,6 +66,8 @@ def apply_application_theme(dark_mode: bool):
     if not app:
         return
 
+    theme = get_theme(dark_mode)
+
     if dark_mode:
         # Dark palette
         palette = QPalette()
@@ -87,26 +89,26 @@ def apply_application_theme(dark_mode: bool):
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(127, 127, 127))
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
         app.setPalette(palette)
-        # Additional stylesheet for elements that don't fully respect palette
-        # Note: Keep this minimal to avoid conflicts with widget-specific stylesheets
-        app.setStyleSheet("""
-            QToolTip {
-                color: #ffffff;
-                background-color: #2a2a2a;
-                border: 1px solid #767676;
-            }
-            QMenuBar {
-                background-color: #353535;
-                color: #ffffff;
-            }
-            QMenuBar::item:selected {
-                background-color: #2a82da;
-            }
-        """)
+
     else:
         # Reset to default light theme
         app.setPalette(app.style().standardPalette())
-        app.setStyleSheet("")
+
+    # Apply comprehensive stylesheet for elements that don't fully respect palette
+    app.setStyleSheet(
+        StyleSheets.main_window(theme) +
+        StyleSheets.menu_bar(theme) +
+        StyleSheets.menu(theme) +
+        StyleSheets.tab_widget(theme) +
+        StyleSheets.status_bar(theme) +
+        f"""
+            QToolTip {{
+                color: {theme.text_primary};
+                background-color: {theme.bg_tertiary};
+                border: 1px solid {theme.border};
+            }}
+        """
+    )
 
 
 def convert_lists_for_qtextbrowser(html: str) -> str:
@@ -146,6 +148,7 @@ def convert_lists_for_qtextbrowser(html: str) -> str:
 
 from fun.markdown6.enhanced_editor import EnhancedEditor
 from fun.markdown6.settings import get_settings
+from fun.markdown6.theme import get_theme, StyleSheets
 from fun.markdown6.settings_dialog import SettingsDialog
 from fun.markdown6.outline_panel import OutlinePanel
 from fun.markdown6.references_panel import ReferencesPanel
@@ -498,12 +501,18 @@ class DocumentTab(QWidget):
 
     def _apply_preview_style(self):
         """Apply styling to the preview pane."""
-        # QWebEngineView styling is done via HTML/CSS, not widget stylesheet
+        theme = self.settings.get("view.theme", "light")
+
+        # QWebEngineView - set page background color
         if self._use_webengine:
+            from PySide6.QtGui import QColor
+            if theme == "dark":
+                self.preview.page().setBackgroundColor(QColor("#1e1e1e"))
+            else:
+                self.preview.page().setBackgroundColor(QColor("#ffffff"))
             return
 
         # QTextBrowser widget styling
-        theme = self.settings.get("view.theme", "light")
         if theme == "dark":
             self.preview.setStyleSheet("""
                 QTextBrowser {
@@ -683,6 +692,8 @@ class MarkdownEditor(QMainWindow):
         self.new_tab()
         self._update_recent_files_menu()
         self._restore_last_project()
+        # Apply theme after all widgets are created
+        self._apply_full_theme()
 
     def _set_application_icon(self):
         """Set the application icon for window and taskbar."""
@@ -1208,8 +1219,7 @@ class MarkdownEditor(QMainWindow):
         if key == "view.show_preview":
             self.toggle_preview_action.setChecked(value)
         elif key == "view.theme":
-            self._apply_dock_theme()
-            apply_application_theme(value == "dark")
+            self._apply_full_theme()
         elif key == "editor.show_line_numbers":
             self.toggle_line_numbers_action.setChecked(value)
         elif key == "editor.word_wrap":
@@ -1742,8 +1752,8 @@ class MarkdownEditor(QMainWindow):
         """Toggle between light and dark theme."""
         current = self.settings.get("view.theme", "light")
         new_theme = "dark" if current == "light" else "light"
+        # Setting the theme triggers _on_setting_changed which calls _apply_full_theme
         self.settings.set("view.theme", new_theme)
-        apply_application_theme(new_theme == "dark")
 
     # Tab navigation
     def _next_tab(self):
@@ -2393,14 +2403,79 @@ class MarkdownEditor(QMainWindow):
                 self._update_references()
 
     def _apply_dock_theme(self):
-        """Apply theme to the dock widget and toolbox.
+        """Apply theme to the dock widget and toolbox."""
+        theme_name = self.settings.get("view.theme", "light")
+        theme = get_theme(theme_name == "dark")
 
-        Uses default Qt styling for proper native look (like swp_project_explorer).
+        self.left_dock.setStyleSheet(StyleSheets.dock_widget(theme))
+        self.side_toolbox.setStyleSheet(
+            StyleSheets.toolbox(theme) +
+            StyleSheets.panel(theme)
+        )
+
+    def _apply_toggle_button_theme(self):
+        """Apply theme to the editor/preview toggle buttons."""
+        theme_name = self.settings.get("view.theme", "light")
+        theme = get_theme(theme_name == "dark")
+
+        # Left button (editor toggle)
+        self.editor_toggle_btn.setStyleSheet(f"""
+            QToolButton {{
+                border: 1px solid {theme.border};
+                border-right: none;
+                border-top-left-radius: 3px;
+                border-bottom-left-radius: 3px;
+                padding: 4px 8px;
+                background-color: {theme.bg_secondary};
+            }}
+            QToolButton:checked {{
+                background-color: {theme.bg_tertiary};
+            }}
+            QToolButton:hover {{
+                background-color: {theme.bg_input};
+            }}
+        """)
+
+        # Right button (preview toggle)
+        self.preview_toggle_btn.setStyleSheet(f"""
+            QToolButton {{
+                border: 1px solid {theme.border};
+                border-top-right-radius: 3px;
+                border-bottom-right-radius: 3px;
+                padding: 4px 8px;
+                background-color: {theme.bg_secondary};
+            }}
+            QToolButton:checked {{
+                background-color: {theme.bg_tertiary};
+            }}
+            QToolButton:hover {{
+                background-color: {theme.bg_input};
+            }}
+        """)
+
+    def _apply_full_theme(self):
+        """Apply complete theme to app and all widgets.
+
+        Called at startup and when theme changes to ensure all UI
+        elements are properly styled.
         """
-        # Use default Qt styling - no custom stylesheets
-        # This matches the swp_project_explorer approach
-        self.left_dock.setStyleSheet("")
-        self.side_toolbox.setStyleSheet("")
+        theme_name = self.settings.get("view.theme", "light")
+        is_dark = theme_name == "dark"
+
+        # Apply app-level theme (menus, tabs, etc.)
+        apply_application_theme(is_dark)
+
+        # Apply dock/panel theme
+        self._apply_dock_theme()
+
+        # Apply toggle button theme
+        self._apply_toggle_button_theme()
+
+        # Update all document tabs
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if hasattr(tab, '_apply_preview_style'):
+                tab._apply_preview_style()
 
     # ==================== VIEW TOGGLE BUTTONS ====================
 
@@ -2434,36 +2509,8 @@ class MarkdownEditor(QMainWindow):
         self.preview_toggle_btn.setAutoRaise(True)
         self.preview_toggle_btn.clicked.connect(self._on_preview_toggle)
 
-        # Style the buttons to appear joined
-        self.editor_toggle_btn.setStyleSheet("""
-            QToolButton {
-                border: 1px solid #ccc;
-                border-right: none;
-                border-top-left-radius: 3px;
-                border-bottom-left-radius: 3px;
-                padding: 4px 8px;
-            }
-            QToolButton:checked {
-                background-color: #d0d0d0;
-            }
-            QToolButton:hover {
-                background-color: #e0e0e0;
-            }
-        """)
-        self.preview_toggle_btn.setStyleSheet("""
-            QToolButton {
-                border: 1px solid #ccc;
-                border-top-right-radius: 3px;
-                border-bottom-right-radius: 3px;
-                padding: 4px 8px;
-            }
-            QToolButton:checked {
-                background-color: #d0d0d0;
-            }
-            QToolButton:hover {
-                background-color: #e0e0e0;
-            }
-        """)
+        # Style the buttons (theme-aware styling applied in _apply_toggle_button_theme)
+        self._apply_toggle_button_theme()
 
         layout.addWidget(self.editor_toggle_btn)
         layout.addWidget(self.preview_toggle_btn)
