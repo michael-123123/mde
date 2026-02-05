@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal, QDir
-from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtWidgets import (
     QApplication,
     QWidget,
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QTreeView,
     QFileSystemModel,
     QPushButton,
+    QToolButton,
     QLabel,
     QMenu,
     QInputDialog,
@@ -52,6 +53,7 @@ class ProjectPanel(QWidget):
 
     file_selected = Signal(str)  # file path
     file_double_clicked = Signal(str)  # file path
+    graph_export_requested = Signal()  # request to open graph export dialog
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -96,10 +98,27 @@ class ProjectPanel(QWidget):
 
         layout.addWidget(self.tree_view)
 
-        # Export button
-        export_btn = QPushButton("Export Project...")
-        export_btn.clicked.connect(self._show_export_dialog)
-        layout.addWidget(export_btn)
+        # Action buttons row
+        btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(4, 4, 4, 4)
+        btn_layout.setSpacing(4)
+
+        # Export project button (using emoji)
+        self.export_btn = QToolButton()
+        self.export_btn.setText("📤")
+        self.export_btn.setToolTip("Export Project...")
+        self.export_btn.clicked.connect(self._show_export_dialog)
+        btn_layout.addWidget(self.export_btn)
+
+        # Graph export button (using emoji)
+        self.graph_btn = QToolButton()
+        self.graph_btn.setText("🕸️")
+        self.graph_btn.setToolTip("Export Document Graph...")
+        self.graph_btn.clicked.connect(self._on_graph_export_clicked)
+        btn_layout.addWidget(self.graph_btn)
+
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
 
     def _apply_theme(self):
         """Apply the current theme - uses minimal styling for native Qt look."""
@@ -246,6 +265,15 @@ class ProjectPanel(QWidget):
 
         dialog = ProjectExportDialog(self.project_path, self)
         dialog.exec()
+
+    def _on_graph_export_clicked(self):
+        """Handle graph export button click."""
+        if not self.project_path:
+            QMessageBox.warning(
+                self, "No Project", "Please open a project folder first."
+            )
+            return
+        self.graph_export_requested.emit()
 
     def get_project_files(self) -> list[Path]:
         """Get all markdown files in the project."""

@@ -165,6 +165,7 @@ from fun.markdown6.markdown_extensions import (
     get_mermaid_js,
 )
 from fun.markdown6 import graphviz_service
+from fun.markdown6.graph_export import GraphExportDialog
 
 
 class FindReplaceBar(QWidget):
@@ -772,6 +773,7 @@ class MarkdownEditor(QMainWindow):
         project_layout.setSpacing(0)
         self.project_panel = ProjectPanel()
         self.project_panel.file_double_clicked.connect(self.open_file)
+        self.project_panel.graph_export_requested.connect(self._show_graph_export)
         self.project_panel.setAccessibleName("Project Files Panel")
         project_layout.addWidget(self.project_panel)
         self.side_toolbox.addItem(project_page, "📁 Project")
@@ -1082,6 +1084,12 @@ class MarkdownEditor(QMainWindow):
 
         self.prev_tab_action = view_menu.addAction("&Previous Tab")
         self.prev_tab_action.triggered.connect(self._prev_tab)
+
+        # Tools menu
+        tools_menu = menubar.addMenu("&Tools")
+
+        self.export_graph_action = tools_menu.addAction("Export Document &Graph...")
+        self.export_graph_action.triggered.connect(self._show_graph_export)
 
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -1994,6 +2002,41 @@ class MarkdownEditor(QMainWindow):
             "• Project folders\n"
             "• And more!"
         )
+
+    def _show_graph_export(self):
+        """Show the document graph export dialog."""
+        # Determine project root - prefer project panel, fall back to current file's directory
+        project_root = None
+        if hasattr(self, 'project_panel') and self.project_panel.project_path:
+            project_root = self.project_panel.project_path
+        else:
+            tab = self.current_tab()
+            if tab and tab.file_path:
+                project_root = tab.file_path.parent
+
+        if not project_root:
+            QMessageBox.warning(
+                self,
+                "No Project",
+                "Please open a project folder or save the current file first."
+            )
+            return
+
+        # Get current file path if available
+        current_file = None
+        tab = self.current_tab()
+        if tab and tab.file_path:
+            current_file = tab.file_path
+
+        dialog = GraphExportDialog(project_root, current_file, self)
+
+        # Connect file click signal to open the file
+        def open_file_from_graph(file_path: Path):
+            self.open_file(str(file_path))
+
+        dialog.file_clicked.connect(open_file_from_graph)
+
+        dialog.exec()
 
     # ==================== COMMAND PALETTE ====================
 
