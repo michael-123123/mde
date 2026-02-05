@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme, StyleSheets, ThemeColors
+from fun.markdown6.theme import get_theme, StyleSheets
 
 
 @dataclass
@@ -54,6 +54,7 @@ class ProjectPanel(QWidget):
         super().__init__(parent)
         self.settings = get_settings()
         self.project_path: Path | None = None
+        self._filter_text = ""
         self._init_ui()
         self._apply_theme()
         self.settings.settings_changed.connect(self._on_setting_changed)
@@ -64,21 +65,12 @@ class ProjectPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header
-        header = QWidget()
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(8, 4, 8, 4)
-
-        self.title_label = QLabel("Project")
-        header_layout.addWidget(self.title_label)
-        header_layout.addStretch()
-
-        open_btn = QPushButton("Open Folder")
-        open_btn.setFlat(True)
-        open_btn.clicked.connect(self._open_folder)
-        header_layout.addWidget(open_btn)
-
-        layout.addWidget(header)
+        # Filter/search box
+        self.filter_input = QLineEdit()
+        self.filter_input.setPlaceholderText("Filter files...")
+        self.filter_input.setClearButtonEnabled(True)
+        self.filter_input.textChanged.connect(self._on_filter_changed)
+        layout.addWidget(self.filter_input)
 
         # File tree
         self.file_model = QFileSystemModel()
@@ -106,20 +98,10 @@ class ProjectPanel(QWidget):
         export_btn.clicked.connect(self._show_export_dialog)
         layout.addWidget(export_btn)
 
-        self.setMinimumWidth(200)
-        self.setMaximumWidth(400)
-
     def _apply_theme(self):
-        """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
-
-        self.setStyleSheet(
-            StyleSheets.panel(theme) +
-            StyleSheets.tree_widget(theme) +
-            StyleSheets.button(theme) +
-            StyleSheets.flat_button(theme)
-        )
+        """Apply the current theme - uses minimal styling for native Qt look."""
+        # Use default Qt styling to match swp_project_explorer appearance
+        self.setStyleSheet("")
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""
@@ -139,7 +121,22 @@ class ProjectPanel(QWidget):
         self.project_path = path
         self.file_model.setRootPath(str(path))
         self.tree_view.setRootIndex(self.file_model.index(str(path)))
-        self.title_label.setText(f"Project: {path.name}")
+        # Remember last project
+        self.settings.set("project.last_path", str(path))
+        # Clear filter
+        self.filter_input.clear()
+
+    def _on_filter_changed(self, text: str):
+        """Handle filter text change."""
+        self._filter_text = text.lower()
+        if text:
+            # Create filter pattern that matches the search text
+            patterns = [f"*{text}*.md", f"*{text}*.markdown", f"*{text}*.txt"]
+            self.file_model.setNameFilters(patterns)
+        else:
+            # Reset to default filters
+            self.file_model.setNameFilters(["*.md", "*.markdown", "*.txt"])
+        self.tree_view.expandAll()
 
     def _on_item_clicked(self, index):
         """Handle item click."""

@@ -3,25 +3,11 @@
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
-from PySide6.QtCore import Qt, QStringListModel
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QWidget,
-    QLabel,
-    QTextEdit,
-    QDialogButtonBox,
-    QPushButton,
-)
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QListWidgetItem, QWidget
 
-from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme, StyleSheets
+from fun.markdown6.searchable_popup import SearchablePopup
 
 
 @dataclass
@@ -362,47 +348,21 @@ class SnippetManager:
             del self.snippets[trigger]
 
 
-class SnippetPopup(QDialog):
+class SnippetPopup(SearchablePopup):
     """A popup for selecting snippets."""
 
     def __init__(self, snippets: list[Snippet], parent: QWidget | None = None):
         super().__init__(parent)
         self.snippets = snippets
         self.selected_snippet: Snippet | None = None
-        self.settings = get_settings()
-        self._init_ui()
-        self._apply_theme()
-
-    def _init_ui(self):
-        """Initialize the UI."""
-        self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
-        self.setMinimumWidth(400)
-        self.setMaximumHeight(300)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Search
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search snippets...")
-        self.search_input.textChanged.connect(self._filter_snippets)
-        self.search_input.returnPressed.connect(self._select_current)
-        self.search_input.installEventFilter(self)
-        layout.addWidget(self.search_input)
-
-        # List
-        self.list_widget = QListWidget()
-        self.list_widget.itemActivated.connect(self._on_item_activated)
-        layout.addWidget(self.list_widget)
-
+        self._init_snippet_ui()
         self._populate_list(self.snippets)
 
-    def _apply_theme(self):
-        """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
-        self.setStyleSheet(StyleSheets.popup(theme))
+    def _init_snippet_ui(self):
+        """Initialize the snippet popup UI."""
+        self.setMinimumWidth(400)
+        self.setMaximumHeight(300)
+        self.search_input.setPlaceholderText("Search snippets...")
 
     def _populate_list(self, snippets: list[Snippet]):
         """Populate the list with snippets."""
@@ -416,7 +376,7 @@ class SnippetPopup(QDialog):
         if snippets:
             self.list_widget.setCurrentRow(0)
 
-    def _filter_snippets(self, text: str):
+    def _on_search_changed(self, text: str):
         """Filter snippets based on search text."""
         text = text.lower()
         if text:
@@ -432,51 +392,6 @@ class SnippetPopup(QDialog):
         """Handle item activation."""
         self.selected_snippet = item.data(Qt.ItemDataRole.UserRole)
         self.accept()
-
-    def _select_current(self):
-        """Select the current item."""
-        item = self.list_widget.currentItem()
-        if item:
-            self._on_item_activated(item)
-
-    def eventFilter(self, obj, event):
-        """Filter events for keyboard navigation."""
-        if obj == self.search_input and event.type() == event.Type.KeyPress:
-            if event.key() == Qt.Key.Key_Down:
-                current = self.list_widget.currentRow()
-                if current < self.list_widget.count() - 1:
-                    self.list_widget.setCurrentRow(current + 1)
-                return True
-            elif event.key() == Qt.Key.Key_Up:
-                current = self.list_widget.currentRow()
-                if current > 0:
-                    self.list_widget.setCurrentRow(current - 1)
-                return True
-            elif event.key() == Qt.Key.Key_PageDown:
-                current = self.list_widget.currentRow()
-                new_row = min(current + 10, self.list_widget.count() - 1)
-                self.list_widget.setCurrentRow(new_row)
-                return True
-            elif event.key() == Qt.Key.Key_PageUp:
-                current = self.list_widget.currentRow()
-                new_row = max(current - 10, 0)
-                self.list_widget.setCurrentRow(new_row)
-                return True
-            elif event.key() == Qt.Key.Key_Home:
-                self.list_widget.setCurrentRow(0)
-                return True
-            elif event.key() == Qt.Key.Key_End:
-                self.list_widget.setCurrentRow(self.list_widget.count() - 1)
-                return True
-            elif event.key() == Qt.Key.Key_Escape:
-                self.reject()
-                return True
-        return super().eventFilter(obj, event)
-
-    def showEvent(self, event):
-        """Handle show event."""
-        super().showEvent(event)
-        self.search_input.setFocus()
 
 
 # Global snippet manager instance

@@ -1,4 +1,4 @@
-"""Enhanced text editor with line numbers, minimap, and advanced features."""
+"""Enhanced text editor with line numbers and advanced features."""
 
 import re
 import uuid
@@ -123,106 +123,6 @@ class WikiLinkCompleter(QListWidget):
             super().keyPressEvent(event)
 
 
-class Minimap(QTextEdit):
-    """A minimap widget showing document overview."""
-
-    clicked = Signal(int)  # line number
-
-    def __init__(self, editor: "EnhancedEditor"):
-        super().__init__()
-        self.editor = editor
-        self.setReadOnly(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
-        self.setFixedWidth(100)
-
-        # Very small font
-        font = QFont("Monospace", 2)
-        self.setFont(font)
-
-        # Style
-        self.setStyleSheet("""
-            QTextEdit {
-                background-color: #f0f0f0;
-                border: none;
-                border-left: 1px solid #ddd;
-            }
-        """)
-
-        self.viewport_rect = QRect()
-
-    def set_dark_mode(self, dark: bool):
-        if dark:
-            self.setStyleSheet("""
-                QTextEdit {
-                    background-color: #1e1e1e;
-                    border: none;
-                    border-left: 1px solid #333;
-                    color: #808080;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QTextEdit {
-                    background-color: #f0f0f0;
-                    border: none;
-                    border-left: 1px solid #ddd;
-                }
-            """)
-
-    def update_content(self, text: str):
-        """Update minimap content."""
-        self.setPlainText(text)
-
-    def update_viewport_rect(self, first_visible: int, last_visible: int, total_lines: int):
-        """Update the visible viewport indicator."""
-        if total_lines == 0:
-            return
-
-        doc_height = self.document().size().height()
-        line_height = doc_height / max(total_lines, 1)
-
-        y_start = int(first_visible * line_height)
-        y_end = int(last_visible * line_height)
-
-        self.viewport_rect = QRect(0, y_start, self.width(), y_end - y_start)
-        self.viewport().update()
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-
-        # Draw viewport indicator
-        if not self.viewport_rect.isEmpty():
-            painter = QPainter(self.viewport())
-            painter.fillRect(
-                self.viewport_rect,
-                QColor(100, 100, 100, 50)
-            )
-            painter.end()
-
-    def mousePressEvent(self, event):
-        """Handle click to jump to position."""
-        if event.button() == Qt.MouseButton.LeftButton:
-            # Calculate line from click position
-            doc_height = self.document().size().height()
-            if doc_height > 0:
-                ratio = event.position().y() / self.height()
-                total_lines = self.document().blockCount()
-                line = int(ratio * total_lines)
-                self.clicked.emit(line)
-
-    def mouseMoveEvent(self, event):
-        """Handle drag to scroll."""
-        if event.buttons() & Qt.MouseButton.LeftButton:
-            doc_height = self.document().size().height()
-            if doc_height > 0:
-                ratio = event.position().y() / self.height()
-                total_lines = self.document().blockCount()
-                line = int(ratio * total_lines)
-                self.clicked.emit(line)
-
-
 class EnhancedEditor(QPlainTextEdit):
     """Enhanced plain text editor with line numbers and advanced features."""
 
@@ -263,7 +163,6 @@ class EnhancedEditor(QPlainTextEdit):
 
         self._init_ui()
         self._init_line_numbers()
-        self._init_minimap()
         self._init_highlighter()
         self._init_timers()
         self._init_wiki_completer()
@@ -294,12 +193,6 @@ class EnhancedEditor(QPlainTextEdit):
         self.updateRequest.connect(self._update_line_number_area)
         self._update_line_number_area_width()
 
-    def _init_minimap(self):
-        """Initialize minimap widget."""
-        self.minimap = Minimap(self)
-        self.minimap.clicked.connect(self._go_to_line)
-        self.minimap.hide()
-
     def _init_highlighter(self):
         """Initialize syntax highlighter."""
         dark_mode = self.settings.get("view.theme", "light") == "dark"
@@ -316,11 +209,6 @@ class EnhancedEditor(QPlainTextEdit):
         self.folding_timer = QTimer()
         self.folding_timer.setSingleShot(True)
         self.folding_timer.timeout.connect(self._do_update_folding_regions)
-
-        # Minimap update timer (debounce)
-        self.minimap_timer = QTimer()
-        self.minimap_timer.setSingleShot(True)
-        self.minimap_timer.timeout.connect(self._do_update_minimap)
 
         # Auto-save timer
         self.auto_save_timer = QTimer()
@@ -373,9 +261,6 @@ class EnhancedEditor(QPlainTextEdit):
         )
         self._update_line_number_area_width()
 
-        # Minimap
-        self.minimap.setVisible(self.settings.get("view.show_minimap", False))
-
         # Theme
         self._apply_theme()
 
@@ -402,7 +287,6 @@ class EnhancedEditor(QPlainTextEdit):
             """)
 
         self.highlighter.set_dark_mode(dark)
-        self.minimap.set_dark_mode(dark)
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""
@@ -421,8 +305,6 @@ class EnhancedEditor(QPlainTextEdit):
         elif key == "editor.show_line_numbers":
             self.line_number_area.setVisible(value)
             self._update_line_number_area_width()
-        elif key == "view.show_minimap":
-            self.minimap.setVisible(value)
         elif key == "view.theme":
             self._apply_theme()
         elif key == "editor.font_size":
@@ -440,12 +322,6 @@ class EnhancedEditor(QPlainTextEdit):
     def _on_text_changed(self):
         """Handle text changes."""
         self.word_count_timer.start(500)
-        self._schedule_minimap_update()
-
-    def _schedule_minimap_update(self):
-        """Schedule a debounced minimap update."""
-        if self.minimap.isVisible():
-            self.minimap_timer.start(300)
 
     def _on_cursor_position_changed(self):
         """Handle cursor position changes."""
@@ -485,25 +361,6 @@ class EnhancedEditor(QPlainTextEdit):
         char_count = len(text)
         word_count = len(text.split()) if text.strip() else 0
         self.word_count_changed.emit(word_count, char_count)
-
-    def _do_update_minimap(self):
-        """Actually update the minimap content."""
-        if self.minimap.isVisible():
-            self.minimap.update_content(self.toPlainText())
-            self._update_minimap_viewport()
-
-    def _update_minimap_viewport(self):
-        """Update the minimap viewport indicator."""
-        if self.minimap.isVisible():
-            first_visible = self.firstVisibleBlock().blockNumber()
-            cursor = self.cursorForPosition(self.viewport().rect().bottomLeft())
-            last_visible = cursor.blockNumber()
-            total_lines = self.blockCount()
-            self.minimap.update_viewport_rect(first_visible, last_visible, total_lines)
-
-    def _update_minimap(self):
-        """Update the minimap content (for scrolling/viewport changes)."""
-        self._update_minimap_viewport()
 
     def _auto_save(self):
         """Auto-save the document if it has a file path."""

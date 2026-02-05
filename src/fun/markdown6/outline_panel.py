@@ -4,19 +4,14 @@ import re
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
-    QLabel,
-    QHBoxLayout,
-    QPushButton,
 )
 
 from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme, StyleSheets
 
 
 @dataclass
@@ -45,28 +40,6 @@ class OutlinePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header
-        header = QWidget()
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(8, 4, 8, 4)
-
-        title = QLabel("Outline")
-        title.setFont(QFont(self.font().family(), self.font().pointSize(), QFont.Weight.Bold))
-        header_layout.addWidget(title)
-        header_layout.addStretch()
-
-        collapse_btn = QPushButton("Collapse All")
-        collapse_btn.setFlat(True)
-        collapse_btn.clicked.connect(self._collapse_all)
-        header_layout.addWidget(collapse_btn)
-
-        expand_btn = QPushButton("Expand All")
-        expand_btn.setFlat(True)
-        expand_btn.clicked.connect(self._expand_all)
-        header_layout.addWidget(expand_btn)
-
-        layout.addWidget(header)
-
         # Tree widget
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
@@ -75,19 +48,10 @@ class OutlinePanel(QWidget):
         self.tree.setAnimated(True)
         layout.addWidget(self.tree)
 
-        self.setMinimumWidth(200)
-        self.setMaximumWidth(400)
-
     def _apply_theme(self):
-        """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
-
-        self.setStyleSheet(
-            StyleSheets.panel(theme) +
-            StyleSheets.tree_widget(theme) +
-            StyleSheets.flat_button(theme)
-        )
+        """Apply the current theme - uses minimal styling for native Qt look."""
+        # Use default Qt styling to match swp_project_explorer appearance
+        self.setStyleSheet("")
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""

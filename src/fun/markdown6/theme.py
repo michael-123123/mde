@@ -97,14 +97,6 @@ def get_theme(dark_mode: bool) -> ThemeColors:
     return DARK_THEME if dark_mode else LIGHT_THEME
 
 
-def get_theme_from_settings() -> ThemeColors:
-    """Get theme colors based on current settings."""
-    from fun.markdown6.settings import get_settings
-    settings = get_settings()
-    dark_mode = settings.get("view.theme", "light") == "dark"
-    return get_theme(dark_mode)
-
-
 class StyleSheets:
     """Pre-built stylesheets for common widget types."""
 
@@ -211,22 +203,26 @@ class StyleSheets:
     def tree_widget(theme: ThemeColors) -> str:
         """Stylesheet for tree widgets."""
         return f"""
-            QTreeWidget {{
-                background-color: {theme.bg_primary};
+            QTreeWidget, QTreeView {{
+                background-color: {theme.bg_secondary};
                 color: {theme.text_primary};
                 border: none;
                 outline: none;
+                font-size: 13px;
             }}
-            QTreeWidget::item {{
-                padding: 4px;
+            QTreeWidget::item, QTreeView::item {{
+                padding: 6px 4px;
                 color: {theme.text_primary};
             }}
-            QTreeWidget::item:selected {{
+            QTreeWidget::item:selected, QTreeView::item:selected {{
                 background-color: {theme.selection_bg};
                 color: {theme.selection_text};
             }}
-            QTreeWidget::item:hover {{
+            QTreeWidget::item:hover, QTreeView::item:hover {{
                 background-color: {theme.bg_tertiary};
+            }}
+            QTreeWidget::branch, QTreeView::branch {{
+                background-color: {theme.bg_secondary};
             }}
         """
 
@@ -332,13 +328,11 @@ class StyleSheets:
 
     @staticmethod
     def panel(theme: ThemeColors) -> str:
-        """Stylesheet for side panels."""
-        return f"""
-            QWidget {{
-                background-color: {theme.bg_secondary};
-                color: {theme.text_primary};
-            }}
+        """Stylesheet for side panels - returns empty string.
+
+        Background colors are set via tree_widget and line_edit styles.
         """
+        return ""
 
     @staticmethod
     def popup(theme: ThemeColors) -> str:

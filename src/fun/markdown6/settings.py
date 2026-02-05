@@ -22,21 +22,16 @@ DEFAULT_SETTINGS = {
     "editor.auto_save": False,
     "editor.auto_save_interval": 60,  # seconds
     # View settings
-    "view.show_minimap": False,
     "view.show_preview": True,
     "view.sync_scrolling": True,
     "view.theme": "light",  # light, dark
     "view.preview_font_size": 14,
-    # Spell checking
-    "spelling.enabled": False,
-    "spelling.language": "en_US",
     # File settings
     "files.recent_files": [],
     "files.max_recent_files": 10,
     "files.detect_external_changes": True,
-    # Window settings
-    "window.geometry": None,
-    "window.state": None,
+    # Project settings
+    "project.last_path": None,
 }
 
 DEFAULT_SHORTCUTS = {
@@ -75,7 +70,6 @@ DEFAULT_SHORTCUTS = {
     # View operations
     "view.refresh_preview": "F5",
     "view.toggle_preview": "Ctrl+Shift+V",
-    "view.toggle_minimap": "Ctrl+Shift+M",
     "view.toggle_line_numbers": "Ctrl+Shift+L",
     "view.toggle_word_wrap": "Alt+Z",
     "view.toggle_whitespace": "Ctrl+Alt+W",

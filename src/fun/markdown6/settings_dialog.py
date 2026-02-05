@@ -248,9 +248,6 @@ class SettingsDialog(QDialog):
         self.show_line_numbers = QCheckBox("Show line numbers")
         display_layout.addRow("", self.show_line_numbers)
 
-        self.show_minimap = QCheckBox("Show minimap")
-        display_layout.addRow("", self.show_minimap)
-
         self.show_preview = QCheckBox("Show preview pane")
         display_layout.addRow("", self.show_preview)
 
@@ -371,7 +368,6 @@ class SettingsDialog(QDialog):
         theme = self.settings.get("view.theme", "light")
         self.theme.setCurrentIndex(0 if theme == "light" else 1)
         self.show_line_numbers.setChecked(self.settings.get("editor.show_line_numbers", True))
-        self.show_minimap.setChecked(self.settings.get("view.show_minimap", False))
         self.show_preview.setChecked(self.settings.get("view.show_preview", True))
         self.sync_scrolling.setChecked(self.settings.get("view.sync_scrolling", True))
         self.preview_font_size.setValue(self.settings.get("view.preview_font_size", 14))
@@ -521,7 +517,6 @@ class SettingsDialog(QDialog):
         # View settings
         self.settings.set("view.theme", "light" if self.theme.currentIndex() == 0 else "dark")
         self.settings.set("editor.show_line_numbers", self.show_line_numbers.isChecked())
-        self.settings.set("view.show_minimap", self.show_minimap.isChecked())
         self.settings.set("view.show_preview", self.show_preview.isChecked())
         self.settings.set("view.sync_scrolling", self.sync_scrolling.isChecked())
         self.settings.set("view.preview_font_size", self.preview_font_size.value())

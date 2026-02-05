@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
+    QDockWidget,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QTabWidget,
     QTextBrowser,
+    QToolBox,
     QVBoxLayout,
     QWidget,
 )
@@ -379,22 +381,13 @@ class DocumentTab(QWidget):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.setSpacing(0)
 
-        # Editor with minimap
-        editor_with_minimap = QWidget()
-        ewm_layout = QHBoxLayout(editor_with_minimap)
-        ewm_layout.setContentsMargins(0, 0, 0, 0)
-        ewm_layout.setSpacing(0)
-
         self.editor = EnhancedEditor()
         self.editor.setAcceptDrops(True)
         self.editor.setAccessibleName("Markdown Editor")
 
-        ewm_layout.addWidget(self.editor)
-        ewm_layout.addWidget(self.editor.minimap)
-
         self.find_replace_bar = FindReplaceBar(self.editor, self)
 
-        editor_layout.addWidget(editor_with_minimap)
+        editor_layout.addWidget(self.editor)
         editor_layout.addWidget(self.find_replace_bar)
 
         # Preview pane - use QWebEngineView if available for better CSS support
@@ -569,6 +562,7 @@ class MarkdownEditor(QMainWindow):
         self._connect_signals()
         self.new_tab()
         self._update_recent_files_menu()
+        self._restore_last_project()
 
     def _init_markdown(self):
         """Initialize the Markdown converter with extensions."""
@@ -593,19 +587,7 @@ class MarkdownEditor(QMainWindow):
         self.setGeometry(100, 100, 1400, 800)
         self.setAcceptDrops(True)
 
-        # Main container with splitter for panels
-        main_container = QWidget()
-        main_layout = QHBoxLayout(main_container)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # Project panel (left side)
-        self.project_panel = ProjectPanel()
-        self.project_panel.file_double_clicked.connect(self.open_file)
-        self.project_panel.hide()  # Hidden by default
-        self.project_panel.setAccessibleName("Project Files Panel")
-
-        # Center content (tabs)
+        # Center content (tabs) - set as central widget
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.setMovable(True)
@@ -613,22 +595,61 @@ class MarkdownEditor(QMainWindow):
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.tab_widget.setAccessibleName("Document Tabs")
+        self.setCentralWidget(self.tab_widget)
 
-        # Outline panel (right side)
+        # Left dock widget with toolbox for panels
+        self.left_dock = QDockWidget("Explorer", self)
+        self.left_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.left_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetClosable |
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+        )
+
+        # Container widget for dock contents (following Qt best practices)
+        dock_container = QWidget()
+        dock_layout = QHBoxLayout(dock_container)
+        dock_layout.setContentsMargins(0, 0, 0, 0)
+        dock_layout.setSpacing(0)
+
+        # Toolbox inside the container
+        self.side_toolbox = QToolBox()
+        self.side_toolbox.setMinimumWidth(250)
+
+        # Project panel page
+        project_page = QWidget()
+        project_layout = QVBoxLayout(project_page)
+        project_layout.setContentsMargins(0, 0, 0, 0)
+        project_layout.setSpacing(0)
+        self.project_panel = ProjectPanel()
+        self.project_panel.file_double_clicked.connect(self.open_file)
+        self.project_panel.setAccessibleName("Project Files Panel")
+        project_layout.addWidget(self.project_panel)
+        self.side_toolbox.addItem(project_page, "📁 Project")
+
+        # Outline panel page
+        outline_page = QWidget()
+        outline_layout = QVBoxLayout(outline_page)
+        outline_layout.setContentsMargins(0, 0, 0, 0)
+        outline_layout.setSpacing(0)
         self.outline_panel = OutlinePanel()
         self.outline_panel.heading_clicked.connect(self._go_to_heading)
-        self.outline_panel.hide()  # Hidden by default
         self.outline_panel.setAccessibleName("Document Outline Panel")
+        outline_layout.addWidget(self.outline_panel)
+        self.side_toolbox.addItem(outline_page, "📑 Outline")
 
-        # Add to main layout with splitter
-        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.main_splitter.addWidget(self.project_panel)
-        self.main_splitter.addWidget(self.tab_widget)
-        self.main_splitter.addWidget(self.outline_panel)
-        self.main_splitter.setSizes([200, 900, 250])
+        dock_layout.addWidget(self.side_toolbox)
+        self.left_dock.setWidget(dock_container)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.left_dock)
 
-        main_layout.addWidget(self.main_splitter)
-        self.setCentralWidget(main_container)
+        # Connect dock visibility to menu actions
+        self.left_dock.visibilityChanged.connect(self._on_dock_visibility_changed)
+        self.side_toolbox.currentChanged.connect(self._on_toolbox_changed)
+
+        # Apply theme to dock/toolbox
+        self._apply_dock_theme()
+
+        # Show dock by default
+        self.left_dock.show()
 
         # Command palette
         self.command_palette = CommandPalette(self)
@@ -858,11 +879,6 @@ class MarkdownEditor(QMainWindow):
         self.toggle_preview_action.setChecked(self.settings.get("view.show_preview", True))
         self.toggle_preview_action.triggered.connect(self._toggle_preview)
 
-        self.toggle_minimap_action = view_menu.addAction("Toggle &Minimap")
-        self.toggle_minimap_action.setCheckable(True)
-        self.toggle_minimap_action.setChecked(self.settings.get("view.show_minimap", False))
-        self.toggle_minimap_action.triggered.connect(self._toggle_minimap)
-
         self.toggle_line_numbers_action = view_menu.addAction("Toggle &Line Numbers")
         self.toggle_line_numbers_action.setCheckable(True)
         self.toggle_line_numbers_action.setChecked(self.settings.get("editor.show_line_numbers", True))
@@ -941,7 +957,6 @@ class MarkdownEditor(QMainWindow):
             "markdown.heading_decrease": self.heading_decrease_action,
             "view.refresh_preview": self.refresh_action,
             "view.toggle_preview": self.toggle_preview_action,
-            "view.toggle_minimap": self.toggle_minimap_action,
             "view.toggle_line_numbers": self.toggle_line_numbers_action,
             "view.toggle_word_wrap": self.toggle_word_wrap_action,
             "view.toggle_whitespace": self.toggle_whitespace_action,
@@ -1018,8 +1033,8 @@ class MarkdownEditor(QMainWindow):
         """Handle setting change."""
         if key == "view.show_preview":
             self.toggle_preview_action.setChecked(value)
-        elif key == "view.show_minimap":
-            self.toggle_minimap_action.setChecked(value)
+        elif key == "view.theme":
+            self._apply_dock_theme()
         elif key == "editor.show_line_numbers":
             self.toggle_line_numbers_action.setChecked(value)
         elif key == "editor.word_wrap":
@@ -1467,10 +1482,6 @@ class MarkdownEditor(QMainWindow):
         value = self.toggle_preview_action.isChecked()
         self.settings.set("view.show_preview", value)
 
-    def _toggle_minimap(self):
-        value = self.toggle_minimap_action.isChecked()
-        self.settings.set("view.show_minimap", value)
-
     def _toggle_line_numbers(self):
         value = self.toggle_line_numbers_action.isChecked()
         self.settings.set("editor.show_line_numbers", value)
@@ -1868,11 +1879,14 @@ class MarkdownEditor(QMainWindow):
     # ==================== OUTLINE PANEL ====================
 
     def _toggle_outline_panel(self):
-        """Toggle the outline panel visibility."""
-        visible = not self.outline_panel.isVisible()
-        self.outline_panel.setVisible(visible)
-        self.toggle_outline_action.setChecked(visible)
-        if visible:
+        """Toggle the outline panel visibility and switch to Outline tab."""
+        if self.left_dock.isVisible() and self.side_toolbox.currentIndex() == 1:
+            # Outline is showing, hide dock
+            self.left_dock.hide()
+        else:
+            # Show dock and switch to Outline
+            self.side_toolbox.setCurrentIndex(1)
+            self.left_dock.show()
             self._update_outline()
 
     def _update_outline(self):
@@ -1895,10 +1909,14 @@ class MarkdownEditor(QMainWindow):
     # ==================== PROJECT PANEL ====================
 
     def _toggle_project_panel(self):
-        """Toggle the project panel visibility."""
-        visible = not self.project_panel.isVisible()
-        self.project_panel.setVisible(visible)
-        self.toggle_project_action.setChecked(visible)
+        """Toggle the project panel visibility and switch to Project tab."""
+        if self.left_dock.isVisible() and self.side_toolbox.currentIndex() == 0:
+            # Project is showing, hide dock
+            self.left_dock.hide()
+        else:
+            # Show dock and switch to Project
+            self.side_toolbox.setCurrentIndex(0)
+            self.left_dock.show()
 
     def _open_project(self):
         """Open a project folder."""
@@ -1907,9 +1925,58 @@ class MarkdownEditor(QMainWindow):
         )
         if folder:
             self.project_panel.set_project_path(Path(folder))
-            self.project_panel.show()
-            self.toggle_project_action.setChecked(True)
+            self.side_toolbox.setCurrentIndex(0)  # Switch to Project tab
+            self.left_dock.show()
             self._update_wiki_links()
+
+    def _on_dock_visibility_changed(self, visible: bool):
+        """Handle dock visibility changes."""
+        # Guard: actions may not exist during init
+        if not hasattr(self, 'toggle_project_action'):
+            return
+
+        # Update menu checkboxes based on current toolbox tab
+        if visible:
+            current_tab = self.side_toolbox.currentIndex()
+            self.toggle_project_action.setChecked(current_tab == 0)
+            self.toggle_outline_action.setChecked(current_tab == 1)
+            if current_tab == 1:
+                self._update_outline()
+        else:
+            self.toggle_project_action.setChecked(False)
+            self.toggle_outline_action.setChecked(False)
+
+    def _on_toolbox_changed(self, index: int):
+        """Handle toolbox tab change."""
+        # Guard: actions may not exist during init
+        if not hasattr(self, 'toggle_project_action'):
+            return
+
+        if self.left_dock.isVisible():
+            self.toggle_project_action.setChecked(index == 0)
+            self.toggle_outline_action.setChecked(index == 1)
+            if index == 1:
+                self._update_outline()
+
+    def _apply_dock_theme(self):
+        """Apply theme to the dock widget and toolbox.
+
+        Uses default Qt styling for proper native look (like swp_project_explorer).
+        """
+        # Use default Qt styling - no custom stylesheets
+        # This matches the swp_project_explorer approach
+        self.left_dock.setStyleSheet("")
+        self.side_toolbox.setStyleSheet("")
+
+    def _restore_last_project(self):
+        """Restore the last opened project on startup."""
+        last_path = self.settings.get("project.last_path")
+        if last_path:
+            path = Path(last_path)
+            if path.exists() and path.is_dir():
+                self.project_panel.set_project_path(path)
+                self._update_wiki_links()
+                # Don't auto-show the dock, just load the project data
 
     def _update_wiki_links(self):
         """Update available wiki links from project files."""
