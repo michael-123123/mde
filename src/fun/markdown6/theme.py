@@ -113,12 +113,18 @@ class StyleSheets:
             }}
             QGroupBox {{
                 border: 1px solid {theme.border};
-                margin-top: 8px;
-                padding-top: 8px;
+                border-radius: 4px;
+                margin-top: 12px;
+                padding: 12px 8px 8px 8px;
                 color: {theme.text_primary};
             }}
             QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                left: 8px;
+                padding: 0 4px;
                 color: {theme.text_primary};
+                background-color: {theme.bg_secondary};
             }}
         """
 
@@ -187,14 +193,13 @@ class StyleSheets:
                 outline: none;
             }}
             QListWidget::item {{
-                padding: 6px 8px;
                 color: {theme.text_primary};
             }}
             QListWidget::item:selected {{
                 background-color: {theme.selection_bg};
                 color: {theme.selection_text};
             }}
-            QListWidget::item:hover {{
+            QListWidget::item:hover:!selected {{
                 background-color: {theme.bg_tertiary};
             }}
         """

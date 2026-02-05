@@ -379,7 +379,7 @@ class EnhancedEditor(QPlainTextEdit):
         if not self.settings.get("editor.show_line_numbers", True):
             return 0
 
-        digits = len(str(max(1, self.blockCount())))
+        digits = len(str(max(1, self.blockCount()))) + 1  # +1 for padding
         space = 10 + self.fontMetrics().horizontalAdvance("9") * digits
         return space
 

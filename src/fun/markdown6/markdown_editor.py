@@ -60,6 +60,55 @@ def get_cached_html_formatter(style: str) -> HtmlFormatter:
     return _html_formatter_cache[style]
 
 
+def apply_application_theme(dark_mode: bool):
+    """Apply a light or dark theme to the entire application."""
+    app = QApplication.instance()
+    if not app:
+        return
+
+    if dark_mode:
+        # Dark palette
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
+        palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(35, 35, 35))
+        # Disabled colors
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(127, 127, 127))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(127, 127, 127))
+        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
+        app.setPalette(palette)
+        # Additional stylesheet for elements that don't fully respect palette
+        # Note: Keep this minimal to avoid conflicts with widget-specific stylesheets
+        app.setStyleSheet("""
+            QToolTip {
+                color: #ffffff;
+                background-color: #2a2a2a;
+                border: 1px solid #767676;
+            }
+            QMenuBar {
+                background-color: #353535;
+                color: #ffffff;
+            }
+            QMenuBar::item:selected {
+                background-color: #2a82da;
+            }
+        """)
+    else:
+        # Reset to default light theme
+        app.setPalette(app.style().standardPalette())
+        app.setStyleSheet("")
+
+
 def convert_lists_for_qtextbrowser(html: str) -> str:
     """Convert HTML lists to div/p elements that QTextBrowser renders correctly.
 
@@ -1095,6 +1144,7 @@ class MarkdownEditor(QMainWindow):
             self.toggle_preview_action.setChecked(value)
         elif key == "view.theme":
             self._apply_dock_theme()
+            apply_application_theme(value == "dark")
         elif key == "editor.show_line_numbers":
             self.toggle_line_numbers_action.setChecked(value)
         elif key == "editor.word_wrap":
@@ -1609,6 +1659,7 @@ class MarkdownEditor(QMainWindow):
         current = self.settings.get("view.theme", "light")
         new_theme = "dark" if current == "light" else "light"
         self.settings.set("view.theme", new_theme)
+        apply_application_theme(new_theme == "dark")
 
     # Tab navigation
     def _next_tab(self):
@@ -2563,6 +2614,11 @@ def main():
     """Run the Markdown editor application."""
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")
+
+    # Apply saved theme at startup
+    from fun.markdown6.settings import get_settings
+    settings = get_settings()
+    apply_application_theme(settings.get("view.theme", "light") == "dark")
 
     editor = MarkdownEditor()
     editor.show()

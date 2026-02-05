@@ -87,6 +87,7 @@ class SettingsDialog(QDialog):
         self.category_list = QListWidget()
         self.category_list.setMinimumWidth(120)
         self.category_list.setMaximumWidth(200)
+        self.category_list.setSpacing(2)  # Add spacing between items
         self.category_list.currentRowChanged.connect(self._on_category_changed)
 
         categories = [
@@ -96,8 +97,10 @@ class SettingsDialog(QDialog):
             ("Keyboard Shortcuts", "shortcuts"),
         ]
 
+        from PySide6.QtCore import QSize
         for name, _ in categories:
             item = QListWidgetItem(name)
+            item.setSizeHint(QSize(-1, 32))  # Explicit height for each item
             self.category_list.addItem(item)
 
         splitter.addWidget(self.category_list)
