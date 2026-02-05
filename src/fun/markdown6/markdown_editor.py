@@ -5,7 +5,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QFont, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction
 from PySide6.QtWidgets import (
     QApplication,
@@ -34,9 +34,11 @@ from PySide6.QtWidgets import (
 
 try:
     from PySide6.QtWebEngineWidgets import QWebEngineView
+    from PySide6.QtWebEngineCore import QWebEnginePage
     HAS_WEBENGINE = True
 except ImportError:
     HAS_WEBENGINE = False
+    QWebEnginePage = None  # type: ignore
 
 import re
 
@@ -354,8 +356,28 @@ class FindReplaceBar(QWidget):
             super().keyPressEvent(event)
 
 
+# Custom WebEnginePage to intercept link clicks
+if HAS_WEBENGINE:
+    class LinkInterceptPage(QWebEnginePage):
+        """Custom QWebEnginePage that intercepts link clicks."""
+
+        link_clicked = Signal(QUrl)
+
+        def acceptNavigationRequest(self, url: QUrl, nav_type, is_main_frame: bool) -> bool:
+            """Intercept navigation requests to handle link clicks."""
+            # Only intercept link clicks in the main frame
+            if is_main_frame and nav_type == QWebEnginePage.NavigationType.NavigationTypeLinkClicked:
+                self.link_clicked.emit(url)
+                return False
+
+            # Allow all other navigation (setHtml, reloads, etc.)
+            return True
+
+
 class DocumentTab(QWidget):
     """A single document tab with editor and preview panes."""
+
+    link_clicked = Signal(QUrl)  # Emitted when a link is clicked in the preview
 
     def __init__(self, parent: "MarkdownEditor"):
         super().__init__()
@@ -396,10 +418,16 @@ class DocumentTab(QWidget):
         # Preview pane - use QWebEngineView if available for better CSS support
         if HAS_WEBENGINE:
             self.preview = QWebEngineView()
+            # Use custom page to intercept link clicks
+            self._custom_page = LinkInterceptPage(self.preview)
+            self._custom_page.link_clicked.connect(self._on_link_clicked)
+            self.preview.setPage(self._custom_page)
             self._use_webengine = True
         else:
             self.preview = QTextBrowser()
-            self.preview.setOpenExternalLinks(True)
+            # Don't auto-open external links, handle them manually
+            self.preview.setOpenExternalLinks(False)
+            self.preview.anchorClicked.connect(self._on_link_clicked)
             self._use_webengine = False
         self._apply_preview_style()
 
@@ -459,6 +487,10 @@ class DocumentTab(QWidget):
 
         # Sync scrolling
         self.editor.verticalScrollBar().valueChanged.connect(self._on_editor_scroll)
+
+    def _on_link_clicked(self, url: QUrl):
+        """Handle link clicks in the preview, forwarding to the main window."""
+        self.link_clicked.emit(url)
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""
@@ -522,7 +554,12 @@ class DocumentTab(QWidget):
         full_html = self.main_window.get_html_template(
             html_content, for_qtextbrowser=not self._use_webengine
         )
-        self.preview.setHtml(full_html)
+        # Set base URL for relative link resolution
+        if self.file_path:
+            base_url = QUrl.fromLocalFile(str(self.file_path.parent) + "/")
+        else:
+            base_url = QUrl()
+        self.preview.setHtml(full_html, base_url)
 
     def reload_file(self):
         """Reload the file from disk."""
@@ -1594,14 +1631,18 @@ class MarkdownEditor(QMainWindow):
     def new_tab(self) -> DocumentTab:
         """Create a new empty document tab."""
         tab = DocumentTab(self)
-        # Connect signals once when tab is created (not on every tab switch)
-        tab.editor.word_count_changed.connect(self._update_word_count)
-        tab.editor.cursor_position_changed.connect(self._update_cursor_position)
+        self._connect_tab_signals(tab)
         index = self.tab_widget.addTab(tab, tab.get_tab_title())
         self.tab_widget.setCurrentIndex(index)
         tab.editor.setFocus()
         self.status_bar.showMessage("New tab created")
         return tab
+
+    def _connect_tab_signals(self, tab: DocumentTab):
+        """Connect signals for a document tab."""
+        tab.editor.word_count_changed.connect(self._update_word_count)
+        tab.editor.cursor_position_changed.connect(self._update_cursor_position)
+        tab.link_clicked.connect(self._handle_link_click)
 
     def open_file(self, file_path: str | Path | None = None):
         """Open a markdown file in a new tab."""
@@ -1642,6 +1683,7 @@ class MarkdownEditor(QMainWindow):
                 pass
             else:
                 tab = DocumentTab(self)
+                self._connect_tab_signals(tab)
                 index = self.tab_widget.addTab(tab, "")
                 self.tab_widget.setCurrentIndex(index)
 
@@ -1974,6 +2016,60 @@ class MarkdownEditor(QMainWindow):
 
         # Wait for file to load before navigating and updating references
         QTimer.singleShot(100, navigate_and_update)
+
+    def _handle_link_click(self, url: QUrl):
+        """Handle a link click from the preview pane."""
+        try:
+            self._do_handle_link_click(url)
+        except Exception as e:
+            self.status_bar.showMessage(f"Error handling link: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _do_handle_link_click(self, url: QUrl):
+        """Internal link click handler."""
+        # Get current tab for resolving relative paths
+        tab = self.current_tab()
+        current_dir = tab.file_path.parent if tab and tab.file_path else Path.cwd()
+
+        # Determine the file path from the URL
+        file_path = None
+        if url.isLocalFile():
+            file_path = Path(url.toLocalFile())
+        elif url.scheme() == "" or url.scheme() == "file":
+            # Relative path - resolve relative to current document
+            url_path = url.toString()
+            # Remove any fragment (anchor)
+            if "#" in url_path:
+                url_path = url_path.split("#")[0]
+            if url_path:
+                file_path = current_dir / url_path
+
+        # Check if it's a markdown file
+        if file_path:
+            # Resolve the path
+            try:
+                file_path = file_path.resolve()
+            except (OSError, ValueError):
+                pass
+
+            if file_path.exists() and file_path.suffix.lower() in ('.md', '.markdown'):
+                # Open markdown file in editor
+                self.open_file(str(file_path))
+                self.status_bar.showMessage(f"Opened: {file_path.name}")
+                return
+
+        # For all other links, open with default application
+        if url.scheme() in ('http', 'https', 'mailto', 'ftp'):
+            QDesktopServices.openUrl(url)
+            self.status_bar.showMessage(f"Opened in browser: {url.toString()}")
+        elif file_path and file_path.exists():
+            # Open non-markdown file with default app
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(file_path)))
+            self.status_bar.showMessage(f"Opened with default app: {file_path.name}")
+        else:
+            # Try to open as-is
+            QDesktopServices.openUrl(url)
 
     def _sync_preview_to_editor(self, tab: DocumentTab, retry_count: int = 0):
         """Sync the preview scroll position to match the editor's cursor line."""
