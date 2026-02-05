@@ -8,6 +8,7 @@ from datetime import datetime
 from PySide6.QtCore import Qt, QRect, QSize, QTimer, Signal, QFileSystemWatcher, QMimeData, QPoint
 from PySide6.QtGui import (
     QColor,
+    QCursor,
     QFont,
     QFontMetrics,
     QImage,
@@ -129,6 +130,7 @@ class EnhancedEditor(QPlainTextEdit):
     word_count_changed = Signal(int, int)  # words, characters
     cursor_position_changed = Signal(int, int)  # line, column
     file_externally_modified = Signal()
+    link_ctrl_clicked = Signal(str)  # link URL/path when Ctrl+clicked
 
     # Auto-pair characters
     AUTO_PAIRS = {
@@ -172,6 +174,10 @@ class EnhancedEditor(QPlainTextEdit):
     def _init_ui(self):
         """Initialize the editor UI."""
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+
+        # Enable mouse tracking for hover detection
+        self.setMouseTracking(True)
+        self._hover_link_range: tuple[int, int] | None = None  # (start, end) positions
 
         # Set font
         font_family = self.settings.get("editor.font_family", "Monospace")
@@ -872,9 +878,140 @@ class EnhancedEditor(QPlainTextEdit):
         self.settings.set("editor.font_size", 11, save=False)
         self._update_line_number_area_width()
 
+    # Mouse event handling
+    def mousePressEvent(self, event):
+        """Handle mouse press events - Ctrl+click opens links."""
+        if (event.button() == Qt.MouseButton.LeftButton and
+                event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            # Get cursor position at click
+            cursor = self.cursorForPosition(event.pos())
+            link = self._find_link_at_cursor(cursor)
+            if link:
+                self.link_ctrl_clicked.emit(link)
+                return
+        super().mousePressEvent(event)
+
+    def _find_link_at_cursor(self, cursor: QTextCursor) -> str | None:
+        """Find a markdown link at the cursor position."""
+        line = cursor.block().text()
+        pos_in_line = cursor.positionInBlock()
+
+        # Check for wiki link [[target]] or [[target|display]]
+        # Wiki links conventionally refer to markdown files, so add .md if no extension
+        wiki_pattern = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
+        for match in wiki_pattern.finditer(line):
+            if match.start() <= pos_in_line <= match.end():
+                target = match.group(1).strip()
+                # Add .md extension for wiki links without extension
+                if '.' not in Path(target).name:
+                    target = target + '.md'
+                return target
+
+        # Check for markdown link [text](url) - return URL as-is
+        md_pattern = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
+        for match in md_pattern.finditer(line):
+            if match.start() <= pos_in_line <= match.end():
+                return match.group(2).strip()
+
+        # Check for bare URLs
+        url_pattern = re.compile(r'https?://[^\s<>\[\]()]+')
+        for match in url_pattern.finditer(line):
+            if match.start() <= pos_in_line <= match.end():
+                return match.group(0)
+
+        return None
+
+    def _find_link_range_at_cursor(self, cursor: QTextCursor) -> tuple[int, int] | None:
+        """Find the document position range of a link at cursor. Returns (start, end) or None."""
+        line = cursor.block().text()
+        pos_in_line = cursor.positionInBlock()
+        block_start = cursor.block().position()
+
+        # Check for wiki link [[target]] or [[target|display]]
+        wiki_pattern = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
+        for match in wiki_pattern.finditer(line):
+            if match.start() <= pos_in_line <= match.end():
+                return (block_start + match.start(), block_start + match.end())
+
+        # Check for markdown link [text](url)
+        md_pattern = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
+        for match in md_pattern.finditer(line):
+            if match.start() <= pos_in_line <= match.end():
+                return (block_start + match.start(), block_start + match.end())
+
+        # Check for bare URLs
+        url_pattern = re.compile(r'https?://[^\s<>\[\]()]+')
+        for match in url_pattern.finditer(line):
+            if match.start() <= pos_in_line <= match.end():
+                return (block_start + match.start(), block_start + match.end())
+
+        return None
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move - show link cursor and highlight when Ctrl+hovering."""
+        ctrl_pressed = QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier
+
+        if ctrl_pressed:
+            cursor = self.cursorForPosition(event.pos())
+            link_range = self._find_link_range_at_cursor(cursor)
+
+            if link_range != self._hover_link_range:
+                self._hover_link_range = link_range
+                self._update_link_highlight()
+
+            if link_range:
+                self.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+            else:
+                self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
+        else:
+            if self._hover_link_range is not None:
+                self._hover_link_range = None
+                self._update_link_highlight()
+            self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
+
+        super().mouseMoveEvent(event)
+
+    def _update_link_highlight(self):
+        """Update the extra selection for link highlighting."""
+        if self._hover_link_range:
+            start, end = self._hover_link_range
+            cursor = self.textCursor()
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+
+            selection = QTextEdit.ExtraSelection()
+            selection.cursor = cursor
+            # Style: blue color + underline
+            fmt = selection.format
+            fmt.setForeground(QColor("#0066cc"))
+            fmt.setFontUnderline(True)
+            selection.format = fmt
+
+            # Preserve existing extra selections (like current line highlight) and add ours
+            existing = [s for s in self.extraSelections()
+                       if s.format.property(QTextFormat.Property.FullWidthSelection)]
+            self.setExtraSelections(existing + [selection])
+        else:
+            # Remove link highlight, keep other selections
+            existing = [s for s in self.extraSelections()
+                       if s.format.property(QTextFormat.Property.FullWidthSelection)]
+            self.setExtraSelections(existing)
+
     # Key event handling
     def keyPressEvent(self, event):
         """Handle key press events."""
+        # Handle Ctrl key press for link hover highlight
+        if event.key() == Qt.Key.Key_Control:
+            # Check if mouse is over a link and update highlight
+            pos = self.mapFromGlobal(QCursor.pos())
+            if self.rect().contains(pos):
+                cursor = self.cursorForPosition(pos)
+                link_range = self._find_link_range_at_cursor(cursor)
+                if link_range:
+                    self._hover_link_range = link_range
+                    self._update_link_highlight()
+                    self.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+
         # Wiki link completer navigation
         if self.wiki_link_completer and self.wiki_link_completer.isVisible():
             if event.key() in (Qt.Key.Key_Down, Qt.Key.Key_Up, Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Escape):
@@ -965,6 +1102,16 @@ class EnhancedEditor(QPlainTextEdit):
         # Check for wiki link trigger after typing
         if event.text() and not event.modifiers():
             QTimer.singleShot(0, self._check_wiki_link_trigger)
+
+    def keyReleaseEvent(self, event):
+        """Handle key release events."""
+        # Clear link hover highlight when Ctrl is released
+        if event.key() == Qt.Key.Key_Control:
+            if self._hover_link_range is not None:
+                self._hover_link_range = None
+                self._update_link_highlight()
+            self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
+        super().keyReleaseEvent(event)
 
     # Drag and drop
     def dragEnterEvent(self, event):

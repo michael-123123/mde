@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction
+from PySide6.QtGui import QDesktopServices, QFont, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -1643,6 +1643,7 @@ class MarkdownEditor(QMainWindow):
         tab.editor.word_count_changed.connect(self._update_word_count)
         tab.editor.cursor_position_changed.connect(self._update_cursor_position)
         tab.link_clicked.connect(self._handle_link_click)
+        tab.editor.link_ctrl_clicked.connect(self._handle_editor_link_click)
 
     def open_file(self, file_path: str | Path | None = None):
         """Open a markdown file in a new tab."""
@@ -2016,6 +2017,21 @@ class MarkdownEditor(QMainWindow):
 
         # Wait for file to load before navigating and updating references
         QTimer.singleShot(100, navigate_and_update)
+
+    def _handle_editor_link_click(self, link: str):
+        """Handle a Ctrl+click link from the editor pane."""
+        # Convert string to QUrl
+        if link.startswith(('http://', 'https://', 'mailto:', 'ftp://')):
+            url = QUrl(link)
+        else:
+            # Treat as relative path
+            tab = self.current_tab()
+            if tab and tab.file_path:
+                file_path = tab.file_path.parent / link
+                url = QUrl.fromLocalFile(str(file_path))
+            else:
+                url = QUrl(link)
+        self._handle_link_click(url)
 
     def _handle_link_click(self, url: QUrl):
         """Handle a link click from the preview pane."""
