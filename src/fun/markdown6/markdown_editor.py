@@ -97,6 +97,7 @@ from fun.markdown6.enhanced_editor import EnhancedEditor
 from fun.markdown6.settings import get_settings
 from fun.markdown6.settings_dialog import SettingsDialog
 from fun.markdown6.outline_panel import OutlinePanel
+from fun.markdown6.references_panel import ReferencesPanel
 from fun.markdown6.command_palette import CommandPalette, Command
 from fun.markdown6.table_editor import TableEditorDialog
 from fun.markdown6.snippets import get_snippet_manager, SnippetPopup
@@ -642,6 +643,17 @@ class MarkdownEditor(QMainWindow):
         outline_layout.addWidget(self.outline_panel)
         self.side_toolbox.addItem(outline_page, "📑 Outline")
 
+        # References panel page
+        references_page = QWidget()
+        references_layout = QVBoxLayout(references_page)
+        references_layout.setContentsMargins(0, 0, 0, 0)
+        references_layout.setSpacing(0)
+        self.references_panel = ReferencesPanel()
+        self.references_panel.reference_clicked.connect(self._go_to_reference)
+        self.references_panel.setAccessibleName("References Panel")
+        references_layout.addWidget(self.references_panel)
+        self.side_toolbox.addItem(references_page, "🔗 References")
+
         dock_layout.addWidget(self.side_toolbox)
         self.left_dock.setWidget(dock_container)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.left_dock)
@@ -860,6 +872,11 @@ class MarkdownEditor(QMainWindow):
         self.toggle_project_action.setChecked(False)
         self.toggle_project_action.triggered.connect(self._toggle_project_panel)
 
+        self.toggle_references_action = panels_menu.addAction("Toggle &References Panel")
+        self.toggle_references_action.setCheckable(True)
+        self.toggle_references_action.setChecked(False)
+        self.toggle_references_action.triggered.connect(self._toggle_references_panel)
+
         view_menu.addSeparator()
 
         # Folding submenu
@@ -972,6 +989,7 @@ class MarkdownEditor(QMainWindow):
             "view.command_palette": self.command_palette_action,
             "view.toggle_outline": self.toggle_outline_action,
             "view.toggle_project": self.toggle_project_action,
+            "view.toggle_references": self.toggle_references_action,
             "view.fold_all": self.fold_all_action,
             "view.unfold_all": self.unfold_all_action,
             "insert.snippet": self.insert_snippet_action,
@@ -1088,6 +1106,8 @@ class MarkdownEditor(QMainWindow):
             # Update outline panel
             if self.outline_panel.isVisible():
                 self._update_outline()
+            # Update references panel
+            self._update_references()
             # Sync view toggle buttons with current tab's visibility
             self._sync_view_toggle_buttons()
 
@@ -1851,6 +1871,7 @@ class MarkdownEditor(QMainWindow):
         commands.append(Command("view.toggle_preview", "Toggle Preview", self.settings.get_shortcut("view.toggle_preview"), self._toggle_preview, "View"))
         commands.append(Command("view.toggle_outline", "Toggle Outline Panel", self.settings.get_shortcut("view.toggle_outline"), self._toggle_outline_panel, "View"))
         commands.append(Command("view.toggle_project", "Toggle Project Panel", self.settings.get_shortcut("view.toggle_project"), self._toggle_project_panel, "View"))
+        commands.append(Command("view.toggle_references", "Toggle References Panel", self.settings.get_shortcut("view.toggle_references"), self._toggle_references_panel, "View"))
         commands.append(Command("view.fold_all", "Fold All", self.settings.get_shortcut("view.fold_all"), self._fold_all, "View"))
         commands.append(Command("view.unfold_all", "Unfold All", self.settings.get_shortcut("view.unfold_all"), self._unfold_all, "View"))
         commands.append(Command("view.zoom_in", "Zoom In", self.settings.get_shortcut("view.zoom_in"), self._zoom_in, "View"))
@@ -1922,6 +1943,104 @@ class MarkdownEditor(QMainWindow):
         tab = self.current_tab()
         if tab:
             tab.editor.go_to_line(line + 1)
+            # Sync preview scroll after a short delay
+            QTimer.singleShot(50, lambda: self._sync_preview_to_editor(tab))
+
+    # ==================== REFERENCES PANEL ====================
+
+    def _update_references(self):
+        """Update the references panel with backlinks to current file."""
+        tab = self.current_tab()
+        if tab and tab.file_path:
+            self.references_panel.set_current_file(tab.file_path)
+        else:
+            self.references_panel.set_current_file(None)
+
+    def _go_to_reference(self, file_path: str, line: int):
+        """Open a file and go to a specific line from the references panel."""
+        # Open the file first
+        self.open_file(file_path)
+
+        # Defer line navigation to ensure file is fully loaded and tab is ready
+        def navigate_and_update():
+            tab = self.current_tab()
+            if tab:
+                if line >= 0:
+                    tab.editor.go_to_line(line + 1)
+                    # Sync preview after another short delay
+                    QTimer.singleShot(50, lambda: self._sync_preview_to_editor(tab))
+                # Update references for the newly opened file
+                self._update_references()
+
+        # Wait for file to load before navigating and updating references
+        QTimer.singleShot(100, navigate_and_update)
+
+    def _sync_preview_to_editor(self, tab: DocumentTab, retry_count: int = 0):
+        """Sync the preview scroll position to match the editor's cursor line."""
+        if not tab or not tab.preview.isVisible():
+            return
+
+        # Calculate ratio based on cursor line position, not scroll position
+        # This is more accurate after go_to_line + centerCursor
+        cursor = tab.editor.textCursor()
+        current_line = cursor.blockNumber()
+        total_lines = tab.editor.document().blockCount()
+
+        if total_lines <= 1:
+            ratio = 0.0
+        else:
+            ratio = current_line / (total_lines - 1)
+
+        if tab._use_webengine:
+            # Use JavaScript to scroll QWebEngineView
+            # Wait for document to be ready before scrolling, with retry mechanism
+            js = f"""
+            (function() {{
+                function doScroll() {{
+                    var docHeight = document.body.scrollHeight;
+                    var viewHeight = window.innerHeight;
+                    // Only scroll if document has meaningful height (content loaded)
+                    if (docHeight > viewHeight) {{
+                        var targetY = docHeight * {ratio};
+                        // Center the target position in the viewport
+                        var scrollY = Math.max(0, targetY - viewHeight / 2);
+                        window.scrollTo(0, scrollY);
+                        return true;
+                    }}
+                    return false;
+                }}
+                // Try immediately
+                if (!doScroll()) {{
+                    // If doc not ready, try again after a short delay
+                    setTimeout(doScroll, 100);
+                }}
+            }})();
+            """
+            tab.preview.page().runJavaScript(js)
+
+            # For QWebEngineView, if this is the first attempt, retry after content loads
+            if retry_count == 0:
+                QTimer.singleShot(200, lambda: self._sync_preview_to_editor(tab, retry_count=1))
+        else:
+            preview_scrollbar = tab.preview.verticalScrollBar()
+            # Calculate position to center the target line
+            max_scroll = preview_scrollbar.maximum()
+            page_step = preview_scrollbar.pageStep()
+            target_pos = int(ratio * (max_scroll + page_step))
+            # Adjust to center
+            scroll_pos = max(0, target_pos - page_step // 2)
+            preview_scrollbar.setValue(min(scroll_pos, max_scroll))
+
+    def _toggle_references_panel(self):
+        """Toggle the references panel visibility and switch to References tab."""
+        if self.left_dock.isVisible() and self.side_toolbox.currentIndex() == 2:
+            # References is showing, hide dock
+            self.left_dock.hide()
+        else:
+            # Show dock and switch to References
+            self.side_toolbox.setCurrentIndex(2)
+            self.left_dock.show()
+            self._update_references()
 
     # ==================== PROJECT PANEL ====================
 
@@ -1941,10 +2060,13 @@ class MarkdownEditor(QMainWindow):
             self, "Open Project Folder", str(Path.home())
         )
         if folder:
-            self.project_panel.set_project_path(Path(folder))
+            project_path = Path(folder)
+            self.project_panel.set_project_path(project_path)
+            self.references_panel.set_project_path(project_path)
             self.side_toolbox.setCurrentIndex(0)  # Switch to Project tab
             self.left_dock.show()
             self._update_wiki_links()
+            self._update_references()
 
     def _on_dock_visibility_changed(self, visible: bool):
         """Handle dock visibility changes."""
@@ -1957,11 +2079,15 @@ class MarkdownEditor(QMainWindow):
             current_tab = self.side_toolbox.currentIndex()
             self.toggle_project_action.setChecked(current_tab == 0)
             self.toggle_outline_action.setChecked(current_tab == 1)
+            self.toggle_references_action.setChecked(current_tab == 2)
             if current_tab == 1:
                 self._update_outline()
+            elif current_tab == 2:
+                self._update_references()
         else:
             self.toggle_project_action.setChecked(False)
             self.toggle_outline_action.setChecked(False)
+            self.toggle_references_action.setChecked(False)
 
     def _on_toolbox_changed(self, index: int):
         """Handle toolbox tab change."""
@@ -1972,8 +2098,11 @@ class MarkdownEditor(QMainWindow):
         if self.left_dock.isVisible():
             self.toggle_project_action.setChecked(index == 0)
             self.toggle_outline_action.setChecked(index == 1)
+            self.toggle_references_action.setChecked(index == 2)
             if index == 1:
                 self._update_outline()
+            elif index == 2:
+                self._update_references()
 
     def _apply_dock_theme(self):
         """Apply theme to the dock widget and toolbox.
@@ -2132,6 +2261,7 @@ class MarkdownEditor(QMainWindow):
             path = Path(last_path)
             if path.exists() and path.is_dir():
                 self.project_panel.set_project_path(path)
+                self.references_panel.set_project_path(path)
                 self._update_wiki_links()
                 # Don't auto-show the dock, just load the project data
 

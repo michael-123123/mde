@@ -531,8 +531,11 @@ class EnhancedEditor(QPlainTextEdit):
 
     # Go to line
     def _go_to_line(self, line: int):
-        """Go to a specific line number."""
-        block = self.document().findBlockByLineNumber(line)
+        """Go to a specific line number (0-indexed block number)."""
+        # Use findBlockByNumber, not findBlockByLineNumber
+        # findBlockByLineNumber counts visual lines (affected by word wrap)
+        # findBlockByNumber counts actual text blocks (source lines)
+        block = self.document().findBlockByNumber(line)
         if block.isValid():
             cursor = self.textCursor()
             cursor.setPosition(block.position())

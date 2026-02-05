@@ -80,6 +80,7 @@ DEFAULT_SHORTCUTS = {
     "view.command_palette": "Ctrl+Shift+P",
     "view.toggle_outline": "Ctrl+Shift+O",
     "view.toggle_project": "Ctrl+Shift+E",
+    "view.toggle_references": "Ctrl+Shift+R",
     "view.fold_all": "Ctrl+Shift+[",
     "view.unfold_all": "Ctrl+Shift+]",
     # Insert operations
