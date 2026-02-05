@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QListWidgetItem, QWidget
 
 from fun.markdown6.searchable_popup import SearchablePopup
@@ -31,12 +32,17 @@ class CommandPalette(SearchablePopup):
     def _init_ui(self):
         """Initialize the command palette UI."""
         self.setWindowTitle("Command Palette")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(600)
         self.setMaximumHeight(400)
 
         self.search_input.setPlaceholderText("Type to search commands...")
         self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.list_widget.setMinimumHeight(300)
+
+        # Use monospace font for proper shortcut alignment
+        mono_font = QFont("monospace", 11)
+        mono_font.setStyleHint(QFont.StyleHint.Monospace)
+        self.list_widget.setFont(mono_font)
 
         # Listen for theme changes
         self.settings.settings_changed.connect(self._on_setting_changed)
@@ -65,6 +71,18 @@ class CommandPalette(SearchablePopup):
         else:
             self.filtered_commands = self.commands.copy()
 
+        # Find max command length for alignment
+        max_len = 0
+        for cmd in self.filtered_commands:
+            if cmd.category:
+                text = f"{cmd.category}: {cmd.name}"
+            else:
+                text = cmd.name
+            max_len = max(max_len, len(text))
+
+        # Pad to align shortcuts
+        pad_to = min(max_len + 4, 55)
+
         for cmd in self.filtered_commands:
             if cmd.category:
                 display_text = f"{cmd.category}: {cmd.name}"
@@ -72,10 +90,8 @@ class CommandPalette(SearchablePopup):
                 display_text = cmd.name
 
             if cmd.shortcut:
-                padding = 50 - len(display_text)
-                if padding > 0:
-                    display_text += " " * padding
-                display_text += f"  [{cmd.shortcut}]"
+                padding = pad_to - len(display_text)
+                display_text = display_text.ljust(pad_to) + cmd.shortcut
 
             item = QListWidgetItem(display_text)
             item.setData(Qt.ItemDataRole.UserRole, cmd)
