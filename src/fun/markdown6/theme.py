@@ -345,15 +345,16 @@ class StyleSheets:
         return f"""
             QSplitter {{
                 background-color: {theme.bg_secondary};
+                border: none;
             }}
             QSplitter::handle {{
-                background-color: {theme.border};
+                background-color: {theme.bg_tertiary};
             }}
             QSplitter::handle:horizontal {{
-                width: 2px;
+                width: 1px;
             }}
             QSplitter::handle:vertical {{
-                height: 2px;
+                height: 1px;
             }}
         """
 
@@ -437,7 +438,7 @@ class StyleSheets:
             QMenuBar {{
                 background-color: {theme.bg_secondary};
                 color: {theme.text_primary};
-                border-bottom: 1px solid {theme.border};
+                border: none;
                 padding: 2px;
             }}
             QMenuBar::item {{
@@ -486,32 +487,37 @@ class StyleSheets:
     def tab_widget(theme: ThemeColors) -> str:
         """Stylesheet for QTabWidget and QTabBar."""
         return f"""
+            QTabWidget {{
+                background-color: {theme.bg_secondary};
+                border: none;
+            }}
             QTabWidget::pane {{
                 background-color: {theme.bg_primary};
-                border: 1px solid {theme.border};
-                border-top: none;
+                border: none;
+            }}
+            QTabWidget::tab-bar {{
+                alignment: left;
+                background-color: {theme.bg_secondary};
             }}
             QTabBar {{
                 background-color: {theme.bg_secondary};
+                border: none;
             }}
             QTabBar::tab {{
                 background-color: {theme.bg_tertiary};
                 color: {theme.text_secondary};
-                border: 1px solid {theme.border};
-                border-bottom: none;
+                border: none;
                 padding: 6px 12px;
-                margin-right: 2px;
+                margin-right: 1px;
             }}
             QTabBar::tab:selected {{
                 background-color: {theme.bg_primary};
                 color: {theme.text_primary};
-                border-bottom: 1px solid {theme.bg_primary};
             }}
             QTabBar::tab:hover:!selected {{
                 background-color: {theme.bg_input};
             }}
             QTabBar::close-button {{
-                image: none;
                 subcontrol-position: right;
             }}
             QTabBar QToolButton {{
@@ -525,13 +531,13 @@ class StyleSheets:
         """Stylesheet for QMainWindow."""
         return f"""
             QMainWindow {{
-                background-color: {theme.bg_primary};
+                background-color: {theme.bg_secondary};
                 color: {theme.text_primary};
             }}
             QMainWindow::separator {{
-                background-color: {theme.border};
-                width: 1px;
-                height: 1px;
+                background-color: {theme.bg_secondary};
+                width: 0px;
+                height: 0px;
             }}
         """
 

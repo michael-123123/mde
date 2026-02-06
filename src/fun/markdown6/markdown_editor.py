@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
-    QDockWidget,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -24,7 +23,6 @@ from PySide6.QtWidgets import (
     QStyle,
     QTabWidget,
     QTextBrowser,
-    QToolBox,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -71,19 +69,26 @@ def apply_application_theme(dark_mode: bool):
     if dark_mode:
         # Dark palette
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+        dark_bg = QColor(53, 53, 53)
+        palette.setColor(QPalette.ColorRole.Window, dark_bg)
         palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
         palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.AlternateBase, dark_bg)
         palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
         palette.setColor(QPalette.ColorRole.ToolTipText, QColor(255, 255, 255))
         palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.Button, dark_bg)
         palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
         palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
         palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
         palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor(35, 35, 35))
+        # Set 3D effect colors to match background (eliminates Fusion style separator lines)
+        palette.setColor(QPalette.ColorRole.Light, dark_bg)
+        palette.setColor(QPalette.ColorRole.Midlight, dark_bg)
+        palette.setColor(QPalette.ColorRole.Dark, dark_bg)
+        palette.setColor(QPalette.ColorRole.Mid, dark_bg)
+        palette.setColor(QPalette.ColorRole.Shadow, dark_bg)
         # Disabled colors
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(127, 127, 127))
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(127, 127, 127))
@@ -101,6 +106,7 @@ def apply_application_theme(dark_mode: bool):
         StyleSheets.menu(theme) +
         StyleSheets.tab_widget(theme) +
         StyleSheets.status_bar(theme) +
+        StyleSheets.splitter(theme) +
         f"""
             QToolTip {{
                 color: {theme.text_primary};
@@ -156,6 +162,8 @@ from fun.markdown6.command_palette import CommandPalette, Command
 from fun.markdown6.table_editor import TableEditorDialog
 from fun.markdown6.snippets import get_snippet_manager, SnippetPopup
 from fun.markdown6.project_manager import ProjectPanel
+from fun.markdown6.sidebar import Sidebar
+from fun.markdown6.search_panel import SearchPanel
 from fun.markdown6.markdown_extensions import (
     BreaklessListExtension,
     CalloutExtension,
@@ -746,7 +754,45 @@ class MarkdownEditor(QMainWindow):
         self.setGeometry(100, 100, 1400, 800)
         self.setAcceptDrops(True)
 
-        # Center content (tabs) - set as central widget
+        # Main splitter: [Sidebar | Tab Widget]
+        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.main_splitter.setChildrenCollapsible(False)
+        self.main_splitter.setHandleWidth(1)
+        self.setCentralWidget(self.main_splitter)
+
+        # Sidebar with activity bar and panels
+        self.sidebar = Sidebar()
+
+        # Create panels
+        self.project_panel = ProjectPanel()
+        self.project_panel.file_double_clicked.connect(self.open_file)
+        self.project_panel.graph_export_requested.connect(self._show_graph_export)
+        self.project_panel.setAccessibleName("Project Files Panel")
+
+        self.outline_panel = OutlinePanel()
+        self.outline_panel.heading_clicked.connect(self._go_to_heading)
+        self.outline_panel.setAccessibleName("Document Outline Panel")
+
+        self.references_panel = ReferencesPanel()
+        self.references_panel.reference_clicked.connect(self._go_to_reference)
+        self.references_panel.setAccessibleName("References Panel")
+
+        self.search_panel = SearchPanel()
+        self.search_panel.file_requested.connect(self._on_search_file_requested)
+        self.search_panel.setAccessibleName("Search Panel")
+
+        # Add panels to sidebar (order matters for indices)
+        self.sidebar.addPanel("Explorer", "📁", self.project_panel)      # index 0
+        self.sidebar.addPanel("Outline", "📑", self.outline_panel)       # index 1
+        self.sidebar.addPanel("References", "🔗", self.references_panel) # index 2
+        self.sidebar.addPanel("Search", "🔍", self.search_panel)         # index 3
+
+        # Connect sidebar signals
+        self.sidebar.panel_changed.connect(self._on_sidebar_panel_changed)
+        self.sidebar.collapsed_changed.connect(self._on_sidebar_collapsed_changed)
+        self.sidebar.width_changed.connect(self._on_sidebar_width_changed)
+
+        # Tab widget for documents
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.setMovable(True)
@@ -754,76 +800,17 @@ class MarkdownEditor(QMainWindow):
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.tab_widget.setAccessibleName("Document Tabs")
-        self.setCentralWidget(self.tab_widget)
+
+        # Add to splitter
+        self.main_splitter.addWidget(self.sidebar)
+        self.main_splitter.addWidget(self.tab_widget)
+
+        # Set stretch factors (sidebar doesn't stretch, tab widget does)
+        self.main_splitter.setStretchFactor(0, 0)
+        self.main_splitter.setStretchFactor(1, 1)
 
         # View toggle buttons (editor/preview) in tab bar corner
         self._create_view_toggle_buttons()
-
-        # Left dock widget with toolbox for panels
-        self.left_dock = QDockWidget("Explorer", self)
-        self.left_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        self.left_dock.setFeatures(
-            QDockWidget.DockWidgetFeature.DockWidgetClosable |
-            QDockWidget.DockWidgetFeature.DockWidgetMovable
-        )
-
-        # Container widget for dock contents (following Qt best practices)
-        dock_container = QWidget()
-        dock_layout = QHBoxLayout(dock_container)
-        dock_layout.setContentsMargins(0, 0, 0, 0)
-        dock_layout.setSpacing(0)
-
-        # Toolbox inside the container
-        self.side_toolbox = QToolBox()
-        self.side_toolbox.setMinimumWidth(250)
-
-        # Project panel page
-        project_page = QWidget()
-        project_layout = QVBoxLayout(project_page)
-        project_layout.setContentsMargins(0, 0, 0, 0)
-        project_layout.setSpacing(0)
-        self.project_panel = ProjectPanel()
-        self.project_panel.file_double_clicked.connect(self.open_file)
-        self.project_panel.graph_export_requested.connect(self._show_graph_export)
-        self.project_panel.setAccessibleName("Project Files Panel")
-        project_layout.addWidget(self.project_panel)
-        self.side_toolbox.addItem(project_page, "📁 Project")
-
-        # Outline panel page
-        outline_page = QWidget()
-        outline_layout = QVBoxLayout(outline_page)
-        outline_layout.setContentsMargins(0, 0, 0, 0)
-        outline_layout.setSpacing(0)
-        self.outline_panel = OutlinePanel()
-        self.outline_panel.heading_clicked.connect(self._go_to_heading)
-        self.outline_panel.setAccessibleName("Document Outline Panel")
-        outline_layout.addWidget(self.outline_panel)
-        self.side_toolbox.addItem(outline_page, "📑 Outline")
-
-        # References panel page
-        references_page = QWidget()
-        references_layout = QVBoxLayout(references_page)
-        references_layout.setContentsMargins(0, 0, 0, 0)
-        references_layout.setSpacing(0)
-        self.references_panel = ReferencesPanel()
-        self.references_panel.reference_clicked.connect(self._go_to_reference)
-        self.references_panel.setAccessibleName("References Panel")
-        references_layout.addWidget(self.references_panel)
-        self.side_toolbox.addItem(references_page, "🔗 References")
-
-        dock_layout.addWidget(self.side_toolbox)
-        self.left_dock.setWidget(dock_container)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.left_dock)
-
-        # Connect dock visibility to menu actions
-        self.left_dock.visibilityChanged.connect(self._on_dock_visibility_changed)
-        self.side_toolbox.currentChanged.connect(self._on_toolbox_changed)
-
-        # Apply theme to dock/toolbox
-        self._apply_dock_theme()
-
-        # Show dock by default
-        self.left_dock.show()
 
         # Command palette
         self.command_palette = CommandPalette(self)
@@ -1032,6 +1019,16 @@ class MarkdownEditor(QMainWindow):
         self.toggle_references_action.setChecked(False)
         self.toggle_references_action.triggered.connect(self._toggle_references_panel)
 
+        self.toggle_search_action = panels_menu.addAction("Toggle &Search Panel")
+        self.toggle_search_action.setCheckable(True)
+        self.toggle_search_action.setChecked(False)
+        self.toggle_search_action.triggered.connect(self._toggle_search_panel)
+
+        panels_menu.addSeparator()
+
+        self.toggle_sidebar_action = panels_menu.addAction("Toggle Si&debar")
+        self.toggle_sidebar_action.triggered.connect(self._toggle_sidebar)
+
         view_menu.addSeparator()
 
         # Folding submenu
@@ -1152,6 +1149,8 @@ class MarkdownEditor(QMainWindow):
             "view.toggle_outline": self.toggle_outline_action,
             "view.toggle_project": self.toggle_project_action,
             "view.toggle_references": self.toggle_references_action,
+            "view.toggle_search": self.toggle_search_action,
+            "view.toggle_sidebar": self.toggle_sidebar_action,
             "view.fold_all": self.fold_all_action,
             "view.unfold_all": self.unfold_all_action,
             "insert.snippet": self.insert_snippet_action,
@@ -1864,6 +1863,7 @@ class MarkdownEditor(QMainWindow):
             return self.save_file_as()
 
         try:
+            tab.editor._ignore_next_file_change = True
             tab.file_path.write_text(tab.editor.toPlainText(), encoding="utf-8")
             tab.unsaved_changes = False
             tab.editor.document().setModified(False)
@@ -2101,6 +2101,8 @@ class MarkdownEditor(QMainWindow):
         commands.append(Command("view.toggle_outline", "Toggle Outline Panel", self.settings.get_shortcut("view.toggle_outline"), self._toggle_outline_panel, "View"))
         commands.append(Command("view.toggle_project", "Toggle Project Panel", self.settings.get_shortcut("view.toggle_project"), self._toggle_project_panel, "View"))
         commands.append(Command("view.toggle_references", "Toggle References Panel", self.settings.get_shortcut("view.toggle_references"), self._toggle_references_panel, "View"))
+        commands.append(Command("view.toggle_search", "Toggle Search Panel", self.settings.get_shortcut("view.toggle_search"), self._toggle_search_panel, "View"))
+        commands.append(Command("view.toggle_sidebar", "Toggle Sidebar", self.settings.get_shortcut("view.toggle_sidebar"), self._toggle_sidebar, "View"))
         commands.append(Command("view.fold_all", "Fold All", self.settings.get_shortcut("view.fold_all"), self._fold_all, "View"))
         commands.append(Command("view.unfold_all", "Unfold All", self.settings.get_shortcut("view.unfold_all"), self._unfold_all, "View"))
         commands.append(Command("view.zoom_in", "Zoom In", self.settings.get_shortcut("view.zoom_in"), self._zoom_in, "View"))
@@ -2147,13 +2149,14 @@ class MarkdownEditor(QMainWindow):
 
     def _toggle_outline_panel(self):
         """Toggle the outline panel visibility and switch to Outline tab."""
-        if self.left_dock.isVisible() and self.side_toolbox.currentIndex() == 1:
-            # Outline is showing, hide dock
-            self.left_dock.hide()
+        if not self.sidebar.isCollapsed() and self.sidebar.activeIndex() == 1:
+            # Outline is showing, collapse sidebar
+            self.sidebar.collapse()
         else:
-            # Show dock and switch to Outline
-            self.side_toolbox.setCurrentIndex(1)
-            self.left_dock.show()
+            # Show sidebar and switch to Outline
+            self.sidebar.setActivePanel(1)
+            if self.sidebar.isCollapsed():
+                self.sidebar.expand()
             self._update_outline()
 
     def _update_outline(self):
@@ -2331,26 +2334,40 @@ class MarkdownEditor(QMainWindow):
 
     def _toggle_references_panel(self):
         """Toggle the references panel visibility and switch to References tab."""
-        if self.left_dock.isVisible() and self.side_toolbox.currentIndex() == 2:
-            # References is showing, hide dock
-            self.left_dock.hide()
+        if not self.sidebar.isCollapsed() and self.sidebar.activeIndex() == 2:
+            # References is showing, collapse sidebar
+            self.sidebar.collapse()
         else:
-            # Show dock and switch to References
-            self.side_toolbox.setCurrentIndex(2)
-            self.left_dock.show()
+            # Show sidebar and switch to References
+            self.sidebar.setActivePanel(2)
+            if self.sidebar.isCollapsed():
+                self.sidebar.expand()
             self._update_references()
 
     # ==================== PROJECT PANEL ====================
 
     def _toggle_project_panel(self):
         """Toggle the project panel visibility and switch to Project tab."""
-        if self.left_dock.isVisible() and self.side_toolbox.currentIndex() == 0:
-            # Project is showing, hide dock
-            self.left_dock.hide()
+        if not self.sidebar.isCollapsed() and self.sidebar.activeIndex() == 0:
+            # Project is showing, collapse sidebar
+            self.sidebar.collapse()
         else:
-            # Show dock and switch to Project
-            self.side_toolbox.setCurrentIndex(0)
-            self.left_dock.show()
+            # Show sidebar and switch to Project
+            self.sidebar.setActivePanel(0)
+            if self.sidebar.isCollapsed():
+                self.sidebar.expand()
+
+    def _toggle_search_panel(self):
+        """Toggle the search panel visibility and switch to Search tab."""
+        if not self.sidebar.isCollapsed() and self.sidebar.activeIndex() == 3:
+            # Search is showing, collapse sidebar
+            self.sidebar.collapse()
+        else:
+            # Show sidebar and switch to Search
+            self.sidebar.setActivePanel(3)
+            if self.sidebar.isCollapsed():
+                self.sidebar.expand()
+            self.search_panel.focus_search()
 
     def _open_project(self):
         """Open a project folder."""
@@ -2361,57 +2378,64 @@ class MarkdownEditor(QMainWindow):
             project_path = Path(folder)
             self.project_panel.set_project_path(project_path)
             self.references_panel.set_project_path(project_path)
-            self.side_toolbox.setCurrentIndex(0)  # Switch to Project tab
-            self.left_dock.show()
+            self.search_panel.set_project_path(project_path)
+            self.sidebar.setActivePanel(0)  # Switch to Project tab
+            if self.sidebar.isCollapsed():
+                self.sidebar.expand()
             self._update_wiki_links()
             self._update_references()
 
-    def _on_dock_visibility_changed(self, visible: bool):
-        """Handle dock visibility changes."""
+    def _on_sidebar_collapsed_changed(self, collapsed: bool):
+        """Handle sidebar collapse/expand."""
         # Guard: actions may not exist during init
         if not hasattr(self, 'toggle_project_action'):
             return
 
-        # Update menu checkboxes based on current toolbox tab
-        if visible:
-            current_tab = self.side_toolbox.currentIndex()
-            self.toggle_project_action.setChecked(current_tab == 0)
-            self.toggle_outline_action.setChecked(current_tab == 1)
-            self.toggle_references_action.setChecked(current_tab == 2)
-            if current_tab == 1:
-                self._update_outline()
-            elif current_tab == 2:
-                self._update_references()
-        else:
+        if collapsed:
             self.toggle_project_action.setChecked(False)
             self.toggle_outline_action.setChecked(False)
             self.toggle_references_action.setChecked(False)
+            self.toggle_search_action.setChecked(False)
+        else:
+            self._on_sidebar_panel_changed(self.sidebar.activeIndex())
 
-    def _on_toolbox_changed(self, index: int):
-        """Handle toolbox tab change."""
+    def _on_sidebar_width_changed(self, sidebar_width: int):
+        """Handle sidebar width change (during animation)."""
+        total_width = self.main_splitter.width()
+        content_width = total_width - sidebar_width
+        self.main_splitter.setSizes([sidebar_width, content_width])
+
+    def _on_sidebar_panel_changed(self, index: int):
+        """Handle sidebar panel change."""
         # Guard: actions may not exist during init
         if not hasattr(self, 'toggle_project_action'):
             return
 
-        if self.left_dock.isVisible():
+        if not self.sidebar.isCollapsed():
             self.toggle_project_action.setChecked(index == 0)
             self.toggle_outline_action.setChecked(index == 1)
             self.toggle_references_action.setChecked(index == 2)
+            self.toggle_search_action.setChecked(index == 3)
             if index == 1:
                 self._update_outline()
             elif index == 2:
                 self._update_references()
 
-    def _apply_dock_theme(self):
-        """Apply theme to the dock widget and toolbox."""
-        theme_name = self.settings.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+    def _toggle_sidebar(self):
+        """Toggle sidebar visibility."""
+        self.sidebar.toggle()
 
-        self.left_dock.setStyleSheet(StyleSheets.dock_widget(theme))
-        self.side_toolbox.setStyleSheet(
-            StyleSheets.toolbox(theme) +
-            StyleSheets.panel(theme)
-        )
+    def _on_search_file_requested(self, file_path: str, line_number: int):
+        """Handle search result click - open file at line."""
+        self.open_file(Path(file_path))
+        tab = self.current_tab()
+        if tab and line_number > 0:
+            tab.editor.go_to_line(line_number + 1)
+
+    def _apply_dock_theme(self):
+        """Apply theme to the sidebar (no-op, sidebar handles its own theme)."""
+        # Sidebar components handle their own theming via settings_changed signal
+        pass
 
     def _apply_toggle_button_theme(self):
         """Apply theme to the editor/preview toggle buttons."""
@@ -2609,6 +2633,7 @@ class MarkdownEditor(QMainWindow):
             if path.exists() and path.is_dir():
                 self.project_panel.set_project_path(path)
                 self.references_panel.set_project_path(path)
+                self.search_panel.set_project_path(path)
                 self._update_wiki_links()
                 # Don't auto-show the dock, just load the project data
 

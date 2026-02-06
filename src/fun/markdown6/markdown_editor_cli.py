@@ -760,25 +760,71 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Main entry point."""
+    if argv is None:
+        argv = sys.argv[1:]
+
     parser = create_parser()
+    subcommands = {"export", "graph", "stats", "validate"}
 
-    # Use parse_known_args to handle files without subcommand
-    args, remaining = parser.parse_known_args(argv)
+    # Determine whether the first positional argument is a subcommand.
+    # If not, positional args are file paths for GUI mode and must be
+    # kept away from the subparser (which rejects unknown choices).
+    flags_with_value = {"-p", "--project", "--config", "--line", "--theme"}
+    first_positional = None
+    skip = False
+    for arg in argv:
+        if skip:
+            skip = False
+            continue
+        if arg == "--":
+            break
+        if arg.startswith("-"):
+            if arg in flags_with_value:
+                skip = True
+            continue
+        first_positional = arg
+        break
 
-    # Route to appropriate command
-    if args.command == "export":
-        return cmd_export(args)
-    elif args.command == "graph":
-        return cmd_graph(args)
-    elif args.command == "stats":
-        return cmd_stats(args)
-    elif args.command == "validate":
-        return cmd_validate(args)
-    else:
-        # Default: launch GUI
-        # Remaining args are files to open
-        args.files = [Path(f) for f in remaining]
-        return cmd_gui(args)
+    if first_positional in subcommands:
+        # Subcommand mode — full parse
+        args = parser.parse_args(argv)
+        if args.command == "export":
+            return cmd_export(args)
+        elif args.command == "graph":
+            return cmd_graph(args)
+        elif args.command == "stats":
+            return cmd_stats(args)
+        elif args.command == "validate":
+            return cmd_validate(args)
+
+    # GUI mode — separate file paths from flags so argparse
+    # doesn't choke on them as invalid subcommands.
+    flag_argv = []
+    file_args = []
+    skip = False
+    after_dashdash = False
+    for arg in argv:
+        if after_dashdash:
+            file_args.append(arg)
+            continue
+        if skip:
+            flag_argv.append(arg)
+            skip = False
+            continue
+        if arg == "--":
+            after_dashdash = True
+            continue
+        if arg.startswith("-"):
+            flag_argv.append(arg)
+            if arg in flags_with_value:
+                skip = True
+            continue
+        file_args.append(arg)
+
+    args, extra = parser.parse_known_args(flag_argv)
+    file_args.extend(extra)
+    args.files = [Path(f) for f in file_args]
+    return cmd_gui(args)
 
 
 if __name__ == "__main__":
