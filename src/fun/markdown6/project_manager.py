@@ -49,7 +49,14 @@ class ProjectConfig:
 
 
 class ProjectPanel(QWidget):
-    """A panel for managing project files."""
+    """A panel for managing project files.
+
+    When the project root is outside the user's home directory, the panel
+    operates in "lazy" mode: directory contents are only scanned on expand,
+    ``expandAll()`` is skipped, and ``get_project_files()`` only returns
+    files from already-expanded directories.  This prevents the app from
+    freezing when opened with e.g. ``mde -p /``.
+    """
 
     file_selected = Signal(str)  # file path
     file_double_clicked = Signal(str)  # file path
@@ -59,6 +66,7 @@ class ProjectPanel(QWidget):
         super().__init__(parent)
         self.settings = get_settings()
         self.project_path: Path | None = None
+        self._lazy = False  # True when project root is outside $HOME
         self._filter_text = ""
         self._init_ui()
         self._apply_theme()
@@ -146,8 +154,17 @@ class ProjectPanel(QWidget):
             self.set_project_path(Path(folder))
 
     def set_project_path(self, path: Path):
-        """Set the project root path."""
+        """Set the project root path.
+
+        Projects outside the user's home directory use lazy scanning to
+        avoid freezing on huge trees (e.g. ``/``).
+        """
         self.project_path = path
+        try:
+            home = Path.home()
+            self._lazy = not path.resolve().is_relative_to(home.resolve())
+        except (ValueError, RuntimeError):
+            self._lazy = True
         self.file_model.setRootPath(str(path))
         self.tree_view.setRootIndex(self.file_model.index(str(path)))
         # Remember last project
@@ -165,7 +182,9 @@ class ProjectPanel(QWidget):
         else:
             # Reset to default filters
             self.file_model.setNameFilters(["*.md", "*.markdown", "*.txt"])
-        self.tree_view.expandAll()
+        # In lazy mode, don't expand everything — it would scan the whole tree
+        if not self._lazy:
+            self.tree_view.expandAll()
 
     def _on_item_clicked(self, index):
         """Handle item click."""
@@ -283,13 +302,33 @@ class ProjectPanel(QWidget):
         self.graph_export_requested.emit()
 
     def get_project_files(self) -> list[Path]:
-        """Get all markdown files in the project."""
+        """Get all markdown files in the project.
+
+        In lazy mode, only scans the top 2 directory levels to avoid
+        walking huge trees.  In eager mode, does a full recursive scan.
+        """
         if not self.project_path:
             return []
 
+        if not self._lazy:
+            files = []
+            for ext in ["*.md", "*.markdown"]:
+                files.extend(self.project_path.rglob(ext))
+            return sorted(files)
+
+        # Lazy mode: only scan 2 levels deep
         files = []
-        for ext in ["*.md", "*.markdown"]:
-            files.extend(self.project_path.rglob(ext))
+        exts = {".md", ".markdown"}
+        for child in self.project_path.iterdir():
+            if child.is_file() and child.suffix in exts:
+                files.append(child)
+            elif child.is_dir():
+                try:
+                    for grandchild in child.iterdir():
+                        if grandchild.is_file() and grandchild.suffix in exts:
+                            files.append(grandchild)
+                except PermissionError:
+                    pass
         return sorted(files)
 
 
@@ -387,9 +426,19 @@ class ProjectExportDialog(QDialog):
         )
 
     def _load_files(self):
-        """Load project files into the list."""
-        for ext in ["*.md", "*.markdown"]:
-            for path in sorted(self.project_path.rglob(ext)):
+        """Load project files into the list.
+
+        Uses the parent panel's get_project_files() when available to
+        respect lazy scanning limits.
+        """
+        parent_panel = self.parent()
+        if isinstance(parent_panel, ProjectPanel):
+            paths = parent_panel.get_project_files()
+        else:
+            paths = []
+            for ext in ["*.md", "*.markdown"]:
+                paths.extend(sorted(self.project_path.rglob(ext)))
+        for path in paths:
                 rel_path = path.relative_to(self.project_path)
                 item = QListWidgetItem(str(rel_path))
                 item.setData(Qt.ItemDataRole.UserRole, str(path))
