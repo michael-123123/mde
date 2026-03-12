@@ -1021,7 +1021,34 @@ class EnhancedEditor(QPlainTextEdit):
         # Auto-pairs
         if self.settings.get("editor.auto_pairs", True):
             char = event.text()
-            if char in self.AUTO_PAIRS:
+
+            # Skip markdown-only auto-pairs (* _) inside inline code
+            markdown_only_pairs = {'*', '_'}
+            skip_pair = char in markdown_only_pairs and self._cursor_inside_backticks()
+
+            # Handle closing character - skip over if next char is the same
+            if char and char in self.AUTO_PAIRS.values() and not skip_pair:
+                cursor = self.textCursor()
+                if not cursor.atEnd():
+                    cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.KeepAnchor)
+                    next_char = cursor.selectedText()
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    if next_char == char:
+                        cursor.movePosition(QTextCursor.MoveOperation.Right)
+                        self.setTextCursor(cursor)
+                        return
+
+            # Don't auto-pair quotes mid-word (e.g. "can't" shouldn't become "can't'")
+            if char in ('"', "'", '`') and not skip_pair:
+                cursor = self.textCursor()
+                col = cursor.positionInBlock()
+                if col > 0:
+                    line_text = cursor.block().text()
+                    prev_char = line_text[col - 1]
+                    if prev_char.isalnum():
+                        skip_pair = True
+
+            if char in self.AUTO_PAIRS and not skip_pair:
                 cursor = self.textCursor()
                 if cursor.hasSelection():
                     # Wrap selection
@@ -1037,18 +1064,6 @@ class EnhancedEditor(QPlainTextEdit):
                     if char == '[':
                         QTimer.singleShot(0, self._check_wiki_link_trigger)
                     return
-
-            # Handle closing character - skip if next char is the same
-            if char in self.AUTO_PAIRS.values():
-                cursor = self.textCursor()
-                if not cursor.atEnd():
-                    cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.KeepAnchor)
-                    next_char = cursor.selectedText()
-                    cursor.movePosition(QTextCursor.MoveOperation.Left)
-                    if next_char == char:
-                        cursor.movePosition(QTextCursor.MoveOperation.Right)
-                        self.setTextCursor(cursor)
-                        return
 
         # Auto-indent on Enter
         if event.key() == Qt.Key.Key_Return and self.settings.get("editor.auto_indent", True):
@@ -1066,6 +1081,16 @@ class EnhancedEditor(QPlainTextEdit):
             # Check for list continuation
             list_match = re.match(r"^(\s*)([-*+]|\d+\.)\s", block_text)
             if list_match:
+                # If the line is just a list marker with no content, terminate the list
+                empty_item = re.match(r"^(\s*)([-*+]|\d+\.)\s*$", block_text)
+                if empty_item:
+                    # Clear the current line and just insert a newline
+                    cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                    cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock, QTextCursor.MoveMode.KeepAnchor)
+                    cursor.removeSelectedText()
+                    super().keyPressEvent(event)
+                    return
+
                 # Continue list
                 marker = list_match.group(2)
                 if marker[0].isdigit():
@@ -1312,6 +1337,19 @@ class EnhancedEditor(QPlainTextEdit):
     def set_available_links(self, links: list[str]):
         """Set the list of available wiki links for autocomplete."""
         self._available_links = links
+
+    def _cursor_inside_backticks(self) -> bool:
+        """Check if the cursor is inside an inline code span (backticks)."""
+        cursor = self.textCursor()
+        line_text = cursor.block().text()
+        col = cursor.positionInBlock()
+        text_before = line_text[:col]
+        # Count unescaped backticks before cursor — odd means we're inside code
+        count = 0
+        for i, ch in enumerate(text_before):
+            if ch == '`' and (i == 0 or text_before[i - 1] != '\\'):
+                count += 1
+        return count % 2 == 1
 
     def _check_wiki_link_trigger(self):
         """Check if we should show wiki link autocomplete."""

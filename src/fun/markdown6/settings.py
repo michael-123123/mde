@@ -32,6 +32,10 @@ DEFAULT_SETTINGS = {
     "files.detect_external_changes": True,
     # Project settings
     "project.last_path": None,
+    # External tool paths (empty string = use system PATH)
+    "tools.pandoc_path": "",
+    "tools.dot_path": "",
+    "tools.mmdc_path": "",
 }
 
 DEFAULT_SHORTCUTS = {

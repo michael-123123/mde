@@ -314,9 +314,22 @@ class MarkdownHighlighter(QSyntaxHighlighter):
             self.setCurrentBlockState(1)
             return
 
-        # Apply regular rules
+        # Find inline code spans first — these are "protected" regions
+        # where no other formatting should apply
+        code_pattern = re.compile(r"`[^`]+`")
+        code_spans = [(m.start(), m.end()) for m in code_pattern.finditer(text)]
+
+        def overlaps_code(start, end):
+            return any(cs <= start < ce or cs < end <= ce
+                       for cs, ce in code_spans)
+
+        # Apply regular rules, skipping matches inside inline code
         for pattern, fmt in self.rules:
             for match in pattern.finditer(text):
                 start = match.start()
                 length = match.end() - start
-                self.setFormat(start, length, fmt)
+                if fmt is self.formats.get("code"):
+                    # Always apply inline code formatting
+                    self.setFormat(start, length, fmt)
+                elif not overlaps_code(start, match.end()):
+                    self.setFormat(start, length, fmt)

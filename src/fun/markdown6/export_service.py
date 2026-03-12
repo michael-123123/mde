@@ -13,7 +13,8 @@ import markdown as md
 
 def has_pandoc() -> bool:
     """Check if pandoc is available on the system."""
-    return shutil.which("pandoc") is not None
+    from fun.markdown6.tool_paths import has_pandoc as _has_pandoc
+    return _has_pandoc()
 
 
 def markdown_to_html(content: str, title: str = "Document") -> str:
@@ -103,12 +104,15 @@ def export_docx(
 
 def _export_pdf_pandoc(content: str, output_path: str | Path) -> None:
     """Export to PDF using pandoc."""
+    from fun.markdown6.tool_paths import get_pandoc_path
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
         f.write(content)
         temp_path = f.name
 
     try:
-        cmd = ["pandoc", temp_path, "-o", str(output_path), "--pdf-engine=xelatex"]
+        pandoc = get_pandoc_path() or "pandoc"
+        cmd = [pandoc, temp_path, "-o", str(output_path), "--pdf-engine=xelatex"]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
         if result.returncode != 0:
@@ -133,12 +137,15 @@ def _export_pdf_weasyprint(content: str, output_path: str | Path, title: str) ->
 
 def _export_docx_pandoc(content: str, output_path: str | Path) -> None:
     """Export to DOCX using pandoc."""
+    from fun.markdown6.tool_paths import get_pandoc_path
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
         f.write(content)
         temp_path = f.name
 
     try:
-        cmd = ["pandoc", temp_path, "-o", str(output_path)]
+        pandoc = get_pandoc_path() or "pandoc"
+        cmd = [pandoc, temp_path, "-o", str(output_path)]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
         if result.returncode != 0:

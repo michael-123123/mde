@@ -228,7 +228,13 @@ class MathExtension(Extension):
 
 
 class MermaidPreprocessor(Preprocessor):
-    """Preprocessor to convert mermaid code blocks."""
+    """Preprocessor to convert mermaid code blocks.
+
+    Renders to SVG server-side via mmdc if available,
+    otherwise falls back to <div class="mermaid"> for client-side JS rendering.
+
+    Reads dark_mode from md.mermaid_dark_mode attribute (set before convert).
+    """
 
     MERMAID_PATTERN = re.compile(
         r'^```mermaid\s*\n(.*?)^```',
@@ -236,12 +242,24 @@ class MermaidPreprocessor(Preprocessor):
     )
 
     def run(self, lines):
+        from fun.markdown6 import mermaid_service
+
+        dark_mode = getattr(self.md, 'mermaid_dark_mode', False)
+
         text = '\n'.join(lines)
 
         def replace_mermaid(m):
             content = m.group(1).strip()
-            # Wrap in a div that mermaid.js will process
-            return f'<div class="mermaid">\n{content}\n</div>'
+
+            # Try server-side rendering via mmdc
+            if mermaid_service.has_mermaid():
+                svg, error = mermaid_service.render_mermaid(content, dark_mode)
+                if error:
+                    return svg  # Error HTML
+                return f'<div class="mermaid-diagram">{svg}</div>'
+            else:
+                # Fall back to client-side JS rendering
+                return f'<div class="mermaid">\n{content}\n</div>'
 
         text = self.MERMAID_PATTERN.sub(replace_mermaid, text)
 
@@ -382,20 +400,94 @@ def get_math_js() -> str:
 
 
 def get_mermaid_js() -> str:
-    """Get JavaScript for Mermaid diagram rendering."""
-    # Use mermaid v9.x for compatibility with older Chromium in PyQt5 WebEngine
-    # v10+ requires structuredClone which isn't available in older browsers
-    return """
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@9.4.3/dist/mermaid.min.js"></script>
-    <script>
-        if (typeof mermaid !== 'undefined') {
-            mermaid.initialize({
-                startOnLoad: true,
-                theme: document.body.classList.contains('dark') ? 'dark' : 'default',
-                securityLevel: 'loose'
-            });
-        }
-    </script>
+    """Get JavaScript for Mermaid diagram rendering.
+
+    Returns JS only when mmdc is unavailable (client-side fallback).
+    When mmdc is installed, diagrams are pre-rendered to SVG and no JS is needed.
+    """
+    from fun.markdown6 import mermaid_service
+
+    if mermaid_service.has_mermaid():
+        return ""  # Server-side rendered, no JS needed
+    return mermaid_service.get_mermaid_js()
+
+
+def get_mermaid_css(dark_mode: bool = False) -> str:
+    """Get CSS for mermaid diagrams and errors."""
+    from fun.markdown6 import mermaid_service
+    return mermaid_service.get_mermaid_css(dark_mode)
+
+
+class TaskListPostprocessor(Postprocessor):
+    """Postprocessor to render task list checkboxes.
+
+    Converts <li>[ ] and <li>[x]/[X] into styled checkbox spans.
+    Safe to run after all other processing since [ ] inside <a> tags
+    won't appear immediately after <li>.
+    """
+
+    UNCHECKED_PATTERN = re.compile(r'<li>\s*\[ \]')
+    CHECKED_PATTERN = re.compile(r'<li>\s*\[[xX]\]')
+
+    def run(self, text):
+        text = self.UNCHECKED_PATTERN.sub(
+            '<li class="task-list-item"><span class="checkbox unchecked"></span>',
+            text
+        )
+        text = self.CHECKED_PATTERN.sub(
+            '<li class="task-list-item"><span class="checkbox checked">\u2713</span>',
+            text
+        )
+        return text
+
+
+class TaskListExtension(Extension):
+    """Extension for task list checkbox rendering."""
+
+    def extendMarkdown(self, md):
+        md.postprocessors.register(
+            TaskListPostprocessor(md),
+            'tasklist',
+            23  # After graphviz_image (24)
+        )
+
+
+def get_tasklist_css(dark_mode: bool = False) -> str:
+    """Get CSS for task list checkbox styling."""
+    if dark_mode:
+        border_color = "#6e7681"
+        checked_bg = "#58a6ff"
+        checked_color = "#0d1117"
+    else:
+        border_color = "#d0d7de"
+        checked_bg = "#0969da"
+        checked_color = "#ffffff"
+
+    return f"""
+        .task-list-item {{
+            list-style-type: none;
+            position: relative;
+            margin-left: -1.5em;
+        }}
+        .checkbox {{
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 1.5px solid {border_color};
+            border-radius: 3px;
+            margin-right: 0.4em;
+            text-align: center;
+            line-height: 1em;
+            font-size: 0.85em;
+            vertical-align: middle;
+            position: relative;
+            top: -0.1em;
+        }}
+        .checkbox.checked {{
+            background-color: {checked_bg};
+            border-color: {checked_bg};
+            color: {checked_color};
+        }}
     """
 
 

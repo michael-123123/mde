@@ -89,6 +89,11 @@ Examples:
         action="store_true",
         help="Use default settings in memory only (don't load or save user settings)",
     )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete all config files and start with clean default settings",
+    )
 
     subparsers = parser.add_subparsers(dest="command", metavar="command")
 
@@ -697,9 +702,17 @@ def cmd_gui(args: argparse.Namespace) -> int:
     from fun.markdown6.settings import init_settings
 
     # Initialize settings before importing editor
+    # --reset: delete all config files and start clean
     # --new-session: use ephemeral settings (defaults only, no save)
     # --config: use custom config directory
-    if args.new_session:
+    if args.reset:
+        import shutil
+        config_dir = args.config or (Path.home() / ".config" / "markdown-editor")
+        if config_dir.exists():
+            shutil.rmtree(config_dir)
+            print(f"Reset: deleted {config_dir}", file=sys.stderr)
+        init_settings(ephemeral=True)
+    elif args.new_session:
         init_settings(ephemeral=True)
     elif args.config:
         init_settings(config_dir=args.config)
@@ -755,7 +768,9 @@ def cmd_gui(args: argparse.Namespace) -> int:
             tab.editor.setReadOnly(True)
 
     editor.show()
-    return app.exec()
+    ret = app.exec()
+    del editor
+    return ret
 
 
 def main(argv: list[str] | None = None) -> int:

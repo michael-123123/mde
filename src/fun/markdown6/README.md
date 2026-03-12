@@ -62,16 +62,36 @@ pip install -e .
 
 ### Dependencies
 
-Core dependencies (installed automatically):
+Core Python packages (installed automatically via pip):
 - `PySide6` - Qt6 bindings
 - `PySide6-Addons` - QtWebEngine for preview
 - `markdown` - Markdown parsing
 - `Pygments` - Syntax highlighting
-- `weasyprint` - PDF export
-- `python-docx` - DOCX export
+- `graphviz` - Python bindings for Graphviz
+- `weasyprint` - PDF export fallback
+- `python-docx` - DOCX export fallback
 
-Optional (for enhanced PDF export):
-- `pandoc` - External tool for LaTeX-quality PDF export
+### External Tools (optional)
+
+These system-level tools enable additional features. The editor works without them but with reduced functionality. Configure paths in Settings > External Tools.
+
+| Tool | Purpose | Install | Without it |
+|------|---------|---------|------------|
+| **Pandoc** | High-quality PDF/DOCX export with LaTeX | `apt install pandoc texlive-xetex` | Uses weasyprint/python-docx |
+| **Graphviz** (`dot`) | Renders ` ```dot ` / ` ```graphviz ` diagrams | `apt install graphviz` | Falls back to browser-side viz.js |
+| **Mermaid CLI** (`mmdc`) | Renders ` ```mermaid ` diagrams to SVG | `npm install -g @mermaid-js/mermaid-cli` | Falls back to browser-side mermaid.js (requires internet) |
+
+Install all optional tools at once (Debian/Ubuntu):
+```bash
+sudo apt install pandoc texlive-xetex graphviz
+npm install -g @mermaid-js/mermaid-cli
+```
+
+With conda/mamba:
+```bash
+mamba install -c conda-forge pandoc graphviz nodejs
+npm install -g @mermaid-js/mermaid-cli
+```
 
 ## Usage
 
@@ -209,6 +229,7 @@ Access via Edit menu or use the command palette. Configure:
 - **Editor**: Font, tab size, line numbers, word wrap, auto-pairs
 - **View**: Theme, preview font size, sync scrolling
 - **Files**: Recent files limit, external change detection
+- **External Tools**: Paths to pandoc, graphviz (dot), mermaid CLI (mmdc)
 - **Shortcuts**: Customize all keyboard shortcuts
 
 ## Project Structure
@@ -222,6 +243,9 @@ src/fun/markdown6/
 ├── settings.py           # Settings management
 ├── settings_dialog.py    # Settings UI
 ├── export_service.py     # PDF/DOCX/HTML export
+├── tool_paths.py         # External tool path resolution
+├── mermaid_service.py    # Mermaid diagram rendering
+├── graphviz_service.py   # Graphviz diagram rendering
 ├── project_manager.py    # Project panel and export dialog
 ├── outline_panel.py      # Document outline
 ├── references_panel.py   # Backlinks panel

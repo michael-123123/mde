@@ -10,7 +10,8 @@ _render_cache: dict[str, tuple[str, str | None]] = {}
 
 def has_graphviz() -> bool:
     """Check if graphviz is available on the system."""
-    return shutil.which("dot") is not None
+    from fun.markdown6.tool_paths import has_dot
+    return has_dot()
 
 
 def clear_cache():
@@ -62,6 +63,9 @@ def _render_dot_impl(source: str, dark_mode: bool) -> tuple[str, str | None]:
         svg_bytes = graph.pipe(format='svg')
         svg_string = svg_bytes.decode('utf-8')
 
+        # Make SVG responsive (remove fixed dimensions, keep viewBox)
+        svg_string = _make_svg_responsive(svg_string)
+
         # Apply dark mode styling if needed
         if dark_mode:
             svg_string = _apply_dark_mode(svg_string)
@@ -96,6 +100,31 @@ def render_dot_file(file_path: Path, dark_mode: bool = False) -> tuple[str, str 
     except Exception as e:
         error = str(e)
         return _format_error(f"// {file_path}", error), error
+
+
+def _make_svg_responsive(svg: str) -> str:
+    """Replace pt/px dimensions with pixel values from viewBox so setZoomFactor scales it.
+
+    Graphviz outputs SVGs with fixed pt/px dimensions:
+        <svg width="62pt" height="116pt" viewBox="0 0 62 116">
+    We replace pt/px units with plain pixel values from viewBox. This gives
+    the SVG a fixed intrinsic size that setZoomFactor can scale. The CSS
+    max-width:100% on the container prevents horizontal overflow.
+    """
+    import re
+    # Extract viewBox dimensions
+    vb_match = re.search(r'viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"', svg)
+    if vb_match:
+        vb_w, vb_h = vb_match.group(1), vb_match.group(2)
+        # Replace pt/px width with viewBox width in pixels
+        svg = re.sub(r'(<svg[^>]*?)\bwidth="[\d.]+p[tx]"', rf'\1width="{vb_w}"', svg, count=1)
+        # Replace pt/px height with viewBox height in pixels
+        svg = re.sub(r'(<svg[^>]*?)\bheight="[\d.]+p[tx]"', rf'\1height="{vb_h}"', svg, count=1)
+    else:
+        # No viewBox — just strip the units (pt -> px is close enough)
+        svg = re.sub(r'(<svg[^>]*?)\bwidth="([\d.]+)p[tx]"', r'\1width="\2"', svg, count=1)
+        svg = re.sub(r'(<svg[^>]*?)\bheight="([\d.]+)p[tx]"', r'\1height="\2"', svg, count=1)
+    return svg
 
 
 def _apply_dark_mode(svg: str) -> str:

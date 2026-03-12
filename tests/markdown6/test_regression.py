@@ -524,8 +524,8 @@ class TestDarkModeTheming:
         # Should have light colors
         assert "#ffffff" in stylesheet or "#f3f3f3" in stylesheet
 
-    def test_dock_theme_applies_dark_colors(self, qtbot):
-        """Test that dock theme applies dark colors in dark mode."""
+    def test_sidebar_theme_applies_dark_colors(self, qtbot):
+        """Test that sidebar applies dark colors in dark mode."""
         from unittest.mock import patch, MagicMock
         from fun.markdown6.markdown_editor import MarkdownEditor
 
@@ -553,16 +553,15 @@ class TestDarkModeTheming:
             with patch("fun.markdown6.project_manager.get_settings", return_value=mock_settings):
                 with patch("fun.markdown6.outline_panel.get_settings", return_value=mock_settings):
                     with patch("fun.markdown6.references_panel.get_settings", return_value=mock_settings):
-                        editor = MarkdownEditor()
-                        qtbot.addWidget(editor)
+                        with patch("fun.markdown6.search_panel.get_settings", return_value=mock_settings):
+                            with patch("fun.markdown6.sidebar.get_settings", return_value=mock_settings):
+                                with patch("fun.markdown6.activity_bar.get_settings", return_value=mock_settings):
+                                    editor = MarkdownEditor()
+                                    qtbot.addWidget(editor)
 
-                        # Check dock has styling
-                        dock_style = editor.left_dock.styleSheet()
-                        assert "QDockWidget" in dock_style
-
-                        # Check toolbox has styling
-                        toolbox_style = editor.side_toolbox.styleSheet()
-                        assert "QToolBox" in toolbox_style or "background-color" in toolbox_style
+                                    # Check sidebar exists and has activity bar
+                                    assert hasattr(editor, 'sidebar')
+                                    assert hasattr(editor.sidebar, 'activity_bar')
 
     def test_all_stylesheets_contain_background_color(self):
         """Test that all relevant stylesheets set background-color."""

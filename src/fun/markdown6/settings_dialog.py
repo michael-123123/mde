@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -94,6 +95,7 @@ class SettingsDialog(QDialog):
             ("Editor", "editor"),
             ("View", "view"),
             ("Files", "files"),
+            ("External Tools", "tools"),
             ("Keyboard Shortcuts", "shortcuts"),
         ]
 
@@ -112,6 +114,7 @@ class SettingsDialog(QDialog):
         self.stack.addWidget(self._create_editor_page())
         self.stack.addWidget(self._create_view_page())
         self.stack.addWidget(self._create_files_page())
+        self.stack.addWidget(self._create_tools_page())
         self.stack.addWidget(self._create_shortcuts_page())
 
         splitter.addWidget(self.stack)
@@ -304,6 +307,122 @@ class SettingsDialog(QDialog):
         scroll.setWidget(page)
         return scroll
 
+    def _create_tool_row(self, label_text: str, line_edit: QLineEdit, tool_cmd: str) -> QHBoxLayout:
+        """Create a row with a line edit and browse button for a tool path."""
+        row = QHBoxLayout()
+        line_edit.setPlaceholderText(f"System default ({tool_cmd})")
+        row.addWidget(line_edit, 1)
+
+        browse_btn = QPushButton("Browse...")
+        browse_btn.setFixedWidth(80)
+        browse_btn.clicked.connect(lambda: self._browse_tool_path(line_edit))
+        row.addWidget(browse_btn)
+
+        detect_btn = QPushButton("Detect")
+        detect_btn.setFixedWidth(60)
+        detect_btn.clicked.connect(lambda: self._detect_tool(line_edit, tool_cmd))
+        row.addWidget(detect_btn)
+
+        return row
+
+    def _browse_tool_path(self, line_edit: QLineEdit):
+        """Open a file dialog to select a tool path."""
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Executable", line_edit.text() or "/usr/bin"
+        )
+        if path:
+            line_edit.setText(path)
+
+    def _detect_tool(self, line_edit: QLineEdit, tool_cmd: str):
+        """Auto-detect a tool on the system PATH."""
+        import shutil
+        found = shutil.which(tool_cmd)
+        if found:
+            line_edit.setText(found)
+        else:
+            QMessageBox.warning(
+                self, "Not Found",
+                f"'{tool_cmd}' was not found on your system PATH."
+            )
+
+    def _create_tools_page(self) -> QWidget:
+        """Create the external tools settings page."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        info = QLabel(
+            "Configure paths to external tools. Leave empty to use the system PATH. "
+            "Use Browse to select a specific executable, or Detect to find it automatically."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        # Pandoc
+        pandoc_group = QGroupBox("Pandoc (PDF/DOCX export)")
+        pandoc_layout = QFormLayout(pandoc_group)
+        self.pandoc_path = QLineEdit()
+        pandoc_layout.addRow("Path:", self._create_tool_row("Pandoc:", self.pandoc_path, "pandoc"))
+        pandoc_desc = QLabel("Used for high-quality PDF and DOCX export. Install: apt install pandoc texlive-xetex")
+        pandoc_desc.setWordWrap(True)
+        pandoc_desc.setStyleSheet("color: gray; font-size: 11px;")
+        pandoc_layout.addRow("", pandoc_desc)
+        layout.addWidget(pandoc_group)
+
+        # Graphviz
+        dot_group = QGroupBox("Graphviz (DOT diagram rendering)")
+        dot_layout = QFormLayout(dot_group)
+        self.dot_path = QLineEdit()
+        dot_layout.addRow("Path:", self._create_tool_row("Graphviz:", self.dot_path, "dot"))
+        dot_desc = QLabel("Renders ```dot and ```graphviz code blocks as SVG diagrams. Install: apt install graphviz")
+        dot_desc.setWordWrap(True)
+        dot_desc.setStyleSheet("color: gray; font-size: 11px;")
+        dot_layout.addRow("", dot_desc)
+        layout.addWidget(dot_group)
+
+        # Mermaid
+        mmdc_group = QGroupBox("Mermaid CLI (Mermaid diagram rendering)")
+        mmdc_layout = QFormLayout(mmdc_group)
+        self.mmdc_path = QLineEdit()
+        mmdc_layout.addRow("Path:", self._create_tool_row("Mermaid:", self.mmdc_path, "mmdc"))
+        mmdc_desc = QLabel("Renders ```mermaid code blocks as SVG diagrams. Install: npm install -g @mermaid-js/mermaid-cli")
+        mmdc_desc.setWordWrap(True)
+        mmdc_desc.setStyleSheet("color: gray; font-size: 11px;")
+        mmdc_layout.addRow("", mmdc_desc)
+        layout.addWidget(mmdc_group)
+
+        # Status summary
+        self.tools_status = QLabel()
+        self.tools_status.setWordWrap(True)
+        self._update_tools_status()
+        layout.addWidget(self.tools_status)
+
+        layout.addStretch()
+        scroll.setWidget(page)
+        return scroll
+
+    def _update_tools_status(self):
+        """Update the tool availability status display."""
+        from fun.markdown6 import tool_paths
+
+        lines = []
+        for name, check_fn, install_hint in [
+            ("Pandoc", tool_paths.get_pandoc_path, "apt install pandoc"),
+            ("Graphviz (dot)", tool_paths.get_dot_path, "apt install graphviz"),
+            ("Mermaid (mmdc)", tool_paths.get_mmdc_path, "npm install -g @mermaid-js/mermaid-cli"),
+        ]:
+            path = check_fn()
+            if path:
+                lines.append(f"  {name}: {path}")
+            else:
+                lines.append(f"  {name}: not found ({install_hint})")
+
+        self.tools_status.setText("Tool status:\n" + "\n".join(lines))
+
     def _create_shortcuts_page(self) -> QWidget:
         """Create the keyboard shortcuts page."""
         page = QWidget()
@@ -380,6 +499,11 @@ class SettingsDialog(QDialog):
             self.settings.get("files.detect_external_changes", True)
         )
         self.max_recent_files.setValue(self.settings.get("files.max_recent_files", 10))
+
+        # External tools settings
+        self.pandoc_path.setText(self.settings.get("tools.pandoc_path", ""))
+        self.dot_path.setText(self.settings.get("tools.dot_path", ""))
+        self.mmdc_path.setText(self.settings.get("tools.mmdc_path", ""))
 
         # Load shortcuts
         self._populate_shortcuts_table()
@@ -527,6 +651,11 @@ class SettingsDialog(QDialog):
         # Files settings
         self.settings.set("files.detect_external_changes", self.detect_external_changes.isChecked())
         self.settings.set("files.max_recent_files", self.max_recent_files.value())
+
+        # External tools settings
+        self.settings.set("tools.pandoc_path", self.pandoc_path.text().strip())
+        self.settings.set("tools.dot_path", self.dot_path.text().strip())
+        self.settings.set("tools.mmdc_path", self.mmdc_path.text().strip())
 
         # Shortcuts
         for action, shortcut in self.pending_shortcuts.items():

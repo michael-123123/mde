@@ -1,0 +1,48 @@
+[project]
+name = "fun"
+dynamic = ["version"]
+description = "A feature-rich Qt Markdown editor with live preview (PyQt5 and PySide6)"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "email-validator",
+    "PyQt5>=5.15",
+    "PyQtWebEngine>=5.15",
+    "PySide6>=6.5",
+    "PySide6-Addons>=6.5",  # Includes QtWebEngine for proper HTML rendering
+    "markdown>=3.5",
+    "Pygments>=2.0",
+    "weasyprint>=60.0",  # PDF export (fallback when pandoc unavailable)
+    "python-docx>=1.0",  # DOCX export (fallback when pandoc unavailable)
+    "graphviz>=0.20",    # Graphviz diagram rendering
+]
+
+[project.optional-dependencies]
+# Note: For best PDF quality (especially with LaTeX), install pandoc:
+# On Ubuntu/Debian: sudo apt install pandoc texlive-xetex
+# On macOS: brew install pandoc
+# On Windows: choco install pandoc
+# If pandoc is not installed, the editor will use weasyprint/python-docx as fallback
+dev = [
+    "pytest>=7.0",
+    "pytest-qt>=4.0",
+]
+
+[project.scripts]
+markdown-editor = "fun.markdown6:main"
+mde = "fun.markdown6.markdown_editor_cli:main"
+
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+fallback_version = "0.1.0"

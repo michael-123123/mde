@@ -171,11 +171,15 @@ from fun.markdown6.markdown_extensions import (
     MathExtension,
     MermaidExtension,
     GraphvizExtension,
+    TaskListExtension,
     get_callout_css,
     get_math_js,
     get_mermaid_js,
+    get_mermaid_css,
+    get_tasklist_css,
 )
 from fun.markdown6 import graphviz_service
+from fun.markdown6 import mermaid_service
 from fun.markdown6.graph_export import GraphExportDialog
 
 
@@ -259,19 +263,25 @@ class FindReplaceBar(QWidget):
 
     def show_find(self):
         """Show the find bar (hide replace row)."""
+        was_visible = self.isVisible()
         self.replace_row_widget.hide()
         self.show()
         self.find_input.setFocus()
-        self.find_input.selectAll()
-        self._select_current_word()
+        if was_visible:
+            self.find_input.selectAll()
+        else:
+            self.find_input.clear()
 
     def show_replace(self):
         """Show the find and replace bar."""
+        was_visible = self.isVisible()
         self.replace_row_widget.show()
         self.show()
         self.find_input.setFocus()
-        self.find_input.selectAll()
-        self._select_current_word()
+        if was_visible:
+            self.find_input.selectAll()
+        else:
+            self.find_input.clear()
 
     def hide_bar(self):
         """Hide the find/replace bar."""
@@ -449,6 +459,8 @@ class DocumentTab(QWidget):
         self.file_path: Path | None = None
         self.unsaved_changes = False
         self._sync_scrolling = True
+        self._preview_needs_full_reload = True
+        self._preview_zoom_factor = 1.0
 
         self._init_ui()
         self._init_timer()
@@ -590,11 +602,44 @@ class DocumentTab(QWidget):
             self._sync_scrolling = value
         elif key == "view.theme":
             self._apply_preview_style()
-            # Re-render preview with new theme
+            # Re-render preview with new theme (full reload needed)
+            self._preview_needs_full_reload = True
             self.render_markdown()
         elif key == "view.preview_font_size":
-            # Re-render preview with new font size
+            # Re-render preview with new font size (full reload needed)
+            self._preview_needs_full_reload = True
             self.render_markdown()
+
+    def preview_zoom_in(self):
+        """Zoom in the preview pane (text + images + diagrams)."""
+        if self._preview_zoom_factor < 5.0:
+            self._preview_zoom_factor += 0.1
+            self._apply_preview_zoom()
+
+    def preview_zoom_out(self):
+        """Zoom out the preview pane (text + images + diagrams)."""
+        if self._preview_zoom_factor > 0.3:
+            self._preview_zoom_factor -= 0.1
+            self._apply_preview_zoom()
+
+    def preview_zoom_reset(self):
+        """Reset preview zoom to 1.0."""
+        self._preview_zoom_factor = 1.0
+        self._apply_preview_zoom()
+
+    def _apply_preview_zoom(self):
+        """Apply the current zoom factor to the preview.
+
+        At 1x zoom, diagram SVGs use max-width:100% to fit the container.
+        When zoomed (body.zoomed), CSS removes that constraint so
+        setZoomFactor can scale them.
+        """
+        if self._use_webengine:
+            self.preview.setZoomFactor(self._preview_zoom_factor)
+            zoomed = "true" if abs(self._preview_zoom_factor - 1.0) > 0.01 else "false"
+            self.preview.page().runJavaScript(
+                f"document.body.classList.toggle('zoomed', {zoomed});"
+            )
 
     def _on_text_changed(self):
         """Handle text changes in the editor."""
@@ -635,15 +680,41 @@ class DocumentTab(QWidget):
 
     def render_markdown(self):
         """Convert markdown to HTML and display in preview pane."""
+        import json
+
         text = self.editor.toPlainText()
         self.main_window.md.reset()
 
-        # Set graphviz config before conversion
+        # Set diagram config before conversion
         dark_mode = self.settings.get("view.theme") == "dark"
         self.main_window.md.graphviz_dark_mode = dark_mode
         self.main_window.md.graphviz_base_path = str(self.file_path.parent) if self.file_path else None
+        self.main_window.md.mermaid_dark_mode = dark_mode
 
         html_content = self.main_window.md.convert(text)
+
+        # For QWebEngineView: use incremental JS update to preserve scroll position
+        if self._use_webengine and not self._preview_needs_full_reload:
+            escaped = json.dumps(html_content)
+            js = f"document.getElementById('md-content').innerHTML = {escaped};"
+            js += """
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+            if (typeof mermaid !== 'undefined') {
+                mermaid.init(undefined, document.querySelectorAll('.mermaid:not([data-processed])'));
+            }
+            """
+            self.preview.page().runJavaScript(js)
+            # Re-apply zoom max-width toggle for new SVGs
+            self._apply_preview_zoom()
+            return
+
         # Convert lists for QTextBrowser since it doesn't render <ul>/<li> properly
         if not self._use_webengine:
             html_content = convert_lists_for_qtextbrowser(html_content)
@@ -655,7 +726,19 @@ class DocumentTab(QWidget):
             base_url = QUrl.fromLocalFile(str(self.file_path.parent) + "/")
         else:
             base_url = QUrl()
-        self.preview.setHtml(full_html, base_url)
+
+        if not self._use_webengine:
+            # QTextBrowser: save/restore scroll position around setHtml
+            scrollbar = self.preview.verticalScrollBar()
+            scroll_pos = scrollbar.value()
+            self.preview.setHtml(full_html, base_url)
+            scrollbar.setValue(scroll_pos)
+        else:
+            # Full reload for QWebEngineView (initial load or theme/font change)
+            self.preview.setHtml(full_html, base_url)
+            self._preview_needs_full_reload = False
+            # Re-apply zoom factor after setHtml
+            self._apply_preview_zoom()
 
     def reload_file(self):
         """Reload the file from disk."""
@@ -745,6 +828,7 @@ class MarkdownEditor(QMainWindow):
                 MathExtension(),
                 MermaidExtension(),
                 GraphvizExtension(),
+                TaskListExtension(),
             ]
         )
 
@@ -1345,13 +1429,19 @@ class MarkdownEditor(QMainWindow):
         # Get callout CSS
         callout_css = get_callout_css(dark_mode)
 
+        # Get task list CSS
+        tasklist_css = get_tasklist_css(dark_mode)
+
         # Get graphviz CSS and JS
         graphviz_css = graphviz_service.get_graphviz_css(dark_mode)
         graphviz_js = graphviz_service.get_graphviz_js() if not graphviz_service.has_graphviz() else ""
 
-        # Get math and mermaid JS
-        math_js = get_math_js()
+        # Get mermaid CSS and JS
+        mermaid_css = get_mermaid_css(dark_mode)
         mermaid_js = get_mermaid_js()
+
+        # Get math JS
+        math_js = get_math_js()
 
         # QTextBrowser has limited CSS support, use simplified HTML
         if for_qtextbrowser:
@@ -1536,10 +1626,19 @@ class MarkdownEditor(QMainWindow):
                 {callout_css}
                 /* Graphviz */
                 {graphviz_css}
+                /* Mermaid */
+                {mermaid_css}
+                /* Task lists */
+                {tasklist_css}
+                /* When zoomed, let diagram SVGs scale instead of fitting container */
+                body.zoomed .mermaid-diagram svg,
+                body.zoomed .graphviz-diagram svg {{
+                    max-width: none;
+                }}
             </style>
         </head>
         <body class="{body_class}">
-            {content}
+            <div id="md-content">{content}</div>
             {mermaid_js}
             {graphviz_js}
         </body>
@@ -1714,30 +1813,20 @@ class MarkdownEditor(QMainWindow):
     def _zoom_in(self):
         tab = self.current_tab()
         if tab:
-            # Zoom editor
             tab.editor.zoom_in()
-            # Zoom preview
-            preview_size = self.settings.get("view.preview_font_size", 14)
-            if preview_size < 32:
-                self.settings.set("view.preview_font_size", preview_size + 1)
+            tab.preview_zoom_in()
 
     def _zoom_out(self):
         tab = self.current_tab()
         if tab:
-            # Zoom editor
             tab.editor.zoom_out()
-            # Zoom preview
-            preview_size = self.settings.get("view.preview_font_size", 14)
-            if preview_size > 8:
-                self.settings.set("view.preview_font_size", preview_size - 1)
+            tab.preview_zoom_out()
 
     def _zoom_reset(self):
         tab = self.current_tab()
         if tab:
-            # Reset editor zoom
             tab.editor.zoom_reset()
-            # Reset preview zoom
-            self.settings.set("view.preview_font_size", 14)
+            tab.preview_zoom_reset()
 
     def _toggle_fullscreen(self):
         if self._is_fullscreen:
@@ -2802,7 +2891,9 @@ def main():
     if tab:
         tab.editor.setFocus()
 
-    sys.exit(app.exec())
+    ret = app.exec()
+    del editor
+    sys.exit(ret)
 
 
 if __name__ == "__main__":
