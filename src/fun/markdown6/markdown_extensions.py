@@ -230,8 +230,13 @@ class MathExtension(Extension):
 class MermaidPreprocessor(Preprocessor):
     """Preprocessor to convert mermaid code blocks.
 
-    Renders to SVG server-side via mmdc if available,
-    otherwise falls back to <div class="mermaid"> for client-side JS rendering.
+    Cached diagrams are inlined immediately.  Uncached diagrams get a
+    placeholder that is filled asynchronously after the page loads (see
+    DocumentTab._render_pending_diagrams).  This keeps the preview snappy
+    even when mmdc takes 1-2 s per diagram.
+
+    Falls back to <div class="mermaid"> for client-side JS when mmdc is
+    unavailable.
 
     Reads dark_mode from md.mermaid_dark_mode attribute (set before convert).
     """
@@ -242,27 +247,44 @@ class MermaidPreprocessor(Preprocessor):
     )
 
     def run(self, lines):
+        import html as html_mod
         from fun.markdown6 import mermaid_service
 
         dark_mode = getattr(self.md, 'mermaid_dark_mode', False)
+        # Collect pending (uncached) diagram sources for async rendering
+        pending = getattr(self.md, '_pending_diagrams', None)
+        if pending is None:
+            pending = []
+            self.md._pending_diagrams = pending
 
         text = '\n'.join(lines)
 
         def replace_mermaid(m):
             content = m.group(1).strip()
 
-            # Try server-side rendering via mmdc
-            if mermaid_service.has_mermaid():
-                svg, error = mermaid_service.render_mermaid(content, dark_mode)
-                if error:
-                    return svg  # Error HTML
-                return f'<div class="mermaid-diagram">{svg}</div>'
-            else:
-                # Fall back to client-side JS rendering
+            if not mermaid_service.has_mermaid():
                 return f'<div class="mermaid">\n{content}\n</div>'
 
-        text = self.MERMAID_PATTERN.sub(replace_mermaid, text)
+            # If cached, inline immediately (zero cost)
+            if mermaid_service.is_cached(content, dark_mode):
+                svg, error = mermaid_service.render_mermaid(content, dark_mode)
+                if error:
+                    return svg
+                return f'<div class="mermaid-diagram">{svg}</div>'
 
+            # Not cached — emit placeholder, schedule async render
+            idx = len(pending)
+            pending.append(('mermaid', content, dark_mode))
+            escaped = html_mod.escape(content)
+            return (
+                f'<div class="mermaid-diagram" id="diagram-pending-{idx}">'
+                f'<div class="diagram-loading">'
+                f'<pre class="diagram-loading-source">{escaped}</pre>'
+                f'<div class="diagram-loading-spinner">Rendering...</div>'
+                f'</div></div>'
+            )
+
+        text = self.MERMAID_PATTERN.sub(replace_mermaid, text)
         return text.split('\n')
 
 
@@ -494,6 +516,9 @@ def get_tasklist_css(dark_mode: bool = False) -> str:
 class GraphvizPreprocessor(Preprocessor):
     """Preprocessor to convert graphviz/dot code blocks to rendered SVG.
 
+    Like MermaidPreprocessor, cached results are inlined immediately and
+    uncached ones get a placeholder for async rendering.
+
     Reads dark_mode from md.graphviz_dark_mode attribute (set before convert).
     """
 
@@ -503,27 +528,42 @@ class GraphvizPreprocessor(Preprocessor):
     )
 
     def run(self, lines):
+        import html as html_mod
         from fun.markdown6 import graphviz_service
 
-        # Get dark_mode from markdown instance (set by caller before convert)
         dark_mode = getattr(self.md, 'graphviz_dark_mode', False)
+        pending = getattr(self.md, '_pending_diagrams', None)
+        if pending is None:
+            pending = []
+            self.md._pending_diagrams = pending
 
         text = '\n'.join(lines)
 
         def replace_graphviz(m):
             source = m.group(1).strip()
 
-            # Try to render with Python graphviz
-            if graphviz_service.has_graphviz():
+            if not graphviz_service.has_graphviz():
+                escaped = html_mod.escape(source)
+                return f'<div class="graphviz-pending">{escaped}</div>'
+
+            # If cached, inline immediately
+            if graphviz_service.is_cached(source, dark_mode):
                 svg, error = graphviz_service.render_dot(source, dark_mode)
                 if error:
-                    return svg  # Error HTML
+                    return svg
                 return f'<div class="graphviz-diagram">{svg}</div>'
-            else:
-                # Fall back to JS rendering - mark as pending
-                import html
-                escaped = html.escape(source)
-                return f'<div class="graphviz-pending">{escaped}</div>'
+
+            # Not cached — emit placeholder, schedule async render
+            idx = len(pending)
+            pending.append(('graphviz', source, dark_mode))
+            escaped = html_mod.escape(source)
+            return (
+                f'<div class="graphviz-diagram" id="diagram-pending-{idx}">'
+                f'<div class="diagram-loading">'
+                f'<pre class="diagram-loading-source">{escaped}</pre>'
+                f'<div class="diagram-loading-spinner">Rendering...</div>'
+                f'</div></div>'
+            )
 
         text = self.GRAPHVIZ_PATTERN.sub(replace_graphviz, text)
         return text.split('\n')

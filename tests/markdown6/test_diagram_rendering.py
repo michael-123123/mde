@@ -21,10 +21,11 @@ class TestMermaidServerSideRendering:
     def _make_md(self):
         return markdown.Markdown(extensions=[MermaidExtension()])
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>diagram</svg>", None))
-    def test_basic_mermaid_rendered_to_svg(self, mock_render, mock_has):
-        """With mmdc available, mermaid blocks should render to SVG."""
+    def test_basic_mermaid_rendered_to_svg(self, mock_render, mock_has, mock_cached):
+        """With mmdc available and cached, mermaid blocks should render to SVG."""
         md = self._make_md()
         source = "# Title\n\n```mermaid\ngraph TD\n    A --> B\n```\n"
         result = md.convert(source)
@@ -36,9 +37,10 @@ class TestMermaidServerSideRendering:
         assert "graph TD" in call_args
         assert "A --> B" in call_args
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>flow</svg>", None))
-    def test_flowchart_with_subgraphs(self, mock_render, mock_has):
+    def test_flowchart_with_subgraphs(self, mock_render, mock_has, mock_cached):
         """Complex flowcharts with subgraphs should render."""
         md = self._make_md()
         source = (
@@ -56,9 +58,10 @@ class TestMermaidServerSideRendering:
         call_args = mock_render.call_args[0][0]
         assert "subgraph Clients" in call_args
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>seq</svg>", None))
-    def test_sequence_diagram(self, mock_render, mock_has):
+    def test_sequence_diagram(self, mock_render, mock_has, mock_cached):
         md = self._make_md()
         source = (
             "```mermaid\n"
@@ -70,9 +73,10 @@ class TestMermaidServerSideRendering:
         result = md.convert(source)
         assert '<div class="mermaid-diagram">' in result
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>d</svg>", None))
-    def test_multiple_mermaid_blocks(self, mock_render, mock_has):
+    def test_multiple_mermaid_blocks(self, mock_render, mock_has, mock_cached):
         """Multiple mermaid blocks in one document should all render."""
         md = self._make_md()
         source = (
@@ -84,9 +88,10 @@ class TestMermaidServerSideRendering:
         assert result.count('class="mermaid-diagram"') == 2
         assert mock_render.call_count == 2
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid")
-    def test_render_error_shows_error_html(self, mock_render, mock_has):
+    def test_render_error_shows_error_html(self, mock_render, mock_has, mock_cached):
         """Render errors should show error HTML."""
         mock_render.return_value = ('<div class="mermaid-error">Parse error</div>', "Parse error")
         md = self._make_md()
@@ -95,9 +100,10 @@ class TestMermaidServerSideRendering:
         assert "mermaid-error" in result
         assert "Parse error" in result
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>ok</svg>", None))
-    def test_dark_mode_passed_to_renderer(self, mock_render, mock_has):
+    def test_dark_mode_passed_to_renderer(self, mock_render, mock_has, mock_cached):
         """dark_mode attribute should be passed through to render_mermaid."""
         md = self._make_md()
         md.mermaid_dark_mode = True
@@ -226,9 +232,10 @@ class TestGraphvizPreprocessor:
     def _make_md(self):
         return markdown.Markdown(extensions=[GraphvizExtension()])
 
+    @patch("fun.markdown6.graphviz_service.is_cached", return_value=True)
     @patch("fun.markdown6.graphviz_service.has_graphviz", return_value=True)
     @patch("fun.markdown6.graphviz_service.render_dot", return_value=("<svg>test</svg>", None))
-    def test_dot_block_rendered_as_svg(self, mock_render, mock_has):
+    def test_dot_block_rendered_as_svg(self, mock_render, mock_has, mock_cached):
         """A ```dot block with graphviz available should render to SVG."""
         md = self._make_md()
         source = '```dot\ndigraph G {\n    A -> B\n}\n```\n'
@@ -239,9 +246,10 @@ class TestGraphvizPreprocessor:
         call_args = mock_render.call_args[0][0]
         assert "digraph G" in call_args
 
+    @patch("fun.markdown6.graphviz_service.is_cached", return_value=True)
     @patch("fun.markdown6.graphviz_service.has_graphviz", return_value=True)
     @patch("fun.markdown6.graphviz_service.render_dot", return_value=("<svg>test</svg>", None))
-    def test_graphviz_language_tag(self, mock_render, mock_has):
+    def test_graphviz_language_tag(self, mock_render, mock_has, mock_cached):
         """```graphviz should work the same as ```dot."""
         md = self._make_md()
         source = '```graphviz\ndigraph G {\n    A -> B\n}\n```\n'
@@ -257,9 +265,10 @@ class TestGraphvizPreprocessor:
         assert "graphviz-pending" in result
         assert "digraph G" in result
 
+    @patch("fun.markdown6.graphviz_service.is_cached", return_value=True)
     @patch("fun.markdown6.graphviz_service.has_graphviz", return_value=True)
     @patch("fun.markdown6.graphviz_service.render_dot", return_value=("<svg>graph</svg>", None))
-    def test_multiple_dot_blocks(self, mock_render, mock_has):
+    def test_multiple_dot_blocks(self, mock_render, mock_has, mock_cached):
         """Multiple dot blocks should all render."""
         md = self._make_md()
         source = (
@@ -269,9 +278,10 @@ class TestGraphvizPreprocessor:
         result = md.convert(source)
         assert result.count('class="graphviz-diagram"') == 2
 
+    @patch("fun.markdown6.graphviz_service.is_cached", return_value=True)
     @patch("fun.markdown6.graphviz_service.has_graphviz", return_value=True)
     @patch("fun.markdown6.graphviz_service.render_dot")
-    def test_dot_render_error(self, mock_render, mock_has):
+    def test_dot_render_error(self, mock_render, mock_has, mock_cached):
         """Render errors should be passed through."""
         mock_render.return_value = ('<div class="error">Bad syntax</div>', "Bad syntax")
         md = self._make_md()
@@ -286,11 +296,13 @@ class TestMermaidAndGraphvizTogether:
     def _make_md(self):
         return markdown.Markdown(extensions=[MermaidExtension(), GraphvizExtension()])
 
+    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
     @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>merm</svg>", None))
+    @patch("fun.markdown6.graphviz_service.is_cached", return_value=True)
     @patch("fun.markdown6.graphviz_service.has_graphviz", return_value=True)
     @patch("fun.markdown6.graphviz_service.render_dot", return_value=("<svg>dot</svg>", None))
-    def test_mixed_document_server_side(self, mock_dot, mock_has_gv, mock_merm, mock_has_mm):
+    def test_mixed_document_server_side(self, mock_dot, mock_has_gv, mock_cached_gv, mock_merm, mock_has_mm, mock_cached_mm):
         """Both mermaid and dot blocks should render to SVG when tools available."""
         md = self._make_md()
         source = (

@@ -26,6 +26,12 @@ def clear_cache():
     _render_cache.clear()
 
 
+def is_cached(source: str, dark_mode: bool = False) -> bool:
+    """Check if a render result is already cached (no subprocess needed)."""
+    cache_key = hashlib.md5(f"{source}:{dark_mode}".encode()).hexdigest()
+    return cache_key in _render_cache
+
+
 def render_mermaid(source: str, dark_mode: bool = False) -> tuple[str, str | None]:
     """Render mermaid source to SVG.
 

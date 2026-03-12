@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+from concurrent.futures import ThreadPoolExecutor
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QFont, QIcon, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
 from PySide6.QtWidgets import (
@@ -56,6 +57,27 @@ def get_cached_html_formatter(style: str) -> HtmlFormatter:
     if style not in _html_formatter_cache:
         _html_formatter_cache[style] = HtmlFormatter(style=style, cssclass="highlight")
     return _html_formatter_cache[style]
+
+
+
+# Shared executor for background diagram rendering (mermaid/graphviz)
+_diagram_executor = ThreadPoolExecutor(max_workers=4)
+
+
+def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
+    """Render a single diagram in a thread. Returns (svg_html, css_class)."""
+    try:
+        if kind == 'mermaid':
+            from fun.markdown6 import mermaid_service
+            svg, _error = mermaid_service.render_mermaid(source, dark_mode)
+            return svg, 'mermaid-diagram'
+        else:
+            from fun.markdown6 import graphviz_service
+            svg, _error = graphviz_service.render_dot(source, dark_mode)
+            return svg, 'graphviz-diagram'
+    except Exception as e:
+        import html
+        return f'<div class="diagram-loading">Error: {html.escape(str(e))}</div>', 'mermaid-diagram'
 
 
 def apply_application_theme(dark_mode: bool):
@@ -461,6 +483,7 @@ class DocumentTab(QWidget):
         self._sync_scrolling = True
         self._preview_needs_full_reload = True
         self._preview_zoom_factor = 1.0
+        self._pending_render_generation = 0  # bumped on each render to discard stale results
 
         self._init_ui()
         self._init_timer()
@@ -679,11 +702,17 @@ class DocumentTab(QWidget):
                 preview_scrollbar.setValue(int(ratio * preview_scrollbar.maximum()))
 
     def render_markdown(self):
-        """Convert markdown to HTML and display in preview pane."""
+        """Convert markdown to HTML and display in preview pane.
+
+        Diagrams whose SVGs are already cached are inlined immediately.
+        Uncached diagrams get a placeholder that is filled asynchronously
+        by _render_pending_diagrams(), keeping the preview responsive.
+        """
         import json
 
         text = self.editor.toPlainText()
         self.main_window.md.reset()
+        self.main_window.md._pending_diagrams = []
 
         # Set diagram config before conversion
         dark_mode = self.settings.get("view.theme") == "dark"
@@ -692,6 +721,7 @@ class DocumentTab(QWidget):
         self.main_window.md.mermaid_dark_mode = dark_mode
 
         html_content = self.main_window.md.convert(text)
+        pending = self.main_window.md._pending_diagrams
 
         # For QWebEngineView: use incremental JS update to preserve scroll position
         if self._use_webengine and not self._preview_needs_full_reload:
@@ -713,6 +743,7 @@ class DocumentTab(QWidget):
             self.preview.page().runJavaScript(js)
             # Re-apply zoom max-width toggle for new SVGs
             self._apply_preview_zoom()
+            self._render_pending_diagrams(pending)
             return
 
         # Convert lists for QTextBrowser since it doesn't render <ul>/<li> properly
@@ -739,6 +770,58 @@ class DocumentTab(QWidget):
             self._preview_needs_full_reload = False
             # Re-apply zoom factor after setHtml
             self._apply_preview_zoom()
+            self._render_pending_diagrams(pending)
+
+    def _render_pending_diagrams(self, pending: list):
+        """Dispatch background workers for uncached diagram placeholders.
+
+        Uses a ThreadPoolExecutor to render diagrams off the main thread.
+        A QTimer polls for completed futures and injects results via JS.
+        A generation counter discards results from stale renders.
+        """
+        if not pending or not self._use_webengine:
+            return
+        self._pending_render_generation += 1
+        gen = self._pending_render_generation
+        futures = []
+        for idx, (kind, source, dark_mode) in enumerate(pending):
+            future = _diagram_executor.submit(_render_diagram, kind, source, dark_mode)
+            futures.append((idx, future))
+        self._poll_diagram_futures(futures, gen)
+
+    def _poll_diagram_futures(self, futures: list, generation: int):
+        """Poll pending futures and inject completed diagrams into preview."""
+        import json
+        if generation != self._pending_render_generation:
+            return
+        remaining = []
+        for idx, future in futures:
+            if future.done():
+                try:
+                    svg_html, css_class = future.result()
+                except Exception as e:
+                    import html
+                    svg_html = f'<div class="diagram-loading">Error: {html.escape(str(e))}</div>'
+                    css_class = 'mermaid-diagram'
+                escaped_svg = json.dumps(svg_html)
+                js = f"""
+                (function() {{
+                    var el = document.getElementById('diagram-pending-{idx}');
+                    if (el) {{
+                        el.innerHTML = {escaped_svg};
+                        el.classList.remove('diagram-loading');
+                        el.classList.add('{css_class}');
+                    }}
+                }})();
+                """
+                self.preview.page().runJavaScript(js)
+                self._apply_preview_zoom()
+            else:
+                remaining.append((idx, future))
+        if remaining:
+            QTimer.singleShot(
+                100, lambda: self._poll_diagram_futures(remaining, generation)
+            )
 
     def reload_file(self):
         """Reload the file from disk."""
@@ -1634,6 +1717,28 @@ class MarkdownEditor(QMainWindow):
                 body.zoomed .mermaid-diagram svg,
                 body.zoomed .graphviz-diagram svg {{
                     max-width: none;
+                }}
+                /* Diagram loading placeholder */
+                .diagram-loading {{
+                    padding: 16px;
+                    border-radius: 6px;
+                    background: {code_bg};
+                    margin: 8px 0;
+                    text-align: left;
+                }}
+                .diagram-loading-source {{
+                    font-size: 80%;
+                    opacity: 0.5;
+                    max-height: 120px;
+                    overflow: hidden;
+                    margin: 0 0 8px 0;
+                    background: transparent;
+                    padding: 0;
+                }}
+                .diagram-loading-spinner {{
+                    color: {blockquote_color};
+                    font-style: italic;
+                    font-size: 0.9em;
                 }}
             </style>
         </head>
