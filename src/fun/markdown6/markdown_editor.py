@@ -457,9 +457,14 @@ if HAS_WEBENGINE:
         """Custom QWebEnginePage that intercepts link clicks."""
 
         link_clicked = Signal(QUrl)
+        open_image_requested = Signal(QUrl)
 
         def acceptNavigationRequest(self, url: QUrl, nav_type, is_main_frame: bool) -> bool:
             """Intercept navigation requests to handle link clicks."""
+            if url.scheme() == 'open-image':
+                self.open_image_requested.emit(url)
+                return False
+
             # Only intercept link clicks in the main frame
             if is_main_frame and nav_type == QWebEnginePage.NavigationType.NavigationTypeLinkClicked:
                 self.link_clicked.emit(url)
@@ -519,6 +524,7 @@ class DocumentTab(QWidget):
             # Use custom page to intercept link clicks
             self._custom_page = LinkInterceptPage(self.preview)
             self._custom_page.link_clicked.connect(self._on_link_clicked)
+            self._custom_page.open_image_requested.connect(self._on_open_image)
             self._custom_page.linkHovered.connect(self._on_link_hovered)
             self.preview.setPage(self._custom_page)
             self._use_webengine = True
@@ -599,6 +605,102 @@ class DocumentTab(QWidget):
     def _on_link_clicked(self, url: QUrl):
         """Handle link clicks in the preview, forwarding to the main window."""
         self.link_clicked.emit(url)
+
+    def _on_open_image(self, url: QUrl):
+        """Handle Ctrl+click on images/diagrams in the preview."""
+        from urllib.parse import unquote, parse_qs
+
+        host = url.host()
+        if host == 'diagram':
+            # Rendered diagram — get source from JS, re-render with native text
+            kind = parse_qs(url.query()).get('kind', ['mermaid'])[0]
+            self.preview.page().runJavaScript(
+                'window._pendingDiagramSource || ""',
+                lambda source, _kind=kind: self._export_diagram(source, _kind),
+            )
+        elif host == 'img':
+            # Linked image — src is in query param
+            src = unquote(url.query().replace('src=', '', 1)) if url.query().startswith('src=') else ''
+            if not src:
+                return
+            img_url = QUrl(src)
+            if img_url.isLocalFile():
+                QDesktopServices.openUrl(img_url)
+            elif img_url.scheme() in ('http', 'https'):
+                QDesktopServices.openUrl(img_url)
+            else:
+                # Relative path — resolve against document dir
+                if self.file_path:
+                    resolved = self.file_path.parent / src
+                    if resolved.exists():
+                        QDesktopServices.openUrl(QUrl.fromLocalFile(str(resolved)))
+
+    def _export_diagram(self, source: str, kind: str):
+        """Re-render diagram source to SVG with native text and open it."""
+        if not source:
+            return
+        import html as html_mod
+        import tempfile
+        # Unescape HTML entities from data-source attribute
+        source = html_mod.unescape(source)
+        dark_mode = self.settings.get("view.theme") == "dark"
+
+        if kind == 'mermaid':
+            self._export_mermaid_svg(source, dark_mode)
+        else:
+            self._export_graphviz_svg(source, dark_mode)
+
+    def _export_mermaid_svg(self, source: str, dark_mode: bool):
+        """Render mermaid source to SVG with htmlLabels:false for native text."""
+        import json
+        import tempfile
+        from fun.markdown6.tool_paths import get_mmdc_path
+
+        mmdc = get_mmdc_path()
+        if not mmdc:
+            return
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_path = Path(tmpdir) / 'input.mmd'
+            output_path = Path(tmpdir) / 'output.svg'
+            config_path = Path(tmpdir) / 'config.json'
+
+            input_path.write_text(source, encoding='utf-8')
+            config_path.write_text(json.dumps({
+                'htmlLabels': False,
+                'flowchart': {'htmlLabels': False},
+            }))
+
+            import subprocess
+            theme = 'dark' if dark_mode else 'default'
+            subprocess.run(
+                [mmdc, '-i', str(input_path), '-o', str(output_path),
+                 '-t', theme, '-b', 'transparent', '--quiet',
+                 '-c', str(config_path)],
+                capture_output=True, timeout=15,
+            )
+            if output_path.exists():
+                # Copy to a persistent temp file
+                svg_tmp = tempfile.NamedTemporaryFile(
+                    suffix='.svg', prefix='diagram_', delete=False,
+                )
+                svg_tmp.write(output_path.read_bytes())
+                svg_tmp.close()
+                QDesktopServices.openUrl(QUrl.fromLocalFile(svg_tmp.name))
+
+    def _export_graphviz_svg(self, source: str, dark_mode: bool):
+        """Render graphviz source to SVG (already uses native text)."""
+        import tempfile
+        from fun.markdown6 import graphviz_service
+
+        svg, error = graphviz_service.render_dot(source, dark_mode)
+        if error:
+            return
+        tmp = tempfile.NamedTemporaryFile(
+            suffix='.svg', prefix='diagram_', delete=False,
+        )
+        tmp.write(svg.encode('utf-8'))
+        tmp.close()
+        QDesktopServices.openUrl(QUrl.fromLocalFile(tmp.name))
 
     def _on_link_hovered(self, url: str):
         """Handle link hover in the preview, showing URL as tooltip."""
@@ -1740,12 +1842,58 @@ class MarkdownEditor(QMainWindow):
                     font-style: italic;
                     font-size: 0.9em;
                 }}
+                /* Ctrl+click hint for images and diagrams */
+                body.ctrl-held img,
+                body.ctrl-held .mermaid-diagram svg,
+                body.ctrl-held .graphviz-diagram svg {{
+                    cursor: pointer;
+                    outline: 2px solid {link_color};
+                    outline-offset: 2px;
+                }}
             </style>
         </head>
         <body class="{body_class}">
             <div id="md-content">{content}</div>
             {mermaid_js}
             {graphviz_js}
+            <script>
+            /* Ctrl+click on images/diagrams → open in external app */
+            document.addEventListener('keydown', function(e) {{
+                if (e.key === 'Control' || e.key === 'Meta') document.body.classList.add('ctrl-held');
+            }});
+            document.addEventListener('keyup', function(e) {{
+                if (e.key === 'Control' || e.key === 'Meta') document.body.classList.remove('ctrl-held');
+            }});
+            window.addEventListener('blur', function() {{
+                document.body.classList.remove('ctrl-held');
+            }});
+            document.addEventListener('click', function(e) {{
+                if (!e.ctrlKey && !e.metaKey) return;
+                var el = e.target;
+                while (el && el !== document.body) {{
+                    if (el.tagName === 'IMG') {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = 'open-image://img?src=' + encodeURIComponent(el.src);
+                        return;
+                    }}
+                    if (el.tagName === 'svg' || (el.classList && (
+                        el.classList.contains('mermaid-diagram') ||
+                        el.classList.contains('graphviz-diagram')))) {{
+                        var container = el.closest('.mermaid-diagram, .graphviz-diagram');
+                        if (container && container.dataset.source) {{
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var kind = container.classList.contains('mermaid-diagram') ? 'mermaid' : 'graphviz';
+                            window._pendingDiagramSource = container.dataset.source;
+                            window.location.href = 'open-image://diagram?kind=' + kind;
+                            return;
+                        }}
+                    }}
+                    el = el.parentElement;
+                }}
+            }}, true);
+            </script>
         </body>
         </html>
         """

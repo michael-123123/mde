@@ -265,19 +265,21 @@ class MermaidPreprocessor(Preprocessor):
             if not mermaid_service.has_mermaid():
                 return f'<div class="mermaid">\n{content}\n</div>'
 
+            escaped_src = html_mod.escape(content).replace('"', '&quot;')
+
             # If cached, inline immediately (zero cost)
             if mermaid_service.is_cached(content, dark_mode):
                 svg, error = mermaid_service.render_mermaid(content, dark_mode)
                 if error:
                     return svg
-                return f'<div class="mermaid-diagram">{svg}</div>'
+                return f'<div class="mermaid-diagram" data-source="{escaped_src}">{svg}</div>'
 
             # Not cached — emit placeholder, schedule async render
             idx = len(pending)
             pending.append(('mermaid', content, dark_mode))
             escaped = html_mod.escape(content)
             return (
-                f'<div class="mermaid-diagram" id="diagram-pending-{idx}">'
+                f'<div class="mermaid-diagram" data-source="{escaped_src}" id="diagram-pending-{idx}">'
                 f'<div class="diagram-loading">'
                 f'<pre class="diagram-loading-source">{escaped}</pre>'
                 f'<div class="diagram-loading-spinner">Rendering...</div>'
@@ -542,23 +544,25 @@ class GraphvizPreprocessor(Preprocessor):
         def replace_graphviz(m):
             source = m.group(1).strip()
 
+            escaped_src = html_mod.escape(source).replace('"', '&quot;')
+
             if not graphviz_service.has_graphviz():
                 escaped = html_mod.escape(source)
-                return f'<div class="graphviz-pending">{escaped}</div>'
+                return f'<div class="graphviz-pending" data-source="{escaped_src}">{escaped}</div>'
 
             # If cached, inline immediately
             if graphviz_service.is_cached(source, dark_mode):
                 svg, error = graphviz_service.render_dot(source, dark_mode)
                 if error:
                     return svg
-                return f'<div class="graphviz-diagram">{svg}</div>'
+                return f'<div class="graphviz-diagram" data-source="{escaped_src}">{svg}</div>'
 
             # Not cached — emit placeholder, schedule async render
             idx = len(pending)
             pending.append(('graphviz', source, dark_mode))
             escaped = html_mod.escape(source)
             return (
-                f'<div class="graphviz-diagram" id="diagram-pending-{idx}">'
+                f'<div class="graphviz-diagram" data-source="{escaped_src}" id="diagram-pending-{idx}">'
                 f'<div class="diagram-loading">'
                 f'<pre class="diagram-loading-source">{escaped}</pre>'
                 f'<div class="diagram-loading-spinner">Rendering...</div>'

@@ -29,7 +29,7 @@ class TestMermaidServerSideRendering:
         md = self._make_md()
         source = "# Title\n\n```mermaid\ngraph TD\n    A --> B\n```\n"
         result = md.convert(source)
-        assert '<div class="mermaid-diagram">' in result
+        assert 'class="mermaid-diagram"' in result
         assert "<svg>diagram</svg>" in result
         assert "```mermaid" not in result
         mock_render.assert_called_once()
@@ -54,7 +54,7 @@ class TestMermaidServerSideRendering:
             "```\n"
         )
         result = md.convert(source)
-        assert '<div class="mermaid-diagram">' in result
+        assert 'class="mermaid-diagram"' in result
         call_args = mock_render.call_args[0][0]
         assert "subgraph Clients" in call_args
 
@@ -71,7 +71,7 @@ class TestMermaidServerSideRendering:
             "```\n"
         )
         result = md.convert(source)
-        assert '<div class="mermaid-diagram">' in result
+        assert 'class="mermaid-diagram"' in result
 
     @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
     @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
@@ -240,7 +240,7 @@ class TestGraphvizPreprocessor:
         md = self._make_md()
         source = '```dot\ndigraph G {\n    A -> B\n}\n```\n'
         result = md.convert(source)
-        assert '<div class="graphviz-diagram">' in result
+        assert 'class="graphviz-diagram"' in result
         assert "<svg>test</svg>" in result
         mock_render.assert_called_once()
         call_args = mock_render.call_args[0][0]
@@ -254,7 +254,7 @@ class TestGraphvizPreprocessor:
         md = self._make_md()
         source = '```graphviz\ndigraph G {\n    A -> B\n}\n```\n'
         result = md.convert(source)
-        assert '<div class="graphviz-diagram">' in result
+        assert 'class="graphviz-diagram"' in result
 
     @patch("fun.markdown6.graphviz_service.has_graphviz", return_value=False)
     def test_dot_block_without_graphviz_falls_back(self, mock_has):
@@ -312,8 +312,8 @@ class TestMermaidAndGraphvizTogether:
             "```dot\ndigraph G {\n    C -> D\n}\n```\n"
         )
         result = md.convert(source)
-        assert '<div class="mermaid-diagram">' in result
-        assert '<div class="graphviz-diagram">' in result
+        assert 'class="mermaid-diagram"' in result
+        assert 'class="graphviz-diagram"' in result
         assert "<svg>merm</svg>" in result
         assert "<svg>dot</svg>" in result
 
