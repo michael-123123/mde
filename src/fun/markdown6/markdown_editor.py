@@ -80,6 +80,55 @@ def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
         return f'<div class="diagram-loading">Error: {html.escape(str(e))}</div>', 'mermaid-diagram'
 
 
+def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | None:
+    """Render diagram source to an SVG temp file. Returns the file path or None."""
+    import json
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    if kind == 'mermaid':
+        from fun.markdown6.tool_paths import get_mmdc_path
+        mmdc = get_mmdc_path()
+        if not mmdc:
+            return None
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_path = Path(tmpdir) / 'input.mmd'
+            output_path = Path(tmpdir) / 'output.svg'
+            config_path = Path(tmpdir) / 'config.json'
+            input_path.write_text(source, encoding='utf-8')
+            config_path.write_text(json.dumps({
+                'htmlLabels': False,
+                'flowchart': {'htmlLabels': False},
+            }))
+            theme = 'dark' if dark_mode else 'default'
+            subprocess.run(
+                [mmdc, '-i', str(input_path), '-o', str(output_path),
+                 '-t', theme, '-b', 'transparent', '--quiet',
+                 '-c', str(config_path)],
+                capture_output=True, timeout=15,
+            )
+            if output_path.exists():
+                svg_tmp = tempfile.NamedTemporaryFile(
+                    suffix='.svg', prefix='diagram_', delete=False,
+                )
+                svg_tmp.write(output_path.read_bytes())
+                svg_tmp.close()
+                return svg_tmp.name
+        return None
+    else:
+        from fun.markdown6 import graphviz_service
+        svg, error = graphviz_service.render_dot(source, dark_mode)
+        if error:
+            return None
+        tmp = tempfile.NamedTemporaryFile(
+            suffix='.svg', prefix='diagram_', delete=False,
+        )
+        tmp.write(svg.encode('utf-8'))
+        tmp.close()
+        return tmp.name
+
+
 def apply_application_theme(dark_mode: bool):
     """Apply a light or dark theme to the entire application."""
     app = QApplication.instance()
@@ -640,67 +689,30 @@ class DocumentTab(QWidget):
         if not source:
             return
         import html as html_mod
-        import tempfile
-        # Unescape HTML entities from data-source attribute
         source = html_mod.unescape(source)
         dark_mode = self.settings.get("view.theme") == "dark"
 
-        if kind == 'mermaid':
-            self._export_mermaid_svg(source, dark_mode)
-        else:
-            self._export_graphviz_svg(source, dark_mode)
+        # Override cursor app-wide — survives Ctrl keyup and CSS changes
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
 
-    def _export_mermaid_svg(self, source: str, dark_mode: bool):
-        """Render mermaid source to SVG with htmlLabels:false for native text."""
-        import json
-        import tempfile
-        from fun.markdown6.tool_paths import get_mmdc_path
-
-        mmdc = get_mmdc_path()
-        if not mmdc:
-            return
-        with tempfile.TemporaryDirectory() as tmpdir:
-            input_path = Path(tmpdir) / 'input.mmd'
-            output_path = Path(tmpdir) / 'output.svg'
-            config_path = Path(tmpdir) / 'config.json'
-
-            input_path.write_text(source, encoding='utf-8')
-            config_path.write_text(json.dumps({
-                'htmlLabels': False,
-                'flowchart': {'htmlLabels': False},
-            }))
-
-            import subprocess
-            theme = 'dark' if dark_mode else 'default'
-            subprocess.run(
-                [mmdc, '-i', str(input_path), '-o', str(output_path),
-                 '-t', theme, '-b', 'transparent', '--quiet',
-                 '-c', str(config_path)],
-                capture_output=True, timeout=15,
-            )
-            if output_path.exists():
-                # Copy to a persistent temp file
-                svg_tmp = tempfile.NamedTemporaryFile(
-                    suffix='.svg', prefix='diagram_', delete=False,
-                )
-                svg_tmp.write(output_path.read_bytes())
-                svg_tmp.close()
-                QDesktopServices.openUrl(QUrl.fromLocalFile(svg_tmp.name))
-
-    def _export_graphviz_svg(self, source: str, dark_mode: bool):
-        """Render graphviz source to SVG (already uses native text)."""
-        import tempfile
-        from fun.markdown6 import graphviz_service
-
-        svg, error = graphviz_service.render_dot(source, dark_mode)
-        if error:
-            return
-        tmp = tempfile.NamedTemporaryFile(
-            suffix='.svg', prefix='diagram_', delete=False,
+        future = _diagram_executor.submit(
+            _export_diagram_to_file, kind, source, dark_mode,
         )
-        tmp.write(svg.encode('utf-8'))
-        tmp.close()
-        QDesktopServices.openUrl(QUrl.fromLocalFile(tmp.name))
+
+        def poll():
+            if future.done():
+                try:
+                    svg_path = future.result()
+                except Exception:
+                    QApplication.restoreOverrideCursor()
+                    return
+                if svg_path:
+                    QDesktopServices.openUrl(QUrl.fromLocalFile(svg_path))
+                QApplication.restoreOverrideCursor()
+            else:
+                QTimer.singleShot(100, poll)
+
+        QTimer.singleShot(100, poll)
 
     def _on_link_hovered(self, url: str):
         """Handle link hover in the preview, showing URL as tooltip."""
@@ -1842,13 +1854,16 @@ class MarkdownEditor(QMainWindow):
                     font-style: italic;
                     font-size: 0.9em;
                 }}
-                /* Ctrl+click hint for images and diagrams */
+                /* Ctrl+hover hint — only the hovered element */
                 body.ctrl-held img,
                 body.ctrl-held .mermaid-diagram svg,
                 body.ctrl-held .graphviz-diagram svg {{
                     cursor: pointer;
-                    outline: 2px solid {link_color};
-                    outline-offset: 2px;
+                }}
+                body.ctrl-held img:hover,
+                body.ctrl-held .mermaid-diagram:hover svg,
+                body.ctrl-held .graphviz-diagram:hover svg {{
+                    filter: drop-shadow(0 0 3px {link_color}) drop-shadow(0 0 1px {link_color});
                 }}
             </style>
         </head>
@@ -1858,6 +1873,9 @@ class MarkdownEditor(QMainWindow):
             {graphviz_js}
             <script>
             /* Ctrl+click on images/diagrams → open in external app */
+            document.addEventListener('mousemove', function(e) {{
+                document.body.classList.toggle('ctrl-held', e.ctrlKey || e.metaKey);
+            }});
             document.addEventListener('keydown', function(e) {{
                 if (e.key === 'Control' || e.key === 'Meta') document.body.classList.add('ctrl-held');
             }});
