@@ -18,9 +18,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QFont
 
-from fun.markdown6.activity_bar import ActivityBar
-from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme
+from markdown_editor.markdown6.activity_bar import ActivityBar
+from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.theme import get_theme
 
 
 class Sidebar(QWidget):

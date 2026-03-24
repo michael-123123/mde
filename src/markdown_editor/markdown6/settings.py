@@ -1,6 +1,8 @@
 """Settings management for the Markdown editor."""
 
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -111,6 +113,19 @@ DEFAULT_SHORTCUTS = {
 }
 
 
+def _default_config_dir() -> Path:
+    """Return the platform-appropriate config directory for the editor."""
+    if sys.platform == "win32":
+        # %APPDATA%/markdown-editor
+        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        # XDG_CONFIG_HOME or ~/.config
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / "markdown-editor"
+
+
 class Settings(QObject):
     """Application settings manager with persistence."""
 
@@ -122,14 +137,14 @@ class Settings(QObject):
         """Initialize settings.
 
         Args:
-            config_dir: Directory to store settings. Defaults to ~/.config/markdown-editor
+            config_dir: Directory to store settings. Platform-appropriate default.
             ephemeral: If True, use default settings in memory only - don't load or save.
         """
         super().__init__()
         self._ephemeral = ephemeral
 
         if config_dir is None:
-            config_dir = Path.home() / ".config" / "markdown-editor"
+            config_dir = _default_config_dir()
         self.config_dir = config_dir
 
         if not ephemeral:

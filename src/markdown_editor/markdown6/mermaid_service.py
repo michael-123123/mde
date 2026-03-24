@@ -6,9 +6,7 @@ Falls back to client-side mermaid.js if mmdc is not available.
 
 import hashlib
 import html
-import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 
 # In-memory cache: hash -> (svg_string, error_string or None)
@@ -17,7 +15,7 @@ _render_cache: dict[str, tuple[str, str | None]] = {}
 
 def has_mermaid() -> bool:
     """Check if mmdc (mermaid CLI) is available on the system."""
-    from fun.markdown6.tool_paths import has_mmdc
+    from markdown_editor.markdown6.tool_paths import has_mmdc
     return has_mmdc()
 
 
@@ -56,7 +54,7 @@ def render_mermaid(source: str, dark_mode: bool = False) -> tuple[str, str | Non
 
 def _render_mermaid_impl(source: str, dark_mode: bool) -> tuple[str, str | None]:
     """Implementation of mermaid rendering via mmdc."""
-    from fun.markdown6.tool_paths import get_mmdc_path
+    from markdown_editor.markdown6.tool_paths import get_mmdc_path
 
     mmdc = get_mmdc_path()
     if not mmdc:
@@ -64,40 +62,42 @@ def _render_mermaid_impl(source: str, dark_mode: bool) -> tuple[str, str | None]
         return _format_error(source, error), error
 
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            input_path = Path(tmpdir) / "input.mmd"
-            output_path = Path(tmpdir) / "output.svg"
+        from markdown_editor.markdown6.temp_files import create_temp_dir
 
-            input_path.write_text(source, encoding="utf-8")
+        work_dir = create_temp_dir(prefix='mmdc_')
+        input_path = work_dir / "input.mmd"
+        output_path = work_dir / "output.svg"
 
-            theme = "dark" if dark_mode else "default"
-            cmd = [
-                mmdc,
-                "-i", str(input_path),
-                "-o", str(output_path),
-                "-t", theme,
-                "-b", "transparent",
-                "--quiet",
-            ]
+        input_path.write_text(source, encoding="utf-8")
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
+        theme = "dark" if dark_mode else "default"
+        cmd = [
+            mmdc,
+            "-i", str(input_path),
+            "-o", str(output_path),
+            "-t", theme,
+            "-b", "transparent",
+            "--quiet",
+        ]
 
-            if result.returncode != 0:
-                error = result.stderr.strip() or result.stdout.strip() or "mmdc failed"
-                return _format_error(source, error), error
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
 
-            if not output_path.exists():
-                error = "mmdc produced no output"
-                return _format_error(source, error), error
+        if result.returncode != 0:
+            error = result.stderr.strip() or result.stdout.strip() or "mmdc failed"
+            return _format_error(source, error), error
 
-            svg_string = output_path.read_text(encoding="utf-8")
-            svg_string = _make_svg_responsive(svg_string)
-            return svg_string, None
+        if not output_path.exists():
+            error = "mmdc produced no output"
+            return _format_error(source, error), error
+
+        svg_string = output_path.read_text(encoding="utf-8")
+        svg_string = _make_svg_responsive(svg_string)
+        return svg_string, None
 
     except subprocess.TimeoutExpired:
         error = "Mermaid rendering timed out (15s)"

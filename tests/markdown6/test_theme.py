@@ -2,7 +2,7 @@
 
 import pytest
 
-from fun.markdown6.theme import (
+from markdown_editor.markdown6.theme import (
     ThemeColors,
     DARK_THEME,
     LIGHT_THEME,

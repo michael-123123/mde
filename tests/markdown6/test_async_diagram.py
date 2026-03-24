@@ -31,12 +31,12 @@ def _render_fake_slow(kind, source, dark_mode):
 class TestAsyncDiagramUnit:
     """Unit tests for individual pieces of the async pipeline."""
 
-    @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
-    @patch("fun.markdown6.mermaid_service.is_cached", return_value=False)
+    @patch("markdown_editor.markdown6.mermaid_service.has_mermaid", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.is_cached", return_value=False)
     def test_uncached_diagram_emits_placeholder(self, mock_cached, mock_has):
         """Uncached mermaid block should produce a placeholder div."""
         import markdown
-        from fun.markdown6.markdown_extensions import MermaidExtension
+        from markdown_editor.markdown6.markdown_extensions import MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
         md._pending_diagrams = []
@@ -50,13 +50,13 @@ class TestAsyncDiagramUnit:
         assert len(md._pending_diagrams) == 1
         assert md._pending_diagrams[0] == ("mermaid", "graph TD\n    A --> B", False)
 
-    @patch("fun.markdown6.mermaid_service.has_mermaid", return_value=True)
-    @patch("fun.markdown6.mermaid_service.is_cached", return_value=True)
-    @patch("fun.markdown6.mermaid_service.render_mermaid", return_value=("<svg>ok</svg>", None))
+    @patch("markdown_editor.markdown6.mermaid_service.has_mermaid", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.is_cached", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.render_mermaid", return_value=("<svg>ok</svg>", None))
     def test_cached_diagram_inlined_immediately(self, mock_render, mock_cached, mock_has):
         """Cached mermaid block should be inlined, not deferred."""
         import markdown
-        from fun.markdown6.markdown_extensions import MermaidExtension
+        from markdown_editor.markdown6.markdown_extensions import MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
         md._pending_diagrams = []
@@ -70,15 +70,15 @@ class TestAsyncDiagramUnit:
 
     def test_render_diagram_function(self):
         """The _render_diagram function should call the right service."""
-        from fun.markdown6.markdown_editor import _render_diagram
+        from markdown_editor.markdown6.markdown_editor import _render_diagram
 
-        with patch("fun.markdown6.mermaid_service.render_mermaid",
+        with patch("markdown_editor.markdown6.mermaid_service.render_mermaid",
                     return_value=("<svg>m</svg>", None)):
             svg, css = _render_diagram("mermaid", "graph TD\nA-->B", False)
             assert svg == "<svg>m</svg>"
             assert css == "mermaid-diagram"
 
-        with patch("fun.markdown6.graphviz_service.render_dot",
+        with patch("markdown_editor.markdown6.graphviz_service.render_dot",
                     return_value=("<svg>g</svg>", None)):
             svg, css = _render_diagram("graphviz", "digraph G {}", False)
             assert svg == "<svg>g</svg>"
@@ -86,7 +86,7 @@ class TestAsyncDiagramUnit:
 
     def test_executor_runs_and_returns(self):
         """Verify the executor runs the render function and produces a result."""
-        from fun.markdown6.markdown_editor import _diagram_executor
+        from markdown_editor.markdown6.markdown_editor import _diagram_executor
 
         future = _diagram_executor.submit(_render_fake_slow, "mermaid", "graph TD", False)
         svg, css = future.result(timeout=5)

@@ -31,8 +31,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fun.markdown6.settings import get_settings
-from fun.markdown6.syntax_highlighter import MarkdownHighlighter
+from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
 
 
 class FoldingRegion:
@@ -1417,7 +1417,7 @@ class EnhancedEditor(QPlainTextEdit):
     def get_snippet_manager(self):
         """Get the snippet manager."""
         if self._snippet_manager is None:
-            from fun.markdown6.snippets import get_snippet_manager
+            from markdown_editor.markdown6.snippets import get_snippet_manager
             self._snippet_manager = get_snippet_manager()
         return self._snippet_manager
 

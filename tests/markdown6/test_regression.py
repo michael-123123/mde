@@ -22,7 +22,7 @@ class TestGraphExportLabelSpacing:
 
     def test_labels_below_adds_spacing_for_dot_layout(self, qtbot, tmp_path):
         """Test that dot layout gets nodesep and ranksep when labels below."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         # Create a test project with files
         project = tmp_path / "project"
@@ -47,7 +47,7 @@ class TestGraphExportLabelSpacing:
 
     def test_labels_below_adds_overlap_for_circo_layout(self, qtbot, tmp_path):
         """Test that circo layout gets overlap=prism when labels below."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -68,7 +68,7 @@ class TestGraphExportLabelSpacing:
 
     def test_labels_below_disabled_no_extra_spacing(self, qtbot, tmp_path):
         """Test that spacing attributes are NOT added when labels_below is off."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -97,7 +97,7 @@ class TestVerticalTabCollapse:
 
     def test_vertical_tab_arrow_changes_on_collapse(self, qtbot):
         """Test that arrow direction changes when collapsed."""
-        from fun.markdown6.graph_export import VerticalTab
+        from markdown_editor.markdown6.graph_export import VerticalTab
 
         tab = VerticalTab("FILES", width=28, arrow_direction="left")
         qtbot.addWidget(tab)
@@ -115,7 +115,7 @@ class TestVerticalTabCollapse:
 
     def test_vertical_tab_text_centered(self, qtbot):
         """Test that VerticalTab can be created with text."""
-        from fun.markdown6.graph_export import VerticalTab
+        from markdown_editor.markdown6.graph_export import VerticalTab
 
         tab = VerticalTab("OPTIONS", width=28, arrow_direction="right")
         qtbot.addWidget(tab)
@@ -134,7 +134,7 @@ class TestCommandPaletteAlignment:
 
     def test_command_palette_uses_monospace_font(self, qtbot):
         """Test that command palette list uses monospace font."""
-        from fun.markdown6.command_palette import CommandPalette
+        from markdown_editor.markdown6.command_palette import CommandPalette
 
         palette = CommandPalette()
         qtbot.addWidget(palette)
@@ -146,7 +146,7 @@ class TestCommandPaletteAlignment:
 
     def test_command_shortcut_padding(self, qtbot):
         """Test that commands with shortcuts get padded for alignment."""
-        from fun.markdown6.command_palette import CommandPalette, Command
+        from markdown_editor.markdown6.command_palette import CommandPalette, Command
 
         palette = CommandPalette()
         qtbot.addWidget(palette)
@@ -171,7 +171,7 @@ class TestGraphExportWindowFlags:
 
     def test_graph_export_can_maximize(self, qtbot, tmp_path):
         """Test that graph export dialog has maximize button enabled."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -194,7 +194,7 @@ class TestGraphPreviewNoScrollbars:
 
     def test_preview_html_has_no_scrollbar_styling(self, qtbot, tmp_path):
         """Test that preview HTML doesn't have scrollbar CSS."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -220,7 +220,7 @@ class TestGraphExportPreviewScaling:
 
     def test_preview_widget_has_stretch(self, qtbot, tmp_path):
         """Test that preview view is added with stretch factor."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -246,7 +246,7 @@ class TestNodeClickNavigation:
 
     def test_preview_html_has_click_handlers(self, qtbot, tmp_path):
         """Test that preview HTML has node click JavaScript."""
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -262,7 +262,7 @@ class TestNodeClickNavigation:
 
     def test_graph_preview_page_intercepts_navigation(self, qtbot):
         """Test that GraphPreviewPage can intercept file:// URLs."""
-        from fun.markdown6.graph_export import GraphPreviewPage, HAS_WEBENGINE
+        from markdown_editor.markdown6.graph_export import GraphPreviewPage, HAS_WEBENGINE
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -289,7 +289,7 @@ class TestWikiLinkPattern:
 
     def test_wiki_link_with_pipe_alias(self):
         """Test that wiki links with aliases are detected correctly."""
-        from fun.markdown6.graph_export import WIKI_LINK_PATTERN
+        from markdown_editor.markdown6.graph_export import WIKI_LINK_PATTERN
 
         text = "See [[Document Name|display text]] for more."
         matches = WIKI_LINK_PATTERN.findall(text)
@@ -299,7 +299,7 @@ class TestWikiLinkPattern:
 
     def test_markdown_link_only_md_files(self):
         """Test that only .md/.mdown files are matched."""
-        from fun.markdown6.graph_export import MD_LINK_PATTERN
+        from markdown_editor.markdown6.graph_export import MD_LINK_PATTERN
 
         text = "[doc](file.md) [img](image.png) [pdf](doc.pdf)"
         matches = MD_LINK_PATTERN.findall(text)
@@ -314,7 +314,7 @@ class TestSettingsPersistence:
 
     def test_recent_files_handles_deleted_files(self, tmp_path):
         """Test that recent files filters out deleted files."""
-        from fun.markdown6.settings import Settings
+        from markdown_editor.markdown6.settings import Settings
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
@@ -340,7 +340,7 @@ class TestSettingsPersistence:
 
     def test_corrupt_settings_file_uses_defaults(self, tmp_path):
         """Test that corrupt settings file falls back to defaults."""
-        from fun.markdown6.settings import Settings, DEFAULT_SETTINGS
+        from markdown_editor.markdown6.settings import Settings, DEFAULT_SETTINGS
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
@@ -366,7 +366,7 @@ class TestPreviewDarkModeBackground:
     def test_preview_background_dark_mode(self, qtbot, tmp_path):
         """Test that preview has dark background in dark mode."""
         from unittest.mock import patch, MagicMock
-        from fun.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -381,7 +381,7 @@ class TestPreviewDarkModeBackground:
         mock_settings.settings_changed = MagicMock()
         mock_settings.settings_changed.connect = MagicMock()
 
-        with patch("fun.markdown6.markdown_editor.get_settings", return_value=mock_settings):
+        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
             mock_main_window = MagicMock()
             tab = DocumentTab(mock_main_window)
             qtbot.addWidget(tab)
@@ -394,7 +394,7 @@ class TestPreviewDarkModeBackground:
     def test_preview_background_light_mode(self, qtbot, tmp_path):
         """Test that preview has white background in light mode."""
         from unittest.mock import patch, MagicMock
-        from fun.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -409,7 +409,7 @@ class TestPreviewDarkModeBackground:
         mock_settings.settings_changed = MagicMock()
         mock_settings.settings_changed.connect = MagicMock()
 
-        with patch("fun.markdown6.markdown_editor.get_settings", return_value=mock_settings):
+        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
             mock_main_window = MagicMock()
             tab = DocumentTab(mock_main_window)
             qtbot.addWidget(tab)
@@ -431,7 +431,7 @@ class TestDarkModeTheming:
 
     def test_dark_theme_colors_are_dark(self):
         """Test that dark theme has dark background colors."""
-        from fun.markdown6.theme import DARK_THEME
+        from markdown_editor.markdown6.theme import DARK_THEME
 
         # All background colors should be dark (low brightness)
         def is_dark(hex_color: str) -> bool:
@@ -449,7 +449,7 @@ class TestDarkModeTheming:
 
     def test_light_theme_colors_are_light(self):
         """Test that light theme has light background colors."""
-        from fun.markdown6.theme import LIGHT_THEME
+        from markdown_editor.markdown6.theme import LIGHT_THEME
 
         def is_light(hex_color: str) -> bool:
             """Check if a hex color is light (average RGB >= 200)."""
@@ -464,7 +464,7 @@ class TestDarkModeTheming:
 
     def test_menu_bar_stylesheet_uses_theme_colors(self):
         """Test that menu bar stylesheet uses correct theme background."""
-        from fun.markdown6.theme import StyleSheets, DARK_THEME
+        from markdown_editor.markdown6.theme import StyleSheets, DARK_THEME
 
         stylesheet = StyleSheets.menu_bar(DARK_THEME)
 
@@ -474,7 +474,7 @@ class TestDarkModeTheming:
 
     def test_tab_widget_stylesheet_uses_theme_colors(self):
         """Test that tab widget stylesheet uses correct theme colors."""
-        from fun.markdown6.theme import StyleSheets, DARK_THEME
+        from markdown_editor.markdown6.theme import StyleSheets, DARK_THEME
 
         stylesheet = StyleSheets.tab_widget(DARK_THEME)
 
@@ -485,7 +485,7 @@ class TestDarkModeTheming:
 
     def test_panel_stylesheet_uses_theme_colors(self):
         """Test that panel stylesheet uses correct theme colors."""
-        from fun.markdown6.theme import StyleSheets, DARK_THEME
+        from markdown_editor.markdown6.theme import StyleSheets, DARK_THEME
 
         stylesheet = StyleSheets.panel(DARK_THEME)
 
@@ -495,7 +495,7 @@ class TestDarkModeTheming:
     def test_apply_application_theme_dark(self, qtbot):
         """Test that apply_application_theme applies dark styling."""
         from PySide6.QtWidgets import QApplication
-        from fun.markdown6.markdown_editor import apply_application_theme
+        from markdown_editor.markdown6.markdown_editor import apply_application_theme
 
         apply_application_theme(dark_mode=True)
 
@@ -512,7 +512,7 @@ class TestDarkModeTheming:
     def test_apply_application_theme_light(self, qtbot):
         """Test that apply_application_theme applies light styling."""
         from PySide6.QtWidgets import QApplication
-        from fun.markdown6.markdown_editor import apply_application_theme
+        from markdown_editor.markdown6.markdown_editor import apply_application_theme
 
         apply_application_theme(dark_mode=False)
 
@@ -527,7 +527,7 @@ class TestDarkModeTheming:
     def test_sidebar_theme_applies_dark_colors(self, qtbot):
         """Test that sidebar applies dark colors in dark mode."""
         from unittest.mock import patch, MagicMock
-        from fun.markdown6.markdown_editor import MarkdownEditor
+        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
 
         # Mock settings for dark mode
         mock_settings = MagicMock()
@@ -549,13 +549,13 @@ class TestDarkModeTheming:
         mock_settings.theme_changed = MagicMock()
         mock_settings.theme_changed.connect = MagicMock()
 
-        with patch("fun.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            with patch("fun.markdown6.project_manager.get_settings", return_value=mock_settings):
-                with patch("fun.markdown6.outline_panel.get_settings", return_value=mock_settings):
-                    with patch("fun.markdown6.references_panel.get_settings", return_value=mock_settings):
-                        with patch("fun.markdown6.search_panel.get_settings", return_value=mock_settings):
-                            with patch("fun.markdown6.sidebar.get_settings", return_value=mock_settings):
-                                with patch("fun.markdown6.activity_bar.get_settings", return_value=mock_settings):
+        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
+            with patch("markdown_editor.markdown6.project_manager.get_settings", return_value=mock_settings):
+                with patch("markdown_editor.markdown6.outline_panel.get_settings", return_value=mock_settings):
+                    with patch("markdown_editor.markdown6.references_panel.get_settings", return_value=mock_settings):
+                        with patch("markdown_editor.markdown6.search_panel.get_settings", return_value=mock_settings):
+                            with patch("markdown_editor.markdown6.sidebar.get_settings", return_value=mock_settings):
+                                with patch("markdown_editor.markdown6.activity_bar.get_settings", return_value=mock_settings):
                                     editor = MarkdownEditor()
                                     qtbot.addWidget(editor)
 
@@ -565,7 +565,7 @@ class TestDarkModeTheming:
 
     def test_all_stylesheets_contain_background_color(self):
         """Test that all relevant stylesheets set background-color."""
-        from fun.markdown6.theme import StyleSheets, DARK_THEME
+        from markdown_editor.markdown6.theme import StyleSheets, DARK_THEME
 
         # All these should explicitly set background-color
         stylesheets_to_check = [
@@ -587,7 +587,7 @@ class TestDarkModeTheming:
     def test_graph_export_dialog_theming(self, qtbot, tmp_path):
         """Test that GraphExportDialog has proper dark mode theming."""
         from unittest.mock import patch, MagicMock
-        from fun.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.graph_export import GraphExportDialog
 
         project = tmp_path / "project"
         project.mkdir()
@@ -599,7 +599,7 @@ class TestDarkModeTheming:
             "view.theme": "dark",
         }.get(key, default)
 
-        with patch("fun.markdown6.graph_export.get_settings", return_value=mock_settings):
+        with patch("markdown_editor.markdown6.graph_export.get_settings", return_value=mock_settings):
             dialog = GraphExportDialog(project)
             qtbot.addWidget(dialog)
 
@@ -626,7 +626,7 @@ class TestGraphvizDarkMode:
 
     def test_dark_mode_adds_fill_to_text_without_fill(self):
         """Test that text elements without fill get light color in dark mode."""
-        from fun.markdown6.graphviz_service import _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = '<svg><text x="10" y="20">Node Label</text></svg>'
         result = _apply_dark_mode(svg)
@@ -636,7 +636,7 @@ class TestGraphvizDarkMode:
 
     def test_dark_mode_replaces_black_fill(self):
         """Test that black fill is replaced with light color."""
-        from fun.markdown6.graphviz_service import _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = '<svg><text fill="black">Node Label</text></svg>'
         result = _apply_dark_mode(svg)
@@ -646,7 +646,7 @@ class TestGraphvizDarkMode:
 
     def test_dark_mode_replaces_white_background(self):
         """Test that white background is replaced with dark color."""
-        from fun.markdown6.graphviz_service import _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = '<svg><rect fill="white"/></svg>'
         result = _apply_dark_mode(svg)
@@ -656,7 +656,7 @@ class TestGraphvizDarkMode:
 
     def test_dark_mode_replaces_black_stroke(self):
         """Test that black strokes are replaced with light color."""
-        from fun.markdown6.graphviz_service import _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = '<svg><path stroke="black"/></svg>'
         result = _apply_dark_mode(svg)
@@ -666,7 +666,7 @@ class TestGraphvizDarkMode:
 
     def test_dark_mode_preserves_existing_text_fill(self):
         """Test that text with existing non-black fill is preserved."""
-        from fun.markdown6.graphviz_service import _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = '<svg><text fill="red">Colored Text</text></svg>'
         result = _apply_dark_mode(svg)

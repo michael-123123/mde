@@ -32,9 +32,9 @@ from PySide6.QtWidgets import (
     QProgressDialog,
 )
 
-from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme, StyleSheets
-from fun.markdown6 import export_service
+from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6 import export_service
 
 
 @dataclass

@@ -10,8 +10,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QFontMetrics, QColor, QFont
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QFrame
 
-from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme, ThemeColors
+from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.theme import get_theme, ThemeColors
 
 
 class ActivityTab(QWidget):

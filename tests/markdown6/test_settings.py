@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from fun.markdown6.settings import (
+from markdown_editor.markdown6.settings import (
     Settings,
     DEFAULT_SETTINGS,
     DEFAULT_SHORTCUTS,
@@ -297,8 +297,8 @@ class TestEphemeralSettings:
 
     def test_init_settings_ephemeral(self, tmp_path):
         """Test init_settings with ephemeral flag."""
-        from fun.markdown6.settings import init_settings, get_settings, _settings
-        import fun.markdown6.settings as settings_module
+        from markdown_editor.markdown6.settings import init_settings, get_settings, _settings
+        import markdown_editor.markdown6.settings as settings_module
 
         # Reset global settings
         settings_module._settings = None

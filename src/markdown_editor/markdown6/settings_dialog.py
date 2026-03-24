@@ -30,8 +30,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fun.markdown6.settings import get_settings, DEFAULT_SETTINGS, DEFAULT_SHORTCUTS
-from fun.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.settings import get_settings, DEFAULT_SETTINGS, DEFAULT_SHORTCUTS
+from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
 class SettingsDialog(QDialog):
@@ -328,7 +328,7 @@ class SettingsDialog(QDialog):
     def _browse_tool_path(self, line_edit: QLineEdit):
         """Open a file dialog to select a tool path."""
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select Executable", line_edit.text() or "/usr/bin"
+            self, "Select Executable", line_edit.text() or ""
         )
         if path:
             line_edit.setText(path)
@@ -407,7 +407,7 @@ class SettingsDialog(QDialog):
 
     def _update_tools_status(self):
         """Update the tool availability status display."""
-        from fun.markdown6 import tool_paths
+        from markdown_editor.markdown6 import tool_paths
 
         lines = []
         for name, check_fn, install_hint in [

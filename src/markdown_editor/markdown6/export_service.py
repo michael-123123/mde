@@ -5,7 +5,6 @@ Supports PDF, DOCX, and HTML export with pandoc (if available) or Python fallbac
 
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 
 import markdown as md
@@ -13,7 +12,7 @@ import markdown as md
 
 def has_pandoc() -> bool:
     """Check if pandoc is available on the system."""
-    from fun.markdown6.tool_paths import has_pandoc as _has_pandoc
+    from markdown_editor.markdown6.tool_paths import has_pandoc as _has_pandoc
     return _has_pandoc()
 
 
@@ -104,21 +103,17 @@ def export_docx(
 
 def _export_pdf_pandoc(content: str, output_path: str | Path) -> None:
     """Export to PDF using pandoc."""
-    from fun.markdown6.tool_paths import get_pandoc_path
+    from markdown_editor.markdown6.tool_paths import get_pandoc_path
+    from markdown_editor.markdown6.temp_files import create_temp_file
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
-        f.write(content)
-        temp_path = f.name
+    temp_path = create_temp_file(suffix=".md", content=content)
 
-    try:
-        pandoc = get_pandoc_path() or "pandoc"
-        cmd = [pandoc, temp_path, "-o", str(output_path), "--pdf-engine=xelatex"]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    pandoc = get_pandoc_path() or "pandoc"
+    cmd = [pandoc, str(temp_path), "-o", str(output_path), "--pdf-engine=xelatex"]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
-        if result.returncode != 0:
-            raise ExportError(f"Pandoc error: {result.stderr or 'Unknown error'}")
-    finally:
-        Path(temp_path).unlink(missing_ok=True)
+    if result.returncode != 0:
+        raise ExportError(f"Pandoc error: {result.stderr or 'Unknown error'}")
 
 
 def _export_pdf_weasyprint(content: str, output_path: str | Path, title: str) -> None:
@@ -137,21 +132,17 @@ def _export_pdf_weasyprint(content: str, output_path: str | Path, title: str) ->
 
 def _export_docx_pandoc(content: str, output_path: str | Path) -> None:
     """Export to DOCX using pandoc."""
-    from fun.markdown6.tool_paths import get_pandoc_path
+    from markdown_editor.markdown6.tool_paths import get_pandoc_path
+    from markdown_editor.markdown6.temp_files import create_temp_file
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
-        f.write(content)
-        temp_path = f.name
+    temp_path = create_temp_file(suffix=".md", content=content)
 
-    try:
-        pandoc = get_pandoc_path() or "pandoc"
-        cmd = [pandoc, temp_path, "-o", str(output_path)]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    pandoc = get_pandoc_path() or "pandoc"
+    cmd = [pandoc, str(temp_path), "-o", str(output_path)]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
-        if result.returncode != 0:
-            raise ExportError(f"Pandoc error: {result.stderr or 'Unknown error'}")
-    finally:
-        Path(temp_path).unlink(missing_ok=True)
+    if result.returncode != 0:
+        raise ExportError(f"Pandoc error: {result.stderr or 'Unknown error'}")
 
 
 def _export_docx_python(content: str, output_path: str | Path, title: str) -> None:

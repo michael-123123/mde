@@ -46,7 +46,7 @@ from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 from pygments.formatters import HtmlFormatter
 
-from fun.markdown6 import export_service
+from markdown_editor.markdown6 import export_service
 
 # Cache HtmlFormatter instances to avoid recreation on every render
 _html_formatter_cache: dict[str, HtmlFormatter] = {}
@@ -68,11 +68,11 @@ def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
     """Render a single diagram in a thread. Returns (svg_html, css_class)."""
     try:
         if kind == 'mermaid':
-            from fun.markdown6 import mermaid_service
+            from markdown_editor.markdown6 import mermaid_service
             svg, _error = mermaid_service.render_mermaid(source, dark_mode)
             return svg, 'mermaid-diagram'
         else:
-            from fun.markdown6 import graphviz_service
+            from markdown_editor.markdown6 import graphviz_service
             svg, _error = graphviz_service.render_dot(source, dark_mode)
             return svg, 'graphviz-diagram'
     except Exception as e:
@@ -84,49 +84,41 @@ def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | No
     """Render diagram source to an SVG temp file. Returns the file path or None."""
     import json
     import subprocess
-    import tempfile
-    from pathlib import Path
+    from markdown_editor.markdown6.temp_files import create_temp_file, create_temp_dir
 
     if kind == 'mermaid':
-        from fun.markdown6.tool_paths import get_mmdc_path
+        from markdown_editor.markdown6.tool_paths import get_mmdc_path
         mmdc = get_mmdc_path()
         if not mmdc:
             return None
-        with tempfile.TemporaryDirectory() as tmpdir:
-            input_path = Path(tmpdir) / 'input.mmd'
-            output_path = Path(tmpdir) / 'output.svg'
-            config_path = Path(tmpdir) / 'config.json'
-            input_path.write_text(source, encoding='utf-8')
-            config_path.write_text(json.dumps({
-                'htmlLabels': False,
-                'flowchart': {'htmlLabels': False},
-            }))
-            theme = 'dark' if dark_mode else 'default'
-            subprocess.run(
-                [mmdc, '-i', str(input_path), '-o', str(output_path),
-                 '-t', theme, '-b', 'transparent', '--quiet',
-                 '-c', str(config_path)],
-                capture_output=True, timeout=15,
-            )
-            if output_path.exists():
-                svg_tmp = tempfile.NamedTemporaryFile(
-                    suffix='.svg', prefix='diagram_', delete=False,
-                )
-                svg_tmp.write(output_path.read_bytes())
-                svg_tmp.close()
-                return svg_tmp.name
+        work_dir = create_temp_dir(prefix='mmdc_')
+        input_path = work_dir / 'input.mmd'
+        output_path = work_dir / 'output.svg'
+        config_path = work_dir / 'config.json'
+        input_path.write_text(source, encoding='utf-8')
+        config_path.write_text(json.dumps({
+            'htmlLabels': False,
+            'flowchart': {'htmlLabels': False},
+        }))
+        theme = 'dark' if dark_mode else 'default'
+        subprocess.run(
+            [mmdc, '-i', str(input_path), '-o', str(output_path),
+             '-t', theme, '-b', 'transparent', '--quiet',
+             '-c', str(config_path)],
+            capture_output=True, timeout=15,
+        )
+        if output_path.exists():
+            svg_path = create_temp_file(suffix='.svg', prefix='diagram_',
+                                        content=output_path.read_bytes())
+            return str(svg_path)
         return None
     else:
-        from fun.markdown6 import graphviz_service
+        from markdown_editor.markdown6 import graphviz_service
         svg, error = graphviz_service.render_dot(source, dark_mode)
         if error:
             return None
-        tmp = tempfile.NamedTemporaryFile(
-            suffix='.svg', prefix='diagram_', delete=False,
-        )
-        tmp.write(svg.encode('utf-8'))
-        tmp.close()
-        return tmp.name
+        svg_path = create_temp_file(suffix='.svg', prefix='diagram_', content=svg)
+        return str(svg_path)
 
 
 def apply_application_theme(dark_mode: bool):
@@ -223,19 +215,19 @@ def convert_lists_for_qtextbrowser(html: str) -> str:
     return html
 
 
-from fun.markdown6.enhanced_editor import EnhancedEditor
-from fun.markdown6.settings import get_settings
-from fun.markdown6.theme import get_theme, StyleSheets
-from fun.markdown6.settings_dialog import SettingsDialog
-from fun.markdown6.outline_panel import OutlinePanel
-from fun.markdown6.references_panel import ReferencesPanel
-from fun.markdown6.command_palette import CommandPalette, Command
-from fun.markdown6.table_editor import TableEditorDialog
-from fun.markdown6.snippets import get_snippet_manager, SnippetPopup
-from fun.markdown6.project_manager import ProjectPanel
-from fun.markdown6.sidebar import Sidebar
-from fun.markdown6.search_panel import SearchPanel
-from fun.markdown6.markdown_extensions import (
+from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.settings_dialog import SettingsDialog
+from markdown_editor.markdown6.outline_panel import OutlinePanel
+from markdown_editor.markdown6.references_panel import ReferencesPanel
+from markdown_editor.markdown6.command_palette import CommandPalette, Command
+from markdown_editor.markdown6.table_editor import TableEditorDialog
+from markdown_editor.markdown6.snippets import get_snippet_manager, SnippetPopup
+from markdown_editor.markdown6.project_manager import ProjectPanel
+from markdown_editor.markdown6.sidebar import Sidebar
+from markdown_editor.markdown6.search_panel import SearchPanel
+from markdown_editor.markdown6.markdown_extensions import (
     BreaklessListExtension,
     CalloutExtension,
     WikiLinkExtension,
@@ -249,9 +241,9 @@ from fun.markdown6.markdown_extensions import (
     get_mermaid_css,
     get_tasklist_css,
 )
-from fun.markdown6 import graphviz_service
-from fun.markdown6 import mermaid_service
-from fun.markdown6.graph_export import GraphExportDialog
+from markdown_editor.markdown6 import graphviz_service
+from markdown_editor.markdown6 import mermaid_service
+from markdown_editor.markdown6.graph_export import GraphExportDialog
 
 
 class FindReplaceBar(QWidget):
@@ -3145,7 +3137,7 @@ def main():
     app.setApplicationName("Markdown Editor")
 
     # Apply saved theme at startup
-    from fun.markdown6.settings import get_settings
+    from markdown_editor.markdown6.settings import get_settings
     settings = get_settings()
     apply_application_theme(settings.get("view.theme", "light") == "dark")
 

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
 
-from fun.markdown6.enhanced_editor import (
+from markdown_editor.markdown6.enhanced_editor import (
     EnhancedEditor,
     FoldingRegion,
     LineNumberArea,

@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime
 
-from fun.markdown6.snippets import (
+from markdown_editor.markdown6.snippets import (
     Snippet,
     SnippetManager,
     DEFAULT_SNIPPETS,

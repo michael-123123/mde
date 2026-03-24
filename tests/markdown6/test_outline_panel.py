@@ -3,7 +3,7 @@
 import pytest
 from PySide6.QtCore import Qt
 
-from fun.markdown6.outline_panel import OutlinePanel, Heading
+from markdown_editor.markdown6.outline_panel import OutlinePanel, Heading
 
 
 @pytest.fixture

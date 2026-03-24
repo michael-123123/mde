@@ -4,7 +4,7 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidgetItem
 
-from fun.markdown6.table_editor import TableEditorDialog, create_table_from_size
+from markdown_editor.markdown6.table_editor import TableEditorDialog, create_table_from_size
 
 
 @pytest.fixture

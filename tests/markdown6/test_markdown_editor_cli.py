@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from fun.markdown6.markdown_editor_cli import (
+from markdown_editor.markdown6.markdown_editor_cli import (
     create_parser,
     main,
     cmd_export,

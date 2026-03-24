@@ -20,7 +20,7 @@ def ephemeral_settings():
     - Writing to the user's settings files
     - Having test results depend on user configuration
     """
-    import fun.markdown6.settings as settings_module
+    import markdown_editor.markdown6.settings as settings_module
 
     # Reset global settings before test
     settings_module._settings = None

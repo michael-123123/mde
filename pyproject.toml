@@ -1,5 +1,5 @@
 [project]
-name = "fun"
+name = "markdown-editor"
 dynamic = ["version"]
 description = "A feature-rich Qt Markdown editor with live preview (PyQt5 and PySide6)"
 requires-python = ">=3.11"
@@ -29,8 +29,8 @@ dev = [
 ]
 
 [project.scripts]
-markdown-editor = "fun.markdown6:main"
-mde = "fun.markdown6.markdown_editor_cli:main"
+markdown-editor = "markdown_editor.markdown6:main"
+mde = "markdown_editor.markdown6.markdown_editor_cli:main"
 
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8"]

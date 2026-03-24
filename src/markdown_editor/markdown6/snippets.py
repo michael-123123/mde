@@ -7,7 +7,7 @@ from datetime import datetime
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QListWidgetItem, QWidget
 
-from fun.markdown6.searchable_popup import SearchablePopup
+from markdown_editor.markdown6.searchable_popup import SearchablePopup
 
 
 @dataclass

@@ -4,7 +4,7 @@ import pytest
 import re
 from pathlib import Path
 
-from fun.markdown6.graph_export import (
+from markdown_editor.markdown6.graph_export import (
     WIKI_LINK_PATTERN,
     MD_LINK_PATTERN,
     VerticalTab,

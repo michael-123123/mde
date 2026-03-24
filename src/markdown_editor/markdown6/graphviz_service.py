@@ -10,7 +10,7 @@ _render_cache: dict[str, tuple[str, str | None]] = {}
 
 def has_graphviz() -> bool:
     """Check if graphviz is available on the system."""
-    from fun.markdown6.tool_paths import has_dot
+    from markdown_editor.markdown6.tool_paths import has_dot
     return has_dot()
 
 

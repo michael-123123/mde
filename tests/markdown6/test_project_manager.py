@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMessageBox
 
-from fun.markdown6.project_manager import (
+from markdown_editor.markdown6.project_manager import (
     ProjectPanel,
     ProjectExportDialog,
     ProjectConfig,
@@ -422,13 +422,13 @@ class TestExportErrors:
 
     def test_export_error_handled(self, export_dialog, tmp_path):
         """Test that export errors are handled gracefully."""
-        from fun.markdown6.export_service import ExportError
+        from markdown_editor.markdown6.export_service import ExportError
 
         export_dialog.format_combo.setCurrentText("PDF")
         output_path = tmp_path / "output.pdf"
 
         with patch("PySide6.QtWidgets.QFileDialog.getSaveFileName", return_value=(str(output_path), "")):
-            with patch("fun.markdown6.export_service.export_pdf", side_effect=ExportError("Test error")):
+            with patch("markdown_editor.markdown6.export_service.export_pdf", side_effect=ExportError("Test error")):
                 with patch.object(QMessageBox, "warning") as mock_warning:
                     export_dialog._export()
                     mock_warning.assert_called_once()
@@ -439,7 +439,7 @@ class TestExportErrors:
         output_path = tmp_path / "output.html"
 
         with patch("PySide6.QtWidgets.QFileDialog.getSaveFileName", return_value=(str(output_path), "")):
-            with patch("fun.markdown6.export_service.export_html", side_effect=Exception("General error")):
+            with patch("markdown_editor.markdown6.export_service.export_html", side_effect=Exception("General error")):
                 with patch.object(QMessageBox, "critical") as mock_critical:
                     export_dialog._export()
                     mock_critical.assert_called_once()
@@ -457,14 +457,14 @@ class TestPandocOption:
 
     def test_pandoc_disabled_when_unavailable(self, qtbot, project_dir):
         """Test pandoc checkbox disabled when pandoc not installed."""
-        with patch("fun.markdown6.export_service.has_pandoc", return_value=False):
+        with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=False):
             dialog = ProjectExportDialog(project_dir)
             qtbot.addWidget(dialog)
             assert not dialog.use_pandoc.isEnabled()
 
     def test_pandoc_enabled_when_available(self, qtbot, project_dir):
         """Test pandoc checkbox enabled when pandoc is installed."""
-        with patch("fun.markdown6.export_service.has_pandoc", return_value=True):
+        with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=True):
             dialog = ProjectExportDialog(project_dir)
             qtbot.addWidget(dialog)
             assert dialog.use_pandoc.isEnabled()

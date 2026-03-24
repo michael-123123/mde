@@ -6,7 +6,7 @@ Uses configured paths from settings, falling back to system PATH lookup.
 import shutil
 from pathlib import Path
 
-from fun.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import get_settings
 
 
 def _resolve(settings_key: str, default_cmd: str) -> str | None:

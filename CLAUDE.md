@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`fun` is a feature-rich Qt6 Markdown editor (PySide6) with live preview, wiki links, project management, and export to HTML/PDF/DOCX. Python 3.11+ required.
+`markdown-editor` is a feature-rich Qt6 Markdown editor (PySide6) with live preview, wiki links, project management, and export to HTML/PDF/DOCX. Python 3.11+ required.
 
 ## Commands
 

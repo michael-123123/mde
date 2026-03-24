@@ -4,7 +4,7 @@ import pytest
 from PySide6.QtGui import QTextDocument, QFont, QColor
 from PySide6.QtWidgets import QPlainTextEdit
 
-from fun.markdown6.syntax_highlighter import MarkdownHighlighter
+from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
 
 
 @pytest.fixture

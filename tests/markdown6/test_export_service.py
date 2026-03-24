@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from fun.markdown6.export_service import (
+from markdown_editor.markdown6.export_service import (
     has_pandoc,
     markdown_to_html,
     export_html,
@@ -138,9 +138,9 @@ class TestExportPdf:
         mock_weasyprint.HTML.return_value = mock_html
 
         with patch.dict("sys.modules", {"weasyprint": mock_weasyprint}):
-            with patch("fun.markdown6.export_service.has_pandoc", return_value=False):
+            with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=False):
                 # Import inside to get the patched version
-                from fun.markdown6 import export_service as es
+                from markdown_editor.markdown6 import export_service as es
                 # Re-patch the weasyprint import inside the function
                 with patch.object(es, "_export_pdf_weasyprint") as mock_export:
                     es.export_pdf("# Test", output_path)
@@ -150,8 +150,8 @@ class TestExportPdf:
         """Test PDF export with pandoc flag uses pandoc when available."""
         output_path = tmp_path / "output.pdf"
 
-        with patch("fun.markdown6.export_service.has_pandoc", return_value=True):
-            with patch("fun.markdown6.export_service._export_pdf_pandoc") as mock_pandoc:
+        with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=True):
+            with patch("markdown_editor.markdown6.export_service._export_pdf_pandoc") as mock_pandoc:
                 export_pdf("# Test", output_path, use_pandoc=True)
                 mock_pandoc.assert_called_once()
 
@@ -159,8 +159,8 @@ class TestExportPdf:
         """Test PDF export falls back when pandoc unavailable."""
         output_path = tmp_path / "output.pdf"
 
-        with patch("fun.markdown6.export_service.has_pandoc", return_value=False):
-            with patch("fun.markdown6.export_service._export_pdf_weasyprint") as mock_weasy:
+        with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=False):
+            with patch("markdown_editor.markdown6.export_service._export_pdf_weasyprint") as mock_weasy:
                 export_pdf("# Test", output_path, use_pandoc=True)
                 mock_weasy.assert_called_once()
 
@@ -172,8 +172,8 @@ class TestExportDocx:
         """Test DOCX export without pandoc uses python-docx."""
         output_path = tmp_path / "output.docx"
 
-        with patch("fun.markdown6.export_service.has_pandoc", return_value=False):
-            with patch("fun.markdown6.export_service._export_docx_python") as mock_python:
+        with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=False):
+            with patch("markdown_editor.markdown6.export_service._export_docx_python") as mock_python:
                 export_docx("# Test", output_path)
                 mock_python.assert_called_once()
 
@@ -181,8 +181,8 @@ class TestExportDocx:
         """Test DOCX export with pandoc flag uses pandoc when available."""
         output_path = tmp_path / "output.docx"
 
-        with patch("fun.markdown6.export_service.has_pandoc", return_value=True):
-            with patch("fun.markdown6.export_service._export_docx_pandoc") as mock_pandoc:
+        with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=True):
+            with patch("markdown_editor.markdown6.export_service._export_docx_pandoc") as mock_pandoc:
                 export_docx("# Test", output_path, use_pandoc=True)
                 mock_pandoc.assert_called_once()
 
@@ -192,7 +192,7 @@ class TestExportPandoc:
 
     def test_pandoc_pdf_error_handling(self, tmp_path):
         """Test that pandoc errors are raised as ExportError."""
-        from fun.markdown6.export_service import _export_pdf_pandoc
+        from markdown_editor.markdown6.export_service import _export_pdf_pandoc
 
         output_path = tmp_path / "output.pdf"
         mock_result = MagicMock()
@@ -206,7 +206,7 @@ class TestExportPandoc:
 
     def test_pandoc_docx_error_handling(self, tmp_path):
         """Test that pandoc DOCX errors are raised as ExportError."""
-        from fun.markdown6.export_service import _export_docx_pandoc
+        from markdown_editor.markdown6.export_service import _export_docx_pandoc
 
         output_path = tmp_path / "output.docx"
         mock_result = MagicMock()
@@ -219,7 +219,7 @@ class TestExportPandoc:
 
     def test_pandoc_cleans_up_temp_file(self, tmp_path):
         """Test that temp file is cleaned up after pandoc export."""
-        from fun.markdown6.export_service import _export_pdf_pandoc
+        from markdown_editor.markdown6.export_service import _export_pdf_pandoc
 
         output_path = tmp_path / "output.pdf"
         mock_result = MagicMock()
@@ -236,9 +236,10 @@ class TestExportPandoc:
         with patch("subprocess.run", side_effect=capture_run):
             _export_pdf_pandoc("# Test", output_path)
 
-        # Temp file should be deleted
+        # Temp file should be tracked for cleanup at exit
         if temp_files_created:
-            assert not Path(temp_files_created[0]).exists()
+            from markdown_editor.markdown6.temp_files import _tracked
+            assert Path(temp_files_created[0]) in _tracked
 
 
 class TestExportPythonDocx:
@@ -246,7 +247,7 @@ class TestExportPythonDocx:
 
     def test_docx_python_missing_dependency(self, tmp_path):
         """Test that missing python-docx raises ExportError."""
-        from fun.markdown6.export_service import _export_docx_python
+        from markdown_editor.markdown6.export_service import _export_docx_python
 
         output_path = tmp_path / "output.docx"
 
@@ -272,7 +273,7 @@ class TestExportWeasyprint:
             with patch.dict("sys.modules", {"weasyprint": None}):
                 # Re-import the function to get fresh import attempt
                 import importlib
-                import fun.markdown6.export_service as es
+                import markdown_editor.markdown6.export_service as es
                 importlib.reload(es)
 
                 # The function should raise ExportError when weasyprint can't be imported
@@ -286,7 +287,7 @@ class TestExportWeasyprint:
                 sys.modules["weasyprint"] = weasyprint_backup
             # Reload module to restore normal state
             import importlib
-            import fun.markdown6.export_service as es
+            import markdown_editor.markdown6.export_service as es
             importlib.reload(es)
 
 

@@ -261,7 +261,7 @@ def get_project_files(project_path: Path) -> list[Path]:
 
 def cmd_export(args: argparse.Namespace) -> int:
     """Handle export subcommand."""
-    from fun.markdown6 import export_service
+    from markdown_editor.markdown6 import export_service
 
     # Determine input content
     content_parts = []
@@ -699,7 +699,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_gui(args: argparse.Namespace) -> int:
     """Launch the GUI editor."""
-    from fun.markdown6.settings import init_settings
+    from markdown_editor.markdown6.settings import init_settings
 
     # Initialize settings before importing editor
     # --reset: delete all config files and start clean
@@ -707,7 +707,8 @@ def cmd_gui(args: argparse.Namespace) -> int:
     # --config: use custom config directory
     if args.reset:
         import shutil
-        config_dir = args.config or (Path.home() / ".config" / "markdown-editor")
+        from markdown_editor.markdown6.settings import _default_config_dir
+        config_dir = args.config or _default_config_dir()
         if config_dir.exists():
             shutil.rmtree(config_dir)
             print(f"Reset: deleted {config_dir}", file=sys.stderr)
@@ -719,8 +720,8 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     # Import Qt and editor
     from PySide6.QtWidgets import QApplication
-    from fun.markdown6.markdown_editor import MarkdownEditor, apply_application_theme
-    from fun.markdown6.settings import get_settings
+    from markdown_editor.markdown6.markdown_editor import MarkdownEditor, apply_application_theme
+    from markdown_editor.markdown6.settings import get_settings
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")

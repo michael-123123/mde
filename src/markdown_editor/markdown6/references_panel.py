@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 
-from fun.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import get_settings
 
 
 @dataclass
@@ -253,7 +253,7 @@ class ReferencesPanel(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        from fun.markdown6.theme import get_theme, StyleSheets
+        from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
         theme_name = self.settings.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")

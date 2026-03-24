@@ -248,7 +248,7 @@ class MermaidPreprocessor(Preprocessor):
 
     def run(self, lines):
         import html as html_mod
-        from fun.markdown6 import mermaid_service
+        from markdown_editor.markdown6 import mermaid_service
 
         dark_mode = getattr(self.md, 'mermaid_dark_mode', False)
         # Collect pending (uncached) diagram sources for async rendering
@@ -429,7 +429,7 @@ def get_mermaid_js() -> str:
     Returns JS only when mmdc is unavailable (client-side fallback).
     When mmdc is installed, diagrams are pre-rendered to SVG and no JS is needed.
     """
-    from fun.markdown6 import mermaid_service
+    from markdown_editor.markdown6 import mermaid_service
 
     if mermaid_service.has_mermaid():
         return ""  # Server-side rendered, no JS needed
@@ -438,7 +438,7 @@ def get_mermaid_js() -> str:
 
 def get_mermaid_css(dark_mode: bool = False) -> str:
     """Get CSS for mermaid diagrams and errors."""
-    from fun.markdown6 import mermaid_service
+    from markdown_editor.markdown6 import mermaid_service
     return mermaid_service.get_mermaid_css(dark_mode)
 
 
@@ -531,7 +531,7 @@ class GraphvizPreprocessor(Preprocessor):
 
     def run(self, lines):
         import html as html_mod
-        from fun.markdown6 import graphviz_service
+        from markdown_editor.markdown6 import graphviz_service
 
         dark_mode = getattr(self.md, 'graphviz_dark_mode', False)
         pending = getattr(self.md, '_pending_diagrams', None)
@@ -585,7 +585,7 @@ class GraphvizImagePostprocessor(Postprocessor):
     )
 
     def run(self, text):
-        from fun.markdown6 import graphviz_service
+        from markdown_editor.markdown6 import graphviz_service
         from pathlib import Path
 
         # Get config from markdown instance (set by caller before convert)
