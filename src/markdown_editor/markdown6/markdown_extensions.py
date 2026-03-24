@@ -19,17 +19,30 @@ class LogseqPreprocessor(Preprocessor):
     PROPERTY_PATTERN = re.compile(r'^\s*\w[\w-]*::\s+.*$')
     BLOCK_REF_PATTERN = re.compile(r'\(\([0-9a-f-]{36}\)\)')
     MACRO_PATTERN = re.compile(r'\{\{[^}]*\}\}')
+    # Top-level outliner bullet: "- " with no leading whitespace
+    TOPLEVEL_BULLET_PATTERN = re.compile(r'^- (.+)$')
+    # Leading whitespace before content on indented lines
+    LEADING_WS_PATTERN = re.compile(r'^(\s+)')
     TASK_MARKER_PATTERN = re.compile(
         r'^(\s*[-*] )?(TODO|DOING|NOW|LATER|WAITING|CANCELLED)\s+'
     )
     DONE_MARKER_PATTERN = re.compile(r'^(\s*[-*] )?DONE\s+')
     FENCE_PATTERN = re.compile(r'^(`{3,}|~{3,})')
 
+    @staticmethod
+    def _dedent(line, indent_unit):
+        """Remove one level of indent_unit from the start of line."""
+        if indent_unit and line.startswith(indent_unit):
+            return line[len(indent_unit):]
+        return line
+
     def run(self, lines):
         if not getattr(self.md, 'logseq_mode', False):
             return lines
 
-        result = []
+        # First pass: strip properties, refs, macros (these can appear at any
+        # indent level and their removal shouldn't affect indent detection).
+        cleaned = []
         in_code_block = False
         fence_marker = None
 
@@ -47,7 +60,7 @@ class LogseqPreprocessor(Preprocessor):
                     fence_marker = None
 
             if in_code_block:
-                result.append(line)
+                cleaned.append(line)
                 continue
 
             # Strip property lines entirely
@@ -59,6 +72,29 @@ class LogseqPreprocessor(Preprocessor):
 
             # Strip macros (embeds, queries, renderers, etc.)
             line = self.MACRO_PATTERN.sub('', line)
+
+            cleaned.append(line)
+
+        # Second pass: strip top-level bullets, auto-detect indent unit per
+        # section, and dedent children accordingly.
+        result = []
+        indent_unit = None  # detected from first child after a top-level bullet
+
+        for line in cleaned:
+            # Strip top-level outliner bullets (Logseq makes every line a block)
+            bullet_match = self.TOPLEVEL_BULLET_PATTERN.match(line)
+            if bullet_match:
+                line = bullet_match.group(1)
+                indent_unit = None  # reset — detect from next child
+            elif line.strip():
+                # Non-blank, non-top-level line: detect or apply indent
+                ws_match = self.LEADING_WS_PATTERN.match(line)
+                if ws_match:
+                    if indent_unit is None:
+                        # First indented child after a top-level bullet:
+                        # use its leading whitespace as the indent unit
+                        indent_unit = ws_match.group(1)
+                    line = self._dedent(line, indent_unit)
 
             # Convert DONE to checked checkbox
             done_match = self.DONE_MARKER_PATTERN.match(line)
@@ -76,10 +112,8 @@ class LogseqPreprocessor(Preprocessor):
                 result.append(line)
                 continue
 
-            # Skip blank lines left by stripping
+            # Collapse consecutive blank lines left by stripping
             if not line.strip():
-                # Keep blank lines that were already blank, but collapse
-                # multiple consecutive blanks from stripping
                 if result and not result[-1].strip():
                     continue
 
