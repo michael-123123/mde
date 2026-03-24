@@ -752,7 +752,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
                 editor.open_file(f)
                 # Jump to line if specified
                 if args.line:
-                    tab = editor.get_current_tab()
+                    tab = editor.current_tab()
                     if tab:
                         tab.editor.go_to_line(args.line)
             else:
@@ -770,7 +770,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     # Read-only mode
     if args.read_only:
-        tab = editor.get_current_tab()
+        tab = editor.current_tab()
         if tab:
             tab.editor.setReadOnly(True)
 
