@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Markdown Editor
+GenericName=Text Editor
+Comment=Feature-rich Markdown editor with live preview
+Exec=markdown-editor %F
+Icon=markdown-editor
+Terminal=false
+Categories=Office;TextEditor;
+MimeType=text/markdown;text/x-markdown;text/plain;
+Keywords=markdown;editor;preview;wiki;
+StartupWMClass=markdown-editor

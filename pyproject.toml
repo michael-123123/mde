@@ -15,6 +15,7 @@ dependencies = [
     "weasyprint>=60.0",  # PDF export (fallback when pandoc unavailable)
     "python-docx>=1.0",  # DOCX export (fallback when pandoc unavailable)
     "graphviz>=0.20",    # Graphviz diagram rendering
+    "argcomplete>=3.0",  # Shell tab-completion
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"markdown_editor.markdown6" = ["icons/*.png", "icons/*.ico", "icons/*.desktop"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -252,6 +252,18 @@ Examples:
         description="Remove previously installed .desktop entry and icons.",
     )
 
+    # Shell completion
+    subparsers.add_parser(
+        "install-autocomplete",
+        help="Install shell tab-completion for mde",
+        description="Register argcomplete tab-completion for mde and markdown-editor.",
+    )
+    subparsers.add_parser(
+        "uninstall-autocomplete",
+        help="Remove shell tab-completion for mde",
+        description="Remove argcomplete tab-completion for mde and markdown-editor.",
+    )
+
     return parser
 
 
@@ -720,14 +732,22 @@ def _icons_dir() -> Path:
 _ICON_SIZES = [48, 64, 128, 256]
 
 
+def _data_home() -> Path:
+    """Return the user's data directory via QStandardPaths."""
+    from PySide6.QtCore import QStandardPaths
+    return Path(QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.GenericDataLocation
+    ))
+
+
 def cmd_install_desktop(args: argparse.Namespace) -> int:
-    """Install .desktop file and icons into ~/.local/share (Linux only)."""
+    """Install .desktop file and icons (Linux only)."""
     if sys.platform != "linux":
         print("Desktop integration is only supported on Linux.", file=sys.stderr)
         return 1
 
     icons_dir = _icons_dir()
-    data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    data_home = _data_home()
 
     # Install .desktop file
     apps_dir = data_home / "applications"
@@ -762,12 +782,12 @@ def cmd_install_desktop(args: argparse.Namespace) -> int:
 
 
 def cmd_uninstall_desktop(args: argparse.Namespace) -> int:
-    """Remove .desktop file and icons from ~/.local/share."""
+    """Remove .desktop file and icons."""
     if sys.platform != "linux":
         print("Desktop integration is only supported on Linux.", file=sys.stderr)
         return 1
 
-    data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    data_home = _data_home()
     removed = []
 
     desktop = data_home / "applications" / "markdown-editor.desktop"
@@ -795,6 +815,135 @@ def cmd_uninstall_desktop(args: argparse.Namespace) -> int:
             subprocess.run(["update-desktop-database", str(apps_dir)],
                            capture_output=True)
         print("Done.")
+    else:
+        print("Nothing to remove.")
+
+    return 0
+
+
+_COMPLETABLE_COMMANDS = ["mde", "markdown-editor"]
+
+
+def cmd_install_autocomplete(args: argparse.Namespace) -> int:
+    """Register argcomplete shell completion for mde and markdown-editor."""
+    try:
+        import argcomplete
+    except ImportError:
+        print("argcomplete is not installed. Run: pip install argcomplete", file=sys.stderr)
+        return 1
+
+    shell = os.environ.get("SHELL", "")
+    if "zsh" in shell:
+        _install_autocomplete_zsh()
+    elif "fish" in shell:
+        _install_autocomplete_fish()
+    else:
+        _install_autocomplete_bash()
+
+    return 0
+
+
+def _install_autocomplete_bash():
+    """Install bash completion via ~/.bash_completion.d/."""
+    comp_dir = Path.home() / ".bash_completion.d"
+    comp_dir.mkdir(parents=True, exist_ok=True)
+
+    for cmd in _COMPLETABLE_COMMANDS:
+        comp_file = comp_dir / cmd
+        comp_file.write_text(
+            f'eval "$(register-python-argcomplete {cmd})"\n'
+        )
+        print(f"Installed {comp_file}")
+
+    # Ensure ~/.bash_completion.d/ is sourced
+    bashrc = Path.home() / ".bashrc"
+    sourcer = 'for f in ~/.bash_completion.d/*; do [ -f "$f" ] && . "$f"; done'
+    if bashrc.exists() and sourcer not in bashrc.read_text():
+        print(f"\nAdd this to your ~/.bashrc if not already present:")
+        print(f"  {sourcer}")
+    print("Then restart your shell or run: source ~/.bashrc")
+
+
+def _install_autocomplete_zsh():
+    """Install zsh completion."""
+    comp_dir = Path.home() / ".zfunc"
+    comp_dir.mkdir(parents=True, exist_ok=True)
+
+    for cmd in _COMPLETABLE_COMMANDS:
+        comp_file = comp_dir / f"_{cmd}"
+        result = subprocess.run(
+            ["register-python-argcomplete", "--shell", "zsh", cmd],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            comp_file.write_text(result.stdout)
+            print(f"Installed {comp_file}")
+        else:
+            print(f"Failed to generate completion for {cmd}: {result.stderr}", file=sys.stderr)
+
+    zshrc = Path.home() / ".zshrc"
+    lines_needed = ['fpath=(~/.zfunc $fpath)', 'autoload -Uz compinit && compinit']
+    existing = zshrc.read_text() if zshrc.exists() else ""
+    missing = [l for l in lines_needed if l not in existing]
+    if missing:
+        print(f"\nAdd these to your ~/.zshrc if not already present:")
+        for line in missing:
+            print(f"  {line}")
+    print("Then restart your shell or run: exec zsh")
+
+
+def _install_autocomplete_fish():
+    """Install fish completion."""
+    comp_dir = Path.home() / ".config" / "fish" / "completions"
+    comp_dir.mkdir(parents=True, exist_ok=True)
+
+    for cmd in _COMPLETABLE_COMMANDS:
+        result = subprocess.run(
+            ["register-python-argcomplete", "--shell", "fish", cmd],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            comp_file = comp_dir / f"{cmd}.fish"
+            comp_file.write_text(result.stdout)
+            print(f"Installed {comp_file}")
+        else:
+            print(f"Failed to generate completion for {cmd}: {result.stderr}", file=sys.stderr)
+
+    print("Completions will be active in new fish sessions.")
+
+
+def cmd_uninstall_autocomplete(args: argparse.Namespace) -> int:
+    """Remove argcomplete shell completions for mde and markdown-editor."""
+    removed = []
+
+    # bash
+    comp_dir = Path.home() / ".bash_completion.d"
+    for cmd in _COMPLETABLE_COMMANDS:
+        f = comp_dir / cmd
+        if f.exists():
+            f.unlink()
+            removed.append(str(f))
+
+    # zsh
+    zfunc_dir = Path.home() / ".zfunc"
+    for cmd in _COMPLETABLE_COMMANDS:
+        f = zfunc_dir / f"_{cmd}"
+        if f.exists():
+            f.unlink()
+            removed.append(str(f))
+
+    # fish
+    fish_dir = Path.home() / ".config" / "fish" / "completions"
+    for cmd in _COMPLETABLE_COMMANDS:
+        f = fish_dir / f"{cmd}.fish"
+        if f.exists():
+            f.unlink()
+            removed.append(str(f))
+
+    if removed:
+        for path in removed:
+            print(f"Removed {path}")
+        print("Restart your shell for changes to take effect.")
     else:
         print("Nothing to remove.")
 
@@ -889,7 +1038,19 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
 
     parser = create_parser()
-    subcommands = {"export", "graph", "stats", "validate", "install-desktop", "uninstall-desktop"}
+
+    # Enable argcomplete — this is a no-op unless the shell has activated it
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
+
+    subcommands = {
+        "export", "graph", "stats", "validate",
+        "install-desktop", "uninstall-desktop",
+        "install-autocomplete", "uninstall-autocomplete",
+    }
 
     # Determine whether the first positional argument is a subcommand.
     # If not, positional args are file paths for GUI mode and must be
@@ -925,6 +1086,10 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_install_desktop(args)
         elif args.command == "uninstall-desktop":
             return cmd_uninstall_desktop(args)
+        elif args.command == "install-autocomplete":
+            return cmd_install_autocomplete(args)
+        elif args.command == "uninstall-autocomplete":
+            return cmd_uninstall_autocomplete(args)
 
     # GUI mode — separate file paths from flags so argparse
     # doesn't choke on them as invalid subcommands.

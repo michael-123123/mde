@@ -1,12 +1,10 @@
 """Settings management for the Markdown editor."""
 
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QStandardPaths, Signal
 
 
 DEFAULT_SETTINGS = {
@@ -121,15 +119,10 @@ DEFAULT_SHORTCUTS = {
 
 def _default_config_dir() -> Path:
     """Return the platform-appropriate config directory for the editor."""
-    if sys.platform == "win32":
-        # %APPDATA%/markdown-editor
-        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif sys.platform == "darwin":
-        base = Path.home() / "Library" / "Application Support"
-    else:
-        # XDG_CONFIG_HOME or ~/.config
-        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    return base / "markdown-editor"
+    base = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.GenericConfigLocation
+    )
+    return Path(base) / "markdown-editor"
 
 
 class Settings(QObject):
