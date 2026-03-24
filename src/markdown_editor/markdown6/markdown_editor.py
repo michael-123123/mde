@@ -230,6 +230,7 @@ from markdown_editor.markdown6.search_panel import SearchPanel
 from markdown_editor.markdown6.markdown_extensions import (
     BreaklessListExtension,
     CalloutExtension,
+    LogseqExtension,
     WikiLinkExtension,
     MathExtension,
     MermaidExtension,
@@ -825,6 +826,7 @@ class DocumentTab(QWidget):
         self.main_window.md.graphviz_dark_mode = dark_mode
         self.main_window.md.graphviz_base_path = str(self.file_path.parent) if self.file_path else None
         self.main_window.md.mermaid_dark_mode = dark_mode
+        self.main_window.md.logseq_mode = self.settings.get("view.logseq_mode", False)
 
         html_content = self.main_window.md.convert(text)
         pending = self.main_window.md._pending_diagrams
@@ -1007,6 +1009,7 @@ class MarkdownEditor(QMainWindow):
         self.md = markdown.Markdown(
             extensions=[
                 "extra",
+                LogseqExtension(),  # Priority 101 — strip Logseq syntax before everything else
                 BreaklessListExtension(),  # Add blank lines before lists automatically
                 FencedCodeExtension(),
                 CodeHiliteExtension(css_class="highlight", guess_lang=True),
@@ -1341,6 +1344,11 @@ class MarkdownEditor(QMainWindow):
         self.toggle_whitespace_action.setChecked(self.settings.get("editor.show_whitespace", False))
         self.toggle_whitespace_action.triggered.connect(self._toggle_whitespace)
 
+        self.toggle_logseq_action = view_menu.addAction("&Logseq Mode")
+        self.toggle_logseq_action.setCheckable(True)
+        self.toggle_logseq_action.setChecked(self.settings.get("view.logseq_mode", False))
+        self.toggle_logseq_action.triggered.connect(self._toggle_logseq_mode)
+
         view_menu.addSeparator()
 
         self.zoom_in_action = view_menu.addAction("Zoom &In")
@@ -1414,6 +1422,7 @@ class MarkdownEditor(QMainWindow):
             "view.toggle_line_numbers": self.toggle_line_numbers_action,
             "view.toggle_word_wrap": self.toggle_word_wrap_action,
             "view.toggle_whitespace": self.toggle_whitespace_action,
+            "view.toggle_logseq_mode": self.toggle_logseq_action,
             "view.zoom_in": self.zoom_in_action,
             "view.zoom_out": self.zoom_out_action,
             "view.zoom_reset": self.zoom_reset_action,
@@ -1498,6 +1507,12 @@ class MarkdownEditor(QMainWindow):
             self.toggle_word_wrap_action.setChecked(value)
         elif key == "editor.show_whitespace":
             self.toggle_whitespace_action.setChecked(value)
+        elif key == "view.logseq_mode":
+            self.toggle_logseq_action.setChecked(value)
+            # Re-render preview to reflect the change
+            tab = self.current_tab()
+            if tab:
+                tab.render_markdown()
 
     def _update_recent_files_menu(self):
         """Update the recent files menu."""
@@ -2072,6 +2087,10 @@ class MarkdownEditor(QMainWindow):
     def _toggle_whitespace(self):
         value = self.toggle_whitespace_action.isChecked()
         self.settings.set("editor.show_whitespace", value)
+
+    def _toggle_logseq_mode(self):
+        value = self.toggle_logseq_action.isChecked()
+        self.settings.set("view.logseq_mode", value)
 
     def _zoom_in(self):
         tab = self.current_tab()

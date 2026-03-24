@@ -34,6 +34,8 @@ DEFAULT_SETTINGS = {
     "files.detect_external_changes": True,
     # Project settings
     "project.last_path": None,
+    # Logseq mode
+    "view.logseq_mode": False,
     # External tool paths (empty string = use system PATH)
     "tools.pandoc_path": "",
     "tools.dot_path": "",
@@ -92,6 +94,7 @@ DEFAULT_SHORTCUTS = {
     "view.toggle_sidebar": "Ctrl+Shift+B",
     "view.fold_all": "Ctrl+Shift+[",
     "view.unfold_all": "Ctrl+Shift+]",
+    "view.toggle_logseq_mode": "Ctrl+Alt+L",
     # Insert operations
     "insert.snippet": "Ctrl+J",
     "insert.table": "Ctrl+Shift+T",
