@@ -12,6 +12,9 @@ Usage:
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import TextIO
@@ -235,6 +238,18 @@ Examples:
         "--json",
         action="store_true",
         help="Output as JSON",
+    )
+
+    # Desktop integration (Linux only)
+    subparsers.add_parser(
+        "install-desktop",
+        help="Install .desktop file and icons (Linux only)",
+        description="Install freedesktop.org .desktop entry and icons for menu/launcher integration.",
+    )
+    subparsers.add_parser(
+        "uninstall-desktop",
+        help="Remove .desktop file and icons (Linux only)",
+        description="Remove previously installed .desktop entry and icons.",
     )
 
     return parser
@@ -697,6 +712,95 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 1 if issues else 0
 
 
+def _icons_dir() -> Path:
+    """Return the path to the bundled icons directory."""
+    return Path(__file__).parent / "icons"
+
+
+_ICON_SIZES = [48, 64, 128, 256]
+
+
+def cmd_install_desktop(args: argparse.Namespace) -> int:
+    """Install .desktop file and icons into ~/.local/share (Linux only)."""
+    if sys.platform != "linux":
+        print("Desktop integration is only supported on Linux.", file=sys.stderr)
+        return 1
+
+    icons_dir = _icons_dir()
+    data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+
+    # Install .desktop file
+    apps_dir = data_home / "applications"
+    apps_dir.mkdir(parents=True, exist_ok=True)
+    src_desktop = icons_dir / "markdown-editor.desktop"
+    dst_desktop = apps_dir / "markdown-editor.desktop"
+    shutil.copy2(src_desktop, dst_desktop)
+    print(f"Installed {dst_desktop}")
+
+    # Install icons
+    for size in _ICON_SIZES:
+        icon_dir = data_home / "icons" / "hicolor" / f"{size}x{size}" / "apps"
+        icon_dir.mkdir(parents=True, exist_ok=True)
+        src_icon = icons_dir / f"markdown-editor-{size}.png"
+        dst_icon = icon_dir / "markdown-editor.png"
+        shutil.copy2(src_icon, dst_icon)
+        print(f"Installed {dst_icon}")
+
+    # Update icon cache if possible
+    hicolor = data_home / "icons" / "hicolor"
+    if shutil.which("gtk-update-icon-cache"):
+        subprocess.run(["gtk-update-icon-cache", "-f", str(hicolor)],
+                       capture_output=True)
+
+    # Update desktop database if possible
+    if shutil.which("update-desktop-database"):
+        subprocess.run(["update-desktop-database", str(apps_dir)],
+                       capture_output=True)
+
+    print("Done. You may need to log out and back in for changes to take effect.")
+    return 0
+
+
+def cmd_uninstall_desktop(args: argparse.Namespace) -> int:
+    """Remove .desktop file and icons from ~/.local/share."""
+    if sys.platform != "linux":
+        print("Desktop integration is only supported on Linux.", file=sys.stderr)
+        return 1
+
+    data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    removed = []
+
+    desktop = data_home / "applications" / "markdown-editor.desktop"
+    if desktop.exists():
+        desktop.unlink()
+        removed.append(str(desktop))
+
+    for size in _ICON_SIZES:
+        icon = data_home / "icons" / "hicolor" / f"{size}x{size}" / "apps" / "markdown-editor.png"
+        if icon.exists():
+            icon.unlink()
+            removed.append(str(icon))
+
+    if removed:
+        for path in removed:
+            print(f"Removed {path}")
+
+        # Update caches
+        hicolor = data_home / "icons" / "hicolor"
+        if shutil.which("gtk-update-icon-cache"):
+            subprocess.run(["gtk-update-icon-cache", "-f", str(hicolor)],
+                           capture_output=True)
+        apps_dir = data_home / "applications"
+        if shutil.which("update-desktop-database"):
+            subprocess.run(["update-desktop-database", str(apps_dir)],
+                           capture_output=True)
+        print("Done.")
+    else:
+        print("Nothing to remove.")
+
+    return 0
+
+
 def cmd_gui(args: argparse.Namespace) -> int:
     """Launch the GUI editor."""
     from markdown_editor.markdown6.settings import init_settings
@@ -706,7 +810,6 @@ def cmd_gui(args: argparse.Namespace) -> int:
     # --new-session: use ephemeral settings (defaults only, no save)
     # --config: use custom config directory
     if args.reset:
-        import shutil
         from markdown_editor.markdown6.settings import _default_config_dir
         config_dir = args.config or _default_config_dir()
         if config_dir.exists():
@@ -760,7 +863,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
     elif args.new:
         # Ensure at least one new tab
         if editor.tab_widget.count() == 0:
-            editor.new_file()
+            editor.new_tab()
     else:
         # No explicit files — restore previous session if project matches
         last_path = settings.get("project.last_path")
@@ -786,7 +889,7 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
 
     parser = create_parser()
-    subcommands = {"export", "graph", "stats", "validate"}
+    subcommands = {"export", "graph", "stats", "validate", "install-desktop", "uninstall-desktop"}
 
     # Determine whether the first positional argument is a subcommand.
     # If not, positional args are file paths for GUI mode and must be
@@ -818,6 +921,10 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_stats(args)
         elif args.command == "validate":
             return cmd_validate(args)
+        elif args.command == "install-desktop":
+            return cmd_install_desktop(args)
+        elif args.command == "uninstall-desktop":
+            return cmd_uninstall_desktop(args)
 
     # GUI mode — separate file paths from flags so argparse
     # doesn't choke on them as invalid subcommands.
