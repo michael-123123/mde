@@ -24,6 +24,7 @@ DEFAULT_SETTINGS = {
     "editor.auto_save": False,
     "editor.auto_save_interval": 60,  # seconds
     # View settings
+    "view.show_editor": True,
     "view.show_preview": True,
     "view.sync_scrolling": True,
     "view.theme": "light",  # light, dark

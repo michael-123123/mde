@@ -2885,7 +2885,7 @@ class MarkdownEditor(QMainWindow):
         # Editor toggle button
         self.editor_toggle_btn = QToolButton()
         self.editor_toggle_btn.setCheckable(True)
-        self.editor_toggle_btn.setChecked(True)
+        self.editor_toggle_btn.setChecked(self.settings.get("view.show_editor", True))
         self.editor_toggle_btn.setToolTip("Show/Hide Editor")
         self.editor_toggle_btn.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
@@ -2896,7 +2896,7 @@ class MarkdownEditor(QMainWindow):
         # Preview toggle button
         self.preview_toggle_btn = QToolButton()
         self.preview_toggle_btn.setCheckable(True)
-        self.preview_toggle_btn.setChecked(True)
+        self.preview_toggle_btn.setChecked(self.settings.get("view.show_preview", True))
         self.preview_toggle_btn.setToolTip("Show/Hide Preview")
         self.preview_toggle_btn.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogContentsView)
@@ -2943,6 +2943,10 @@ class MarkdownEditor(QMainWindow):
         """Update editor and preview visibility for ALL tabs."""
         editor_visible = self.editor_toggle_btn.isChecked()
         preview_visible = self.preview_toggle_btn.isChecked()
+
+        # Persist state for next startup
+        self.settings.set("view.show_editor", editor_visible)
+        self.settings.set("view.show_preview", preview_visible)
 
         # Apply to all tabs
         for i in range(self.tab_widget.count()):
