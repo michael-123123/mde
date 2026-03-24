@@ -35,6 +35,8 @@ DEFAULT_SETTINGS = {
     "files.detect_external_changes": True,
     # Project settings
     "project.last_path": None,
+    "project.open_files": [],
+    "project.active_tab": 0,
     # Logseq mode
     "view.logseq_mode": False,
     # External tool paths (empty string = use system PATH)

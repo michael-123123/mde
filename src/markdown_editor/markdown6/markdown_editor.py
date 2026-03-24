@@ -2355,7 +2355,18 @@ class MarkdownEditor(QMainWindow):
             if not self._check_tab_unsaved_changes(tab):
                 event.ignore()
                 return
+        self._save_open_files()
         event.accept()
+
+    def _save_open_files(self):
+        """Save the list of open file paths and active tab for session restore."""
+        open_files = []
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if tab.file_path and tab.file_path.exists():
+                open_files.append(str(tab.file_path.resolve()))
+        self.settings.set("project.open_files", open_files)
+        self.settings.set("project.active_tab", self.tab_widget.currentIndex())
 
     def _show_about(self):
         """Show about dialog."""
@@ -3012,6 +3023,40 @@ class MarkdownEditor(QMainWindow):
                 self._update_wiki_links()
                 # Don't auto-show the dock, just load the project data
 
+    def restore_open_files(self):
+        """Restore previously open files from the last session.
+
+        Called externally (from cmd_gui) only when no explicit files were
+        provided on the command line and the project matches last_path.
+        """
+        open_files = self.settings.get("project.open_files", [])
+        if not open_files:
+            return
+
+        opened_any = False
+        for file_str in open_files:
+            path = Path(file_str)
+            if path.exists():
+                self.open_file(path)
+                opened_any = True
+
+        if opened_any:
+            # Remove the initial empty tab if it's still untouched
+            for i in range(self.tab_widget.count()):
+                tab = self.tab_widget.widget(i)
+                if (
+                    tab.file_path is None
+                    and not tab.unsaved_changes
+                    and not tab.editor.toPlainText()
+                ):
+                    self.tab_widget.removeTab(i)
+                    break
+
+            # Restore active tab
+            active = self.settings.get("project.active_tab", 0)
+            if 0 <= active < self.tab_widget.count():
+                self.tab_widget.setCurrentIndex(active)
+
     def _update_wiki_links(self):
         """Update available wiki links from project files."""
         if not self.project_panel.project_path:
@@ -3167,8 +3212,11 @@ def main():
     editor = MarkdownEditor()
     editor.show()
 
-    for arg in sys.argv[1:]:
-        editor.open_file(arg)
+    if sys.argv[1:]:
+        for arg in sys.argv[1:]:
+            editor.open_file(arg)
+    else:
+        editor.restore_open_files()
 
     # Grab focus and set cursor in editor
     editor.activateWindow()

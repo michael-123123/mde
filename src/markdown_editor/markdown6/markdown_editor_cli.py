@@ -757,10 +757,16 @@ def cmd_gui(args: argparse.Namespace) -> int:
                         tab.editor.go_to_line(args.line)
             else:
                 print(f"Warning: File not found: {f}", file=sys.stderr)
-    elif args.new or not args.files:
+    elif args.new:
         # Ensure at least one new tab
         if editor.tab_widget.count() == 0:
             editor.new_file()
+    else:
+        # No explicit files — restore previous session if project matches
+        last_path = settings.get("project.last_path")
+        project_path = str(args.project.resolve()) if args.project and args.project.is_dir() else None
+        if last_path and (project_path is None or project_path == last_path):
+            editor.restore_open_files()
 
     # Read-only mode
     if args.read_only:
