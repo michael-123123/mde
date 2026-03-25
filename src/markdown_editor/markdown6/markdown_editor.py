@@ -2367,6 +2367,8 @@ class MarkdownEditor(QMainWindow):
                 open_files.append(str(tab.file_path.resolve()))
         self.settings.set("project.open_files", open_files)
         self.settings.set("project.active_tab", self.tab_widget.currentIndex())
+        self.settings.set("sidebar.collapsed", self.sidebar.isCollapsed())
+        self.settings.set("sidebar.active_panel", self.sidebar.activeIndex())
 
     def _show_about(self):
         """Show about dialog."""
@@ -3056,6 +3058,13 @@ class MarkdownEditor(QMainWindow):
             active = self.settings.get("project.active_tab", 0)
             if 0 <= active < self.tab_widget.count():
                 self.tab_widget.setCurrentIndex(active)
+
+        # Restore sidebar state
+        active_panel = self.settings.get("sidebar.active_panel", 0)
+        if 0 <= active_panel < self.sidebar.stack.count():
+            self.sidebar.setActivePanel(active_panel)
+        if self.settings.get("sidebar.collapsed", False):
+            self.sidebar.setCollapsed(True, animated=False)
 
     def _update_wiki_links(self):
         """Update available wiki links from project files."""

@@ -37,6 +37,9 @@ DEFAULT_SETTINGS = {
     "project.active_tab": 0,
     # Logseq mode
     "view.logseq_mode": False,
+    # Sidebar state
+    "sidebar.collapsed": False,
+    "sidebar.active_panel": 0,
     # External tool paths (empty string = use system PATH)
     "tools.pandoc_path": "",
     "tools.dot_path": "",
