@@ -171,6 +171,77 @@ class ProjectPanel(QWidget):
         self.settings.set("project.last_path", str(path))
         # Clear filter
         self.filter_input.clear()
+        # Restore expanded directories from last session
+        self._pending_expand: set[str] = set()
+        self.restore_tree_state()
+
+    def save_tree_state(self):
+        """Save the list of expanded directory paths."""
+        if not self.project_path:
+            return
+        expanded = []
+        self._collect_expanded(self.tree_view.rootIndex(), expanded)
+        self.settings.set("project.expanded_dirs", expanded)
+
+    def _collect_expanded(self, parent_index, result: list[str]):
+        """Recursively collect expanded directory paths."""
+        for row in range(self.file_model.rowCount(parent_index)):
+            child = self.file_model.index(row, 0, parent_index)
+            if self.tree_view.isExpanded(child):
+                result.append(self.file_model.filePath(child))
+                self._collect_expanded(child, result)
+
+    def restore_tree_state(self):
+        """Restore expanded directories from settings.
+
+        QFileSystemModel loads directory contents asynchronously.  We
+        listen for ``directoryLoaded`` and, each time a directory becomes
+        available, expand any of its children that were saved.  Expanding
+        a directory triggers its children to load, which fires more
+        ``directoryLoaded`` signals, cascading down the tree.
+        """
+        if not self.project_path:
+            return
+        if not self.settings.get("project.restore_tree_state", True):
+            return
+        dirs = self.settings.get("project.expanded_dirs", [])
+        if not dirs:
+            return
+        # Only restore dirs that are under the current project root and exist
+        project_str = str(self.project_path.resolve())
+        self._pending_expand = {
+            d for d in dirs
+            if d.startswith(project_str) and Path(d).is_dir()
+        }
+        if not self._pending_expand:
+            return
+        self.file_model.directoryLoaded.connect(self._on_directory_loaded)
+
+    def _on_directory_loaded(self, loaded_path: str):
+        """When a directory is loaded, expand any pending children of it."""
+        if not self._pending_expand:
+            self._disconnect_directory_loaded()
+            return
+        # Find pending dirs that are direct children of loaded_path,
+        # or that *are* loaded_path itself.
+        newly_expanded = []
+        for dir_path in list(self._pending_expand):
+            # Expand if this dir is inside (or equal to) the just-loaded dir
+            if dir_path == loaded_path or str(Path(dir_path).parent) == loaded_path:
+                index = self.file_model.index(dir_path)
+                if index.isValid():
+                    self.tree_view.expand(index)
+                    newly_expanded.append(dir_path)
+        self._pending_expand -= set(newly_expanded)
+        if not self._pending_expand:
+            self._disconnect_directory_loaded()
+
+    def _disconnect_directory_loaded(self):
+        """Safely disconnect the directoryLoaded signal."""
+        try:
+            self.file_model.directoryLoaded.disconnect(self._on_directory_loaded)
+        except RuntimeError:
+            pass
 
     def _on_filter_changed(self, text: str):
         """Handle filter text change."""

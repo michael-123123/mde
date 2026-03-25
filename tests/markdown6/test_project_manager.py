@@ -445,6 +445,157 @@ class TestExportErrors:
                     mock_critical.assert_called_once()
 
 
+class TestTreeStatePersistence:
+    """Tests for saving and restoring expanded directory state."""
+
+    @pytest.fixture
+    def deep_project(self, tmp_path):
+        """Create a project with nested directories."""
+        root = tmp_path / "proj"
+        root.mkdir()
+        (root / "top.md").write_text("# Top")
+        d1 = root / "dir_a"
+        d1.mkdir()
+        (d1 / "a.md").write_text("# A")
+        d2 = d1 / "dir_b"
+        d2.mkdir()
+        (d2 / "b.md").write_text("# B")
+        d3 = root / "dir_c"
+        d3.mkdir()
+        (d3 / "c.md").write_text("# C")
+        return root
+
+    def _expand_and_wait(self, qtbot, panel, dir_path):
+        """Expand a directory in the tree and wait for it to load."""
+        dir_str = str(dir_path)
+        loaded = set()
+        panel.file_model.directoryLoaded.connect(loaded.add)
+        try:
+            idx = panel.file_model.index(dir_str)
+            panel.tree_view.expand(idx)
+            qtbot.waitUntil(lambda: dir_str in loaded, timeout=5000)
+        finally:
+            panel.file_model.directoryLoaded.disconnect(loaded.add)
+
+    def _wait_for_expanded(self, qtbot, panel, dir_path):
+        """Wait until a directory is expanded in the tree view."""
+        dir_str = str(dir_path)
+        qtbot.waitUntil(
+            lambda: panel.tree_view.isExpanded(panel.file_model.index(dir_str)),
+            timeout=5000,
+        )
+
+    def test_save_tree_state_empty(self, panel):
+        """save_tree_state with no project is a no-op."""
+        panel.save_tree_state()
+        from markdown_editor.markdown6.settings import get_settings
+        assert get_settings().get("project.expanded_dirs", []) == []
+
+    def test_save_and_restore_expanded_dirs(self, qtbot, deep_project):
+        """Expand dirs, save, create new panel, verify dirs restored."""
+        from markdown_editor.markdown6.settings import get_settings
+        settings = get_settings()
+
+        dir_a = deep_project / "dir_a"
+        dir_b = dir_a / "dir_b"
+        dir_c = deep_project / "dir_c"
+
+        # --- Phase 1: expand dirs and save ---
+        panel1 = ProjectPanel()
+        qtbot.addWidget(panel1)
+        panel1.show()
+
+        # Connect before set_project_path so we catch root directoryLoaded
+        root_loaded = set()
+        panel1.file_model.directoryLoaded.connect(root_loaded.add)
+        panel1.set_project_path(deep_project)
+        qtbot.waitUntil(lambda: str(deep_project) in root_loaded, timeout=5000)
+        panel1.file_model.directoryLoaded.disconnect(root_loaded.add)
+
+        # Expand directories and wait for each to load
+        self._expand_and_wait(qtbot, panel1, dir_a)
+        self._expand_and_wait(qtbot, panel1, dir_c)
+        self._expand_and_wait(qtbot, panel1, dir_b)
+
+        # Verify they are expanded
+        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_a)))
+        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_c)))
+        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_b)))
+
+        # Save state
+        panel1.save_tree_state()
+        saved = settings.get("project.expanded_dirs", [])
+        assert str(dir_a) in saved
+        assert str(dir_c) in saved
+        assert str(dir_b) in saved
+
+        # --- Phase 2: new panel, same project — dirs should restore ---
+        panel2 = ProjectPanel()
+        qtbot.addWidget(panel2)
+        panel2.show()
+        panel2.set_project_path(deep_project)
+
+        # Wait for the async restore to expand all saved dirs
+        self._wait_for_expanded(qtbot, panel2, dir_a)
+        self._wait_for_expanded(qtbot, panel2, dir_c)
+        self._wait_for_expanded(qtbot, panel2, dir_b)
+
+    def test_restore_disabled_by_setting(self, qtbot, deep_project):
+        """When restore_tree_state is False, dirs are not expanded."""
+        from PySide6.QtWidgets import QApplication
+        from markdown_editor.markdown6.settings import get_settings
+        settings = get_settings()
+
+        dir_a = deep_project / "dir_a"
+        settings.set("project.expanded_dirs", [str(dir_a)])
+        settings.set("project.restore_tree_state", False)
+
+        panel = ProjectPanel()
+        qtbot.addWidget(panel)
+        panel.show()
+
+        root_loaded = set()
+        panel.file_model.directoryLoaded.connect(root_loaded.add)
+        panel.set_project_path(deep_project)
+        qtbot.waitUntil(lambda: str(deep_project) in root_loaded, timeout=5000)
+        panel.file_model.directoryLoaded.disconnect(root_loaded.add)
+
+        # Process any remaining events
+        QApplication.processEvents()
+
+        # Should NOT be expanded
+        assert not panel.tree_view.isExpanded(panel.file_model.index(str(dir_a)))
+
+    def test_restore_ignores_dirs_from_different_project(self, qtbot, tmp_path):
+        """Saved dirs from a different project root are ignored."""
+        from markdown_editor.markdown6.settings import get_settings
+        settings = get_settings()
+
+        # project A
+        proj_a = tmp_path / "projA"
+        proj_a.mkdir()
+        d = proj_a / "sub"
+        d.mkdir()
+        (d / "x.md").write_text("x")
+
+        # project B
+        proj_b = tmp_path / "projB"
+        proj_b.mkdir()
+        (proj_b / "sub").mkdir()
+        (proj_b / "sub" / "y.md").write_text("y")
+
+        # Save dirs from project A
+        settings.set("project.expanded_dirs", [str(d)])
+
+        # Open project B — should not try to expand proj_a/sub
+        panel = ProjectPanel()
+        qtbot.addWidget(panel)
+        panel.set_project_path(proj_b)
+
+        # The pending set should be empty (filtered out)
+        assert not panel._pending_expand
+
+
 class TestPandocOption:
     """Tests for pandoc checkbox."""
 

@@ -35,6 +35,8 @@ DEFAULT_SETTINGS = {
     "project.last_path": None,
     "project.open_files": [],
     "project.active_tab": 0,
+    "project.restore_tree_state": True,
+    "project.expanded_dirs": [],
     # Logseq mode
     "view.logseq_mode": False,
     # Sidebar state

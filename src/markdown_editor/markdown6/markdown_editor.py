@@ -2369,6 +2369,7 @@ class MarkdownEditor(QMainWindow):
         self.settings.set("project.active_tab", self.tab_widget.currentIndex())
         self.settings.set("sidebar.collapsed", self.sidebar.isCollapsed())
         self.settings.set("sidebar.active_panel", self.sidebar.activeIndex())
+        self.project_panel.save_tree_state()
 
     def _show_about(self):
         """Show about dialog."""
