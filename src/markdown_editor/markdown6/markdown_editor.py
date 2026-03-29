@@ -2866,6 +2866,24 @@ class MarkdownEditor(QMainWindow):
             scroll_pos = max(0, target_pos - page_step // 2)
             preview_scrollbar.setValue(min(scroll_pos, max_scroll))
 
+    def _restore_preview_scroll_after_resize(self, tab: DocumentTab):
+        """Restore preview scroll position after a pane visibility toggle.
+
+        Reads the scroll ratio saved in JS global window._preResizeScrollRatio
+        (set before the resize) and scrolls to the same relative position.
+        """
+        if not tab._use_webengine:
+            return
+        tab.preview.page().runJavaScript(
+            "if (typeof window._preResizeScrollRatio === 'number') {"
+            "  var maxScroll = document.body.scrollHeight - window.innerHeight;"
+            "  if (maxScroll > 0) {"
+            "    window.scrollTo(0, window._preResizeScrollRatio * maxScroll);"
+            "  }"
+            "  delete window._preResizeScrollRatio;"
+            "}"
+        )
+
     def _toggle_references_panel(self):
         """Toggle the references panel visibility and switch to References tab."""
         if not self.sidebar.isCollapsed() and self.sidebar.activeIndex() == 2:
@@ -3111,6 +3129,17 @@ class MarkdownEditor(QMainWindow):
         self.settings.set("view.show_editor", editor_visible)
         self.settings.set("view.show_preview", preview_visible)
 
+        # Save preview scroll ratio in JS before resizing (reflow changes positions).
+        # This JS executes in the renderer before the resize event arrives.
+        current_tab = self.tab_widget.currentWidget()
+        if current_tab and current_tab._use_webengine:
+            current_tab.preview.page().runJavaScript(
+                "window._preResizeScrollRatio ="
+                " document.body.scrollHeight > window.innerHeight"
+                " ? window.scrollY / (document.body.scrollHeight - window.innerHeight)"
+                " : 0;"
+            )
+
         # Apply to all tabs
         for i in range(self.tab_widget.count()):
             tab = self.tab_widget.widget(i)
@@ -3122,6 +3151,10 @@ class MarkdownEditor(QMainWindow):
                     editor_container.setVisible(editor_visible)
                 if preview_widget:
                     preview_widget.setVisible(preview_visible)
+
+        # Restore preview scroll position after reflow
+        if current_tab and current_tab._use_webengine:
+            QTimer.singleShot(150, lambda: self._restore_preview_scroll_after_resize(current_tab))
 
         # Re-center any active search match in newly-visible panes
         tab = self.tab_widget.currentWidget()
