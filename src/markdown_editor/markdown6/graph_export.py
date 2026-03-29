@@ -19,8 +19,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QRadioButton,
@@ -38,6 +36,7 @@ except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
 
+from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
 from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import graphviz_service
@@ -216,10 +215,9 @@ class GraphExportDialog(QDialog):
         file_group = QGroupBox("Files to Include")
         file_group_layout = QVBoxLayout(file_group)
 
-        self.file_list = QListWidget()
-        self.file_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        self.file_list.itemChanged.connect(self._on_file_selection_changed)
-        file_group_layout.addWidget(self.file_list)
+        self.file_tree = FileTreeWidget()
+        self.file_tree.selection_changed.connect(self._on_file_selection_changed)
+        file_group_layout.addWidget(self.file_tree)
 
         # Select all/none buttons
         btn_layout = QHBoxLayout()
@@ -444,7 +442,7 @@ class GraphExportDialog(QDialog):
         theme = get_theme(theme_name == "dark")
         self.setStyleSheet(
             StyleSheets.dialog(theme) +
-            StyleSheets.list_widget(theme) +
+            StyleSheets.tree_widget(theme) +
             StyleSheets.button(theme) +
             StyleSheets.combo_box(theme) +
             StyleSheets.line_edit(theme) +
@@ -455,36 +453,19 @@ class GraphExportDialog(QDialog):
 
     def _load_files(self):
         """Load all markdown files from project."""
-        self.file_list.clear()
-
         if not self.project_path:
             return
 
         md_files = get_project_markdown_files(self.project_path)
-
-        for file_path in md_files:
-            rel_path = file_path.relative_to(self.project_path)
-            item = QListWidgetItem(str(rel_path))
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Checked)
-            item.setData(Qt.ItemDataRole.UserRole, str(file_path))
-            self.file_list.addItem(item)
+        self.file_tree.load_files(md_files, self.project_path)
 
     def _select_all(self):
         """Select all files."""
-        self.file_list.blockSignals(True)
-        for i in range(self.file_list.count()):
-            self.file_list.item(i).setCheckState(Qt.CheckState.Checked)
-        self.file_list.blockSignals(False)
-        self._schedule_preview_update()
+        self.file_tree.select_all()
 
     def _select_none(self):
         """Deselect all files."""
-        self.file_list.blockSignals(True)
-        for i in range(self.file_list.count()):
-            self.file_list.item(i).setCheckState(Qt.CheckState.Unchecked)
-        self.file_list.blockSignals(False)
-        self._schedule_preview_update()
+        self.file_tree.select_none()
 
     def _toggle_left_panel(self):
         """Toggle the left (Files) panel."""
@@ -542,7 +523,7 @@ class GraphExportDialog(QDialog):
             self.custom_label_input.hide()
         self._schedule_preview_update()
 
-    def _on_file_selection_changed(self, item):
+    def _on_file_selection_changed(self):
         """Handle file checkbox state change."""
         self._schedule_preview_update()
 
@@ -727,12 +708,7 @@ svg {{
 
     def _get_selected_files(self) -> list[Path]:
         """Get list of selected files."""
-        files = []
-        for i in range(self.file_list.count()):
-            item = self.file_list.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                files.append(Path(item.data(Qt.ItemDataRole.UserRole)))
-        return files
+        return self.file_tree.get_selected_files()
 
     def _export(self):
         """Export the document graph."""

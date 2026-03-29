@@ -287,32 +287,26 @@ class TestProjectExportDialog:
     def test_files_loaded(self, export_dialog, project_dir):
         """Test that project files are loaded."""
         # Should have loaded the markdown files
-        assert export_dialog.file_list.count() == 3
+        assert len(export_dialog.file_tree.get_selected_files()) == 3
 
     def test_files_checked_by_default(self, export_dialog):
         """Test that files are checked by default."""
-        for i in range(export_dialog.file_list.count()):
-            item = export_dialog.file_list.item(i)
-            assert item.checkState() == Qt.CheckState.Checked
+        selected = export_dialog.file_tree.get_selected_files()
+        assert len(selected) == 3
 
     def test_select_all(self, export_dialog):
         """Test select all button."""
         # First uncheck all
         export_dialog._select_none()
+        assert len(export_dialog.file_tree.get_selected_files()) == 0
         # Then select all
         export_dialog._select_all()
-
-        for i in range(export_dialog.file_list.count()):
-            item = export_dialog.file_list.item(i)
-            assert item.checkState() == Qt.CheckState.Checked
+        assert len(export_dialog.file_tree.get_selected_files()) == 3
 
     def test_select_none(self, export_dialog):
         """Test select none button."""
         export_dialog._select_none()
-
-        for i in range(export_dialog.file_list.count()):
-            item = export_dialog.file_list.item(i)
-            assert item.checkState() == Qt.CheckState.Unchecked
+        assert len(export_dialog.file_tree.get_selected_files()) == 0
 
     def test_format_options(self, export_dialog):
         """Test format combo box options."""

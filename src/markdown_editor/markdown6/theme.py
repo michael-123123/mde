@@ -242,9 +242,6 @@ class StyleSheets:
             QTreeWidget::item:hover, QTreeView::item:hover {{
                 background-color: {theme.bg_tertiary};
             }}
-            QTreeWidget::branch, QTreeView::branch {{
-                background-color: {theme.bg_secondary};
-            }}
         """
 
     @staticmethod

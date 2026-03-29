@@ -606,7 +606,7 @@ class TestDarkModeTheming:
             stylesheet = dialog.styleSheet()
 
             # Should have styling for all key widgets
-            assert "QListWidget" in stylesheet
+            assert "QTreeWidget" in stylesheet
             assert "QComboBox" in stylesheet
             assert "QCheckBox" in stylesheet
             assert "QRadioButton" in stylesheet

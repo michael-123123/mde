@@ -23,8 +23,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QDialog,
     QDialogButtonBox,
-    QListWidget,
-    QListWidgetItem,
     QCheckBox,
     QGroupBox,
     QLineEdit,
@@ -32,6 +30,7 @@ from PySide6.QtWidgets import (
     QProgressDialog,
 )
 
+from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
 from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import export_service
@@ -414,14 +413,12 @@ class ProjectExportDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        # File list with checkboxes
-        file_group = QGroupBox("Files to Include (drag to reorder)")
+        # File tree with checkboxes
+        file_group = QGroupBox("Files to Include")
         file_layout = QVBoxLayout(file_group)
 
-        self.file_list = QListWidget()
-        self.file_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
-        self.file_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
-        file_layout.addWidget(self.file_list)
+        self.file_tree = FileTreeWidget()
+        file_layout.addWidget(self.file_tree)
 
         # Select all/none buttons
         btn_layout = QHBoxLayout()
@@ -483,14 +480,14 @@ class ProjectExportDialog(QDialog):
 
         self.setStyleSheet(
             StyleSheets.dialog(theme) +
-            StyleSheets.list_widget(theme) +
+            StyleSheets.tree_widget(theme) +
             StyleSheets.button(theme) +
             StyleSheets.combo_box(theme) +
             StyleSheets.check_box(theme)
         )
 
     def _load_files(self):
-        """Load project files into the list.
+        """Load project files into the tree.
 
         Uses the parent panel's get_project_files() when available to
         respect lazy scanning limits.
@@ -500,32 +497,20 @@ class ProjectExportDialog(QDialog):
             paths = parent_panel.get_project_files()
         else:
             paths = get_project_markdown_files(self.project_path)
-        for path in paths:
-                rel_path = path.relative_to(self.project_path)
-                item = QListWidgetItem(str(rel_path))
-                item.setData(Qt.ItemDataRole.UserRole, str(path))
-                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                item.setCheckState(Qt.CheckState.Checked)
-                self.file_list.addItem(item)
+        self.file_tree.load_files(paths, self.project_path)
 
     def _select_all(self):
         """Select all files."""
-        for i in range(self.file_list.count()):
-            self.file_list.item(i).setCheckState(Qt.CheckState.Checked)
+        self.file_tree.select_all()
 
     def _select_none(self):
         """Deselect all files."""
-        for i in range(self.file_list.count()):
-            self.file_list.item(i).setCheckState(Qt.CheckState.Unchecked)
+        self.file_tree.select_none()
 
     def _export(self):
         """Export the project."""
         # Get selected files in order
-        files = []
-        for i in range(self.file_list.count()):
-            item = self.file_list.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                files.append(Path(item.data(Qt.ItemDataRole.UserRole)))
+        files = self.file_tree.get_selected_files()
 
         if not files:
             QMessageBox.warning(self, "No Files", "Please select at least one file.")
