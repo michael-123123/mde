@@ -240,16 +240,17 @@ Examples:
         help="Output as JSON",
     )
 
-    # Desktop integration (Linux only)
+    # Desktop integration
     subparsers.add_parser(
         "install-desktop",
-        help="Install .desktop file and icons (Linux only)",
-        description="Install freedesktop.org .desktop entry and icons for menu/launcher integration.",
+        help="Install desktop shortcuts and icons",
+        description="Install desktop integration (Start Menu shortcut on Windows, "
+        ".app bundle on macOS, .desktop entry on Linux).",
     )
     subparsers.add_parser(
         "uninstall-desktop",
-        help="Remove .desktop file and icons (Linux only)",
-        description="Remove previously installed .desktop entry and icons.",
+        help="Remove desktop shortcuts and icons",
+        description="Remove previously installed desktop integration.",
     )
 
     # Shell completion
@@ -739,11 +740,35 @@ def _data_home() -> Path:
 
 
 def cmd_install_desktop(args: argparse.Namespace) -> int:
-    """Install .desktop file and icons (Linux only)."""
-    if sys.platform != "linux":
-        print("Desktop integration is only supported on Linux.", file=sys.stderr)
+    """Install desktop integration for the current platform."""
+    if sys.platform == "linux":
+        return _install_desktop_linux()
+    elif sys.platform == "win32":
+        return _install_desktop_windows()
+    elif sys.platform == "darwin":
+        return _install_desktop_macos()
+    else:
+        print(f"Unsupported platform: {sys.platform}", file=sys.stderr)
         return 1
 
+
+def cmd_uninstall_desktop(args: argparse.Namespace) -> int:
+    """Remove desktop integration for the current platform."""
+    if sys.platform == "linux":
+        return _uninstall_desktop_linux()
+    elif sys.platform == "win32":
+        return _uninstall_desktop_windows()
+    elif sys.platform == "darwin":
+        return _uninstall_desktop_macos()
+    else:
+        print(f"Unsupported platform: {sys.platform}", file=sys.stderr)
+        return 1
+
+
+# -- Linux desktop integration ------------------------------------------------
+
+def _install_desktop_linux() -> int:
+    """Install freedesktop.org .desktop entry and icons."""
     icons_dir = _icons_dir()
     data_home = _data_home()
 
@@ -779,12 +804,8 @@ def cmd_install_desktop(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_uninstall_desktop(args: argparse.Namespace) -> int:
+def _uninstall_desktop_linux() -> int:
     """Remove .desktop file and icons."""
-    if sys.platform != "linux":
-        print("Desktop integration is only supported on Linux.", file=sys.stderr)
-        return 1
-
     data_home = _data_home()
     removed = []
 
@@ -812,6 +833,190 @@ def cmd_uninstall_desktop(args: argparse.Namespace) -> int:
         if shutil.which("update-desktop-database"):
             subprocess.run(["update-desktop-database", str(apps_dir)],
                            capture_output=True)
+        print("Done.")
+    else:
+        print("Nothing to remove.")
+
+    return 0
+
+
+# -- Windows desktop integration ----------------------------------------------
+
+def _windows_start_menu_dir() -> Path:
+    """Return the user's Start Menu Programs directory."""
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+    return Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+
+
+def _mde_executable() -> str:
+    """Return the path to the mde entry-point script/exe."""
+    # pip installs entry points into Scripts/ on Windows, bin/ on Unix
+    scripts_dir = Path(sys.executable).parent
+    if sys.platform == "win32":
+        exe = scripts_dir / "Scripts" / "mde.exe"
+        if exe.exists():
+            return str(exe)
+        exe = scripts_dir / "mde.exe"
+        if exe.exists():
+            return str(exe)
+    return str(shutil.which("mde") or "mde")
+
+
+def _create_windows_shortcut(link_path: Path, target: str, icon_path: str,
+                             description: str) -> None:
+    """Create a Windows .lnk shortcut using PowerShell."""
+    # PowerShell COM approach — no extra dependencies
+    ps_script = (
+        f'$ws = New-Object -ComObject WScript.Shell; '
+        f'$s = $ws.CreateShortcut("{link_path}"); '
+        f'$s.TargetPath = "{target}"; '
+        f'$s.IconLocation = "{icon_path}"; '
+        f'$s.Description = "{description}"; '
+        f'$s.Save()'
+    )
+    subprocess.run(
+        ["powershell", "-NoProfile", "-Command", ps_script],
+        capture_output=True, check=True,
+    )
+
+
+def _install_desktop_windows() -> int:
+    """Install Start Menu shortcut on Windows."""
+    icons_dir = _icons_dir()
+    ico_path = icons_dir / "markdown-mark-solid-win10.ico"
+    mde_exe = _mde_executable()
+
+    # Create Start Menu shortcut
+    start_menu = _windows_start_menu_dir()
+    start_menu.mkdir(parents=True, exist_ok=True)
+    lnk_path = start_menu / "Markdown Editor.lnk"
+    _create_windows_shortcut(lnk_path, mde_exe, str(ico_path),
+                             "Markdown Editor with live preview")
+    print(f"Installed {lnk_path}")
+
+    print("Done.")
+    return 0
+
+
+def _uninstall_desktop_windows() -> int:
+    """Remove Start Menu shortcut on Windows."""
+    removed = []
+
+    lnk = _windows_start_menu_dir() / "Markdown Editor.lnk"
+    if lnk.exists():
+        lnk.unlink()
+        removed.append(str(lnk))
+
+    if removed:
+        for path in removed:
+            print(f"Removed {path}")
+        print("Done.")
+    else:
+        print("Nothing to remove.")
+
+    return 0
+
+
+# -- macOS desktop integration ------------------------------------------------
+
+_MACOS_APP_DIR = Path.home() / "Applications"
+_MACOS_APP_NAME = "Markdown Editor.app"
+
+_MACOS_INFO_PLIST = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Markdown Editor</string>
+    <key>CFBundleDisplayName</key>
+    <string>Markdown Editor</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.markdown-editor.mde</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>mde-launcher</string>
+    <key>CFBundleIconFile</key>
+    <string>app.icns</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>md</string>
+                <string>markdown</string>
+                <string>mkd</string>
+                <string>mdown</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>Markdown Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+        </dict>
+    </array>
+</dict>
+</plist>
+"""
+
+
+def _install_desktop_macos() -> int:
+    """Install .app bundle in ~/Applications."""
+    app_dir = _MACOS_APP_DIR / _MACOS_APP_NAME
+    contents = app_dir / "Contents"
+    macos_dir = contents / "MacOS"
+    resources = contents / "Resources"
+
+    # Create directory structure
+    macos_dir.mkdir(parents=True, exist_ok=True)
+    resources.mkdir(parents=True, exist_ok=True)
+
+    # Write Info.plist
+    (contents / "Info.plist").write_text(_MACOS_INFO_PLIST)
+    print(f"Installed {contents / 'Info.plist'}")
+
+    # Write launcher script that finds the pip-installed mde
+    mde_path = shutil.which("mde") or "mde"
+    launcher = macos_dir / "mde-launcher"
+    launcher.write_text(
+        f'#!/bin/bash\nexec "{mde_path}" "$@"\n'
+    )
+    launcher.chmod(0o755)
+    print(f"Installed {launcher}")
+
+    # Convert PNG icon to icns using sips (built into macOS)
+    icons_dir = _icons_dir()
+    src_icon = icons_dir / "markdown-editor-256.png"
+    dst_icon = resources / "app.icns"
+    result = subprocess.run(
+        ["sips", "-s", "format", "icns", str(src_icon),
+         "--out", str(dst_icon)],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        print(f"Installed {dst_icon}")
+    else:
+        # Fallback: copy PNG as-is (icon may not display perfectly)
+        shutil.copy2(src_icon, resources / "app.png")
+        print(f"Warning: sips conversion failed, copied PNG icon instead")
+
+    print(f"Done. '{_MACOS_APP_NAME}' is now in ~/Applications.")
+    print("You can drag it to the Dock or find it in Launchpad.")
+    return 0
+
+
+def _uninstall_desktop_macos() -> int:
+    """Remove .app bundle from ~/Applications."""
+    app_dir = _MACOS_APP_DIR / _MACOS_APP_NAME
+
+    if app_dir.exists():
+        shutil.rmtree(app_dir)
+        print(f"Removed {app_dir}")
         print("Done.")
     else:
         print("Nothing to remove.")

@@ -12,8 +12,21 @@ from markdown_editor.markdown6.markdown_editor_cli import (
     cmd_stats,
     cmd_validate,
     cmd_graph,
+    cmd_install_desktop,
+    cmd_uninstall_desktop,
     read_stdin,
     get_project_files,
+    _install_desktop_linux,
+    _uninstall_desktop_linux,
+    _install_desktop_windows,
+    _uninstall_desktop_windows,
+    _install_desktop_macos,
+    _uninstall_desktop_macos,
+    _create_windows_shortcut,
+    _icons_dir,
+    _MACOS_APP_DIR,
+    _MACOS_APP_NAME,
+    _MACOS_INFO_PLIST,
 )
 
 
@@ -528,6 +541,261 @@ class TestCmdGraph:
         assert result == 1
         captured = capsys.readouterr()
         assert "Error" in captured.err
+
+
+class TestInstallDesktopDispatch:
+    """Tests for platform dispatch in install/uninstall-desktop."""
+
+    def test_install_dispatches_linux(self):
+        """Test install-desktop dispatches to Linux on linux."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.markdown_editor_cli._install_desktop_linux", return_value=0) as mock_linux:
+            mock_sys.platform = "linux"
+            result = cmd_install_desktop(args)
+            assert result == 0
+            mock_linux.assert_called_once()
+
+    def test_install_dispatches_win32(self):
+        """Test install-desktop dispatches to Windows on win32."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.markdown_editor_cli._install_desktop_windows", return_value=0) as mock_win:
+            mock_sys.platform = "win32"
+            result = cmd_install_desktop(args)
+            assert result == 0
+            mock_win.assert_called_once()
+
+    def test_install_dispatches_darwin(self):
+        """Test install-desktop dispatches to macOS on darwin."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.markdown_editor_cli._install_desktop_macos", return_value=0) as mock_mac:
+            mock_sys.platform = "darwin"
+            result = cmd_install_desktop(args)
+            assert result == 0
+            mock_mac.assert_called_once()
+
+    def test_install_unsupported_platform(self, capsys):
+        """Test install-desktop fails on unsupported platform."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys:
+            mock_sys.platform = "freebsd"
+            mock_sys.stderr = __import__("sys").stderr
+            result = cmd_install_desktop(args)
+            assert result == 1
+
+    def test_uninstall_dispatches_linux(self):
+        """Test uninstall-desktop dispatches to Linux."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.markdown_editor_cli._uninstall_desktop_linux", return_value=0) as mock_linux:
+            mock_sys.platform = "linux"
+            result = cmd_uninstall_desktop(args)
+            assert result == 0
+            mock_linux.assert_called_once()
+
+    def test_uninstall_dispatches_win32(self):
+        """Test uninstall-desktop dispatches to Windows."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.markdown_editor_cli._uninstall_desktop_windows", return_value=0) as mock_win:
+            mock_sys.platform = "win32"
+            result = cmd_uninstall_desktop(args)
+            assert result == 0
+            mock_win.assert_called_once()
+
+    def test_uninstall_dispatches_darwin(self):
+        """Test uninstall-desktop dispatches to macOS."""
+        args = MagicMock()
+        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.markdown_editor_cli._uninstall_desktop_macos", return_value=0) as mock_mac:
+            mock_sys.platform = "darwin"
+            result = cmd_uninstall_desktop(args)
+            assert result == 0
+            mock_mac.assert_called_once()
+
+
+class TestInstallDesktopLinux:
+    """Tests for Linux desktop integration."""
+
+    def test_install_creates_desktop_file(self, tmp_path, capsys):
+        """Test that install creates .desktop file and icons."""
+        data_home = tmp_path / "data"
+        icons_dir = _icons_dir()
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):
+            result = _install_desktop_linux()
+
+        assert result == 0
+        assert (data_home / "applications" / "markdown-editor.desktop").exists()
+        for size in [48, 64, 128, 256]:
+            assert (data_home / "icons" / "hicolor" / f"{size}x{size}" / "apps" / "markdown-editor.png").exists()
+
+    def test_uninstall_removes_files(self, tmp_path, capsys):
+        """Test that uninstall removes .desktop file and icons."""
+        data_home = tmp_path / "data"
+
+        # Create the files first
+        apps_dir = data_home / "applications"
+        apps_dir.mkdir(parents=True)
+        (apps_dir / "markdown-editor.desktop").write_text("[Desktop Entry]")
+        for size in [48, 64, 128, 256]:
+            icon_dir = data_home / "icons" / "hicolor" / f"{size}x{size}" / "apps"
+            icon_dir.mkdir(parents=True)
+            (icon_dir / "markdown-editor.png").write_bytes(b"PNG")
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):
+            result = _uninstall_desktop_linux()
+
+        assert result == 0
+        assert not (apps_dir / "markdown-editor.desktop").exists()
+        for size in [48, 64, 128, 256]:
+            assert not (data_home / "icons" / "hicolor" / f"{size}x{size}" / "apps" / "markdown-editor.png").exists()
+
+    def test_uninstall_nothing_to_remove(self, tmp_path, capsys):
+        """Test uninstall when nothing is installed."""
+        data_home = tmp_path / "data"
+        data_home.mkdir()
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):
+            result = _uninstall_desktop_linux()
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Nothing to remove" in captured.out
+
+
+class TestInstallDesktopWindows:
+    """Tests for Windows desktop integration."""
+
+    def test_install_creates_shortcut(self, tmp_path, capsys):
+        """Test that install creates Start Menu shortcut."""
+        start_menu = tmp_path / "StartMenu"
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._windows_start_menu_dir", return_value=start_menu), \
+             patch("markdown_editor.markdown6.markdown_editor_cli._mde_executable", return_value="C:\\Python\\Scripts\\mde.exe"), \
+             patch("markdown_editor.markdown6.markdown_editor_cli._create_windows_shortcut") as mock_shortcut:
+            result = _install_desktop_windows()
+
+        assert result == 0
+        mock_shortcut.assert_called_once()
+        call_args = mock_shortcut.call_args
+        assert call_args[0][0] == start_menu / "Markdown Editor.lnk"
+        assert call_args[0][1] == "C:\\Python\\Scripts\\mde.exe"
+
+    def test_uninstall_removes_shortcut(self, tmp_path, capsys):
+        """Test that uninstall removes Start Menu shortcut."""
+        start_menu = tmp_path / "StartMenu"
+        start_menu.mkdir(parents=True)
+        lnk = start_menu / "Markdown Editor.lnk"
+        lnk.write_bytes(b"LNK")
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._windows_start_menu_dir", return_value=start_menu):
+            result = _uninstall_desktop_windows()
+
+        assert result == 0
+        assert not lnk.exists()
+
+    def test_uninstall_nothing_to_remove(self, tmp_path, capsys):
+        """Test uninstall when nothing is installed."""
+        start_menu = tmp_path / "StartMenu"
+        start_menu.mkdir(parents=True)
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._windows_start_menu_dir", return_value=start_menu):
+            result = _uninstall_desktop_windows()
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Nothing to remove" in captured.out
+
+    def test_create_shortcut_calls_powershell(self):
+        """Test that _create_windows_shortcut invokes PowerShell."""
+        with patch("markdown_editor.markdown6.markdown_editor_cli.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            _create_windows_shortcut(
+                Path("C:/Users/test/Start Menu/test.lnk"),
+                "C:/Python/mde.exe",
+                "C:/icons/app.ico",
+                "Test app",
+            )
+            mock_run.assert_called_once()
+            call_args = mock_run.call_args
+            assert call_args[0][0][0] == "powershell"
+            assert "CreateShortcut" in call_args[0][0][-1]
+
+
+class TestInstallDesktopMacOS:
+    """Tests for macOS desktop integration."""
+
+    def test_install_creates_app_bundle(self, tmp_path, capsys):
+        """Test that install creates .app bundle structure."""
+        app_dir = tmp_path / "Applications"
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value="/usr/local/bin/mde"), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            result = _install_desktop_macos()
+
+        assert result == 0
+        app_path = app_dir / _MACOS_APP_NAME
+        assert (app_path / "Contents" / "Info.plist").exists()
+        assert (app_path / "Contents" / "MacOS" / "mde-launcher").exists()
+        assert (app_path / "Contents" / "Resources").is_dir()
+
+        # Check Info.plist content
+        plist_content = (app_path / "Contents" / "Info.plist").read_text()
+        assert "Markdown Editor" in plist_content
+        assert "CFBundleExecutable" in plist_content
+
+        # Check launcher script
+        launcher = app_path / "Contents" / "MacOS" / "mde-launcher"
+        launcher_content = launcher.read_text()
+        assert "/usr/local/bin/mde" in launcher_content
+        assert launcher.stat().st_mode & 0o755
+
+    def test_install_sips_fallback(self, tmp_path, capsys):
+        """Test that install handles sips failure gracefully."""
+        app_dir = tmp_path / "Applications"
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value="/usr/local/bin/mde"), \
+             patch("markdown_editor.markdown6.markdown_editor_cli.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1)
+            result = _install_desktop_macos()
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Warning" in captured.out
+
+    def test_uninstall_removes_app_bundle(self, tmp_path, capsys):
+        """Test that uninstall removes .app bundle."""
+        app_dir = tmp_path / "Applications"
+        app_path = app_dir / _MACOS_APP_NAME / "Contents" / "MacOS"
+        app_path.mkdir(parents=True)
+        (app_path / "mde-launcher").write_text("#!/bin/bash")
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir):
+            result = _uninstall_desktop_macos()
+
+        assert result == 0
+        assert not (app_dir / _MACOS_APP_NAME).exists()
+
+    def test_uninstall_nothing_to_remove(self, tmp_path, capsys):
+        """Test uninstall when nothing is installed."""
+        app_dir = tmp_path / "Applications"
+        app_dir.mkdir()
+
+        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir):
+            result = _uninstall_desktop_macos()
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Nothing to remove" in captured.out
 
 
 class TestMainFunction:
