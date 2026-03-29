@@ -296,6 +296,9 @@ class SettingsDialog(QDialog):
         self.restore_tree_state = QCheckBox("Restore expanded folders on startup")
         files_layout.addRow("", self.restore_tree_state)
 
+        self.show_hidden_files = QCheckBox("Show hidden files and folders")
+        files_layout.addRow("", self.show_hidden_files)
+
         self.max_recent_files = QSpinBox()
         self.max_recent_files.setRange(1, 50)
         files_layout.addRow("Max recent files:", self.max_recent_files)
@@ -504,6 +507,9 @@ class SettingsDialog(QDialog):
         self.restore_tree_state.setChecked(
             self.settings.get("project.restore_tree_state", True)
         )
+        self.show_hidden_files.setChecked(
+            self.settings.get("files.show_hidden", False)
+        )
         self.max_recent_files.setValue(self.settings.get("files.max_recent_files", 10))
 
         # External tools settings
@@ -657,6 +663,7 @@ class SettingsDialog(QDialog):
         # Files settings
         self.settings.set("files.detect_external_changes", self.detect_external_changes.isChecked())
         self.settings.set("project.restore_tree_state", self.restore_tree_state.isChecked())
+        self.settings.set("files.show_hidden", self.show_hidden_files.isChecked())
         self.settings.set("files.max_recent_files", self.max_recent_files.value())
 
         # External tools settings

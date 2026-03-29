@@ -37,6 +37,8 @@ DEFAULT_SETTINGS = {
     "project.active_tab": 0,
     "project.restore_tree_state": True,
     "project.expanded_dirs": [],
+    # File visibility
+    "files.show_hidden": False,
     # Logseq mode
     "view.logseq_mode": False,
     # Sidebar state
@@ -120,6 +122,73 @@ DEFAULT_SHORTCUTS = {
     "find.next": "F3",
     "find.previous": "Shift+F3",
 }
+
+
+MARKDOWN_EXTENSIONS = {".md", ".markdown"}
+MARKDOWN_GLOBS = ["*.md", "*.markdown"]
+
+
+def is_hidden_path(path: Path, root: Path) -> bool:
+    """Check if any path component below root starts with '.'."""
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        rel = path
+    return any(part.startswith('.') for part in rel.parts)
+
+
+def get_project_markdown_files(
+    project_path: Path,
+    *,
+    show_hidden: bool | None = None,
+    max_depth: int | None = None,
+) -> list[Path]:
+    """Get all markdown files in a project directory, respecting hidden-file setting.
+
+    Args:
+        project_path: Root directory to scan.
+        show_hidden: If None, reads from settings. If given, overrides.
+        max_depth: If given, limit scan to this many directory levels.
+
+    Returns:
+        Sorted list of Path objects for .md/.markdown files.
+    """
+    if show_hidden is None:
+        show_hidden = get_settings().get("files.show_hidden", False)
+
+    if max_depth is not None:
+        return sorted(_scan_limited_depth(project_path, max_depth, show_hidden))
+
+    files = []
+    for ext in MARKDOWN_GLOBS:
+        files.extend(project_path.rglob(ext))
+    if not show_hidden:
+        files = [f for f in files if not is_hidden_path(f, project_path)]
+    return sorted(files)
+
+
+def _scan_limited_depth(
+    root: Path, max_depth: int, show_hidden: bool
+) -> list[Path]:
+    """Scan directories up to max_depth levels, filtering hidden entries."""
+    files: list[Path] = []
+
+    def _walk(directory: Path, depth: int):
+        if depth > max_depth:
+            return
+        try:
+            for child in directory.iterdir():
+                if not show_hidden and child.name.startswith('.'):
+                    continue
+                if child.is_file() and child.suffix in MARKDOWN_EXTENSIONS:
+                    files.append(child)
+                elif child.is_dir() and depth < max_depth:
+                    _walk(child, depth + 1)
+        except PermissionError:
+            pass
+
+    _walk(root, 1)
+    return files
 
 
 def _default_config_dir() -> Path:

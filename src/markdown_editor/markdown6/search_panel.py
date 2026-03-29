@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QFont
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
@@ -190,10 +190,7 @@ class SearchPanel(QWidget):
         if not self.project_path:
             return []
 
-        files = []
-        for ext in ["*.md", "*.markdown"]:
-            files.extend(self.project_path.rglob(ext))
-        return sorted(files)
+        return get_project_markdown_files(self.project_path)
 
     def _populate_results(self):
         """Populate the results tree."""

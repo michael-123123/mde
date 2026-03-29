@@ -38,7 +38,7 @@ except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import graphviz_service
 
@@ -460,12 +460,7 @@ class GraphExportDialog(QDialog):
         if not self.project_path:
             return
 
-        # Find all markdown files recursively
-        md_files = []
-        for ext in ["*.md", "*.markdown"]:
-            md_files.extend(self.project_path.rglob(ext))
-
-        md_files = sorted(md_files)
+        md_files = get_project_markdown_files(self.project_path)
 
         for file_path in md_files:
             rel_path = file_path.relative_to(self.project_path)

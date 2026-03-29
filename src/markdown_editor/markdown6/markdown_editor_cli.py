@@ -280,10 +280,8 @@ def read_stdin() -> str:
 
 def get_project_files(project_path: Path) -> list[Path]:
     """Get all markdown files in a project."""
-    files = []
-    for ext in ["*.md", "*.markdown"]:
-        files.extend(project_path.rglob(ext))
-    return sorted(files)
+    from markdown_editor.markdown6.settings import get_project_markdown_files
+    return get_project_markdown_files(project_path)
 
 
 def cmd_export(args: argparse.Namespace) -> int:

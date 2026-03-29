@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QProgressDialog,
 )
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import export_service
 
@@ -89,6 +89,7 @@ class ProjectPanel(QWidget):
         self.file_model = QFileSystemModel()
         self.file_model.setNameFilters(["*.md", "*.markdown", "*.txt"])
         self.file_model.setNameFilterDisables(False)
+        self._apply_hidden_filter()
 
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.file_model)
@@ -140,10 +141,20 @@ class ProjectPanel(QWidget):
             StyleSheets.flat_button(theme)
         )
 
+    def _apply_hidden_filter(self):
+        """Apply the hidden files filter based on settings."""
+        show_hidden = self.settings.get("files.show_hidden", False)
+        base_filters = QDir.Filter.AllDirs | QDir.Filter.Files | QDir.Filter.NoDotAndDotDot
+        if show_hidden:
+            base_filters |= QDir.Filter.Hidden
+        self.file_model.setFilter(base_filters)
+
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""
         if key == "view.theme":
             self._apply_theme()
+        elif key == "files.show_hidden":
+            self._apply_hidden_filter()
 
     def _open_folder(self):
         """Open a folder as project."""
@@ -381,26 +392,8 @@ class ProjectPanel(QWidget):
         if not self.project_path:
             return []
 
-        if not self._lazy:
-            files = []
-            for ext in ["*.md", "*.markdown"]:
-                files.extend(self.project_path.rglob(ext))
-            return sorted(files)
-
-        # Lazy mode: only scan 2 levels deep
-        files = []
-        exts = {".md", ".markdown"}
-        for child in self.project_path.iterdir():
-            if child.is_file() and child.suffix in exts:
-                files.append(child)
-            elif child.is_dir():
-                try:
-                    for grandchild in child.iterdir():
-                        if grandchild.is_file() and grandchild.suffix in exts:
-                            files.append(grandchild)
-                except PermissionError:
-                    pass
-        return sorted(files)
+        max_depth = 2 if self._lazy else None
+        return get_project_markdown_files(self.project_path, max_depth=max_depth)
 
 
 class ProjectExportDialog(QDialog):
@@ -506,9 +499,7 @@ class ProjectExportDialog(QDialog):
         if isinstance(parent_panel, ProjectPanel):
             paths = parent_panel.get_project_files()
         else:
-            paths = []
-            for ext in ["*.md", "*.markdown"]:
-                paths.extend(sorted(self.project_path.rglob(ext)))
+            paths = get_project_markdown_files(self.project_path)
         for path in paths:
                 rel_path = path.relative_to(self.project_path)
                 item = QListWidgetItem(str(rel_path))

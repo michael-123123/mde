@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
 
 
 @dataclass
@@ -186,10 +186,7 @@ class ReferencesPanel(QWidget):
         if not self.project_path:
             return []
 
-        files = []
-        for ext in ['*.md', '*.markdown']:
-            files.extend(self.project_path.rglob(ext))
-        return sorted(files)
+        return get_project_markdown_files(self.project_path)
 
     def _populate_tree(self):
         """Populate the tree widget with references."""
