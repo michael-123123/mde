@@ -28,6 +28,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+tests/markdown6/zoom_screenshots/
 
 # Project
 local/

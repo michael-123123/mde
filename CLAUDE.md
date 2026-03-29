@@ -82,6 +82,17 @@ The `conftest.py` provides an autouse `ephemeral_settings` fixture that resets t
 
 Widget tests use `qtbot` from pytest-qt. External tools (pandoc, graphviz) are mocked in tests.
 
+## Bug Fixes
+
+Follow this process strictly when fixing bugs:
+
+1. **Reproduce first.** Before writing any fix, write a test (or run a manual reproduction) that demonstrates the bug. You must see it fail. If you cannot reproduce the bug, do not proceed with a fix — investigate further or ask for clarification.
+2. **Write a regression test.** The test must fail before the fix and pass after. This is non-negotiable.
+3. **Fix the bug.** Identify the root cause and fix it. Commit messages should explain *why* the bug happened, not just what changed.
+4. **Verify the fix.** After applying the fix, reproduce the original bug scenario again. If the bug is still reproducible, the fix is not done — do not report it as fixed. Run the regression test and any related tests to confirm they pass.
+
+Do not skip steps. Do not claim a bug is fixed without completing step 4.
+
 ## Known Technical Debt
 
 - `MarkdownEditor` is ~2800 lines; should be split into TabManager, PanelManager, ActionManager
