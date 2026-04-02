@@ -640,6 +640,94 @@ class FindReplaceBar(QWidget):
             super().keyPressEvent(event)
 
 
+class ExternalChangeBar(QWidget):
+    """Non-modal notification bar shown when a file is modified externally."""
+
+    reload_requested = Signal()
+    dismissed = Signal()
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.settings = get_settings()
+        self._init_ui()
+        self._apply_theme()
+        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.hide()
+
+    def _init_ui(self):
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(4)
+
+        self.message_label = QLabel()
+        self.message_label.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(self.message_label, 1)
+
+        self.reload_btn = QPushButton("Reload")
+        self.reload_btn.clicked.connect(self._on_reload)
+        layout.addWidget(self.reload_btn)
+
+        self.dismiss_btn = QPushButton("Dismiss")
+        self.dismiss_btn.clicked.connect(self._on_dismiss)
+        layout.addWidget(self.dismiss_btn)
+
+    def show_change(self, filename: str):
+        """Show the bar for the given file. Coalesces repeated calls."""
+        self.message_label.setText(
+            f"\u26a0  {filename} has been modified externally."
+        )
+        if not self.isVisible():
+            self.show()
+
+    def _on_reload(self):
+        self.hide()
+        self.reload_requested.emit()
+
+    def _on_dismiss(self):
+        self.hide()
+        self.dismissed.emit()
+
+    def _on_setting_changed(self, key: str, value):
+        if key == "view.theme":
+            self._apply_theme()
+
+    def _apply_theme(self):
+        dark = self.settings.get("view.theme", "light") == "dark"
+        if dark:
+            self.setStyleSheet(
+                "ExternalChangeBar {"
+                "  background-color: #3b3000;"
+                "  border-bottom: 1px solid #665500;"
+                "}"
+                "ExternalChangeBar QLabel { color: #e0c040; }"
+                "ExternalChangeBar QPushButton {"
+                "  background-color: #4a4a00; color: #e0c040;"
+                "  border: 1px solid #665500; border-radius: 3px;"
+                "  padding: 2px 8px;"
+                "}"
+                "ExternalChangeBar QPushButton:hover {"
+                "  background-color: #5a5a00;"
+                "}"
+            )
+        else:
+            self.setStyleSheet(
+                "ExternalChangeBar {"
+                "  background-color: #fff8c5;"
+                "  border-bottom: 1px solid #d4a72c;"
+                "}"
+                "ExternalChangeBar QLabel { color: #6a5300; }"
+                "ExternalChangeBar QPushButton {"
+                "  background-color: #f0e8a0; color: #6a5300;"
+                "  border: 1px solid #d4a72c; border-radius: 3px;"
+                "  padding: 2px 8px;"
+                "}"
+                "ExternalChangeBar QPushButton:hover {"
+                "  background-color: #e8d880;"
+                "}"
+            )
+
+
 # Custom WebEnginePage to intercept link clicks
 if HAS_WEBENGINE:
     class LinkInterceptPage(QWebEnginePage):
@@ -730,11 +818,16 @@ class DocumentTab(QWidget):
         self.splitter.addWidget(self.preview)
         self.splitter.setSizes([600, 600])
 
+        # External change notification bar spans both panes (above splitter)
+        self.external_change_bar = ExternalChangeBar(self)
+        self.external_change_bar.reload_requested.connect(self.reload_file)
+
         # Find/Replace bar spans both panes (below splitter)
         self.find_replace_bar = FindReplaceBar(
             self.editor, self.preview, self._use_webengine, self
         )
 
+        layout.addWidget(self.external_change_bar)
         layout.addWidget(self.splitter)
         layout.addWidget(self.find_replace_bar)
 
@@ -934,18 +1027,9 @@ class DocumentTab(QWidget):
             self.main_window._schedule_outline_update()
 
     def _on_file_externally_modified(self):
-        """Handle external file modification."""
-        reply = QMessageBox.question(
-            self,
-            "File Changed",
-            f"The file '{self.file_path.name}' has been modified outside the editor.\n"
-            "Do you want to reload it?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            self.reload_file()
+        """Handle external file modification with non-modal notification."""
+        name = self.file_path.name if self.file_path else "File"
+        self.external_change_bar.show_change(name)
 
     def _on_editor_scroll(self):
         """Handle editor scroll for sync scrolling."""
