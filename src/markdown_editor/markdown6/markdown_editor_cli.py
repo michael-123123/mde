@@ -100,55 +100,55 @@ Examples:
 
     subparsers = parser.add_subparsers(dest="command", metavar="command")
 
-    # Export subcommand
+    # Export subcommand with format sub-subparsers
     export_parser = subparsers.add_parser(
         "export",
         help="Export markdown to other formats",
-        description="Export markdown files to PDF, HTML, DOCX, or Markdown.",
+        description="Export markdown files to HTML, PDF, DOCX, or Markdown.",
     )
-    export_parser.add_argument(
-        "files",
-        nargs="*",
-        type=Path,
-        help="Files to export (or use stdin)",
+    export_subparsers = export_parser.add_subparsers(
+        dest="export_format", metavar="format",
     )
-    export_parser.add_argument(
-        "-p", "--project",
-        type=Path,
-        metavar="PATH",
-        help="Export entire project",
+
+    def _add_common_export_args(p):
+        """Add arguments shared by all export format subparsers."""
+        p.add_argument(
+            "files", nargs="*", type=Path,
+            help="Files to export (or use stdin)",
+        )
+        p.add_argument(
+            "-p", "--project", type=Path, metavar="PATH",
+            help="Export entire project",
+        )
+        p.add_argument(
+            "-o", "--output", type=Path, metavar="PATH",
+            help="Output file (stdout if not specified for HTML/Markdown)",
+        )
+        p.add_argument("--toc", action="store_true", help="Include table of contents")
+        p.add_argument("--page-breaks", action="store_true", help="Insert page breaks between files")
+        p.add_argument("--title", help="Document title (default: filename or 'Document')")
+
+    # mde export html
+    html_parser = export_subparsers.add_parser("html", help="Export to HTML")
+    _add_common_export_args(html_parser)
+    html_parser.add_argument(
+        "--backend", choices=["viewer", "basic"], default="viewer",
+        help="'viewer' (rich, offline-capable) or 'basic' (simple)",
     )
-    export_parser.add_argument(
-        "-o", "--output",
-        type=Path,
-        metavar="PATH",
-        help="Output file (stdout if not specified for HTML/Markdown)",
-    )
-    export_parser.add_argument(
-        "-f", "--format",
-        choices=["pdf", "html", "docx", "markdown", "md"],
-        default="pdf",
-        help="Output format (default: pdf)",
-    )
-    export_parser.add_argument(
-        "--toc",
-        action="store_true",
-        help="Include table of contents",
-    )
-    export_parser.add_argument(
-        "--page-breaks",
-        action="store_true",
-        help="Insert page breaks between files",
-    )
-    export_parser.add_argument(
-        "--title",
-        help="Document title (default: filename or 'Document')",
-    )
-    export_parser.add_argument(
-        "--use-pandoc",
-        action="store_true",
-        help="Use pandoc for export (if available)",
-    )
+
+    # mde export pdf
+    pdf_parser = export_subparsers.add_parser("pdf", help="Export to PDF")
+    _add_common_export_args(pdf_parser)
+    pdf_parser.add_argument("--use-pandoc", action="store_true", help="Use pandoc (if available)")
+
+    # mde export docx
+    docx_parser = export_subparsers.add_parser("docx", help="Export to DOCX")
+    _add_common_export_args(docx_parser)
+    docx_parser.add_argument("--use-pandoc", action="store_true", help="Use pandoc (if available)")
+
+    # mde export md / markdown
+    md_parser = export_subparsers.add_parser("md", aliases=["markdown"], help="Export combined Markdown")
+    _add_common_export_args(md_parser)
 
     # Graph subcommand
     graph_parser = subparsers.add_parser(
@@ -289,6 +289,13 @@ def cmd_export(args: argparse.Namespace) -> int:
     """Handle export subcommand."""
     from markdown_editor.markdown6 import export_service
 
+    fmt = args.export_format
+    if not fmt:
+        print("Error: export requires a format subcommand (html, pdf, docx, md)", file=sys.stderr)
+        return 1
+    if fmt == "markdown":
+        fmt = "md"
+
     # Determine input content
     content_parts = []
     title = args.title or "Document"
@@ -312,7 +319,7 @@ def cmd_export(args: argparse.Namespace) -> int:
 
         for f in files:
             if args.page_breaks and content_parts:
-                if args.format == "html":
+                if fmt == "html":
                     content_parts.append('<div style="page-break-before: always;"></div>\n')
                 else:
                     content_parts.append("\n---\n")
@@ -339,15 +346,23 @@ def cmd_export(args: argparse.Namespace) -> int:
         content_parts.append(stdin_content)
 
     content = "\n".join(content_parts)
-    fmt = args.format if args.format != "md" else "markdown"
+
+    # Determine base_path for image resolution
+    backend = getattr(args, "backend", "viewer")
+    if args.project:
+        base_path = args.project
+    elif args.files and len(args.files) == 1:
+        base_path = args.files[0].parent
+    else:
+        base_path = None
 
     # Determine output
     output_path = args.output
     if not output_path:
-        if fmt in ("html", "markdown"):
+        if fmt in ("html", "md"):
             # Output to stdout
             if fmt == "html":
-                print(export_service.markdown_to_html(content, title))
+                print(export_service.markdown_to_html(content, title, backend=backend, base_path=base_path))
             else:
                 print(content)
             return 0
@@ -359,12 +374,19 @@ def cmd_export(args: argparse.Namespace) -> int:
     # Export to file
     try:
         if fmt == "html":
-            export_service.export_html(content, output_path, title)
+            is_project = bool(args.project)
+            export_service.export_html(
+                content, output_path, title,
+                backend=backend,
+                single_file=not is_project,
+                base_path=base_path,
+                output_dir=output_path.parent if is_project else None,
+            )
         elif fmt == "pdf":
             export_service.export_pdf(content, output_path, title, use_pandoc=args.use_pandoc)
         elif fmt == "docx":
             export_service.export_docx(content, output_path, title, use_pandoc=args.use_pandoc)
-        elif fmt == "markdown":
+        elif fmt == "md":
             output_path.write_text(content, encoding="utf-8")
 
         if not args.quiet:

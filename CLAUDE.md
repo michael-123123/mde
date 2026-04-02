@@ -20,6 +20,14 @@ markdown-editor        # full command
 mde                    # short alias
 mde /path/to/file.md   # open a file
 
+# Export (CLI)
+mde export html file.md                     # viewer backend to stdout
+mde export html file.md -o out.html         # viewer backend to file
+mde export html file.md --backend basic     # basic backend
+mde export pdf file.md -o out.pdf           # PDF export
+mde export docx file.md -o out.docx         # DOCX export
+mde export md -p ./project -o combined.md   # combine project to markdown
+
 # Run all markdown6 tests
 pytest tests/markdown6/
 
@@ -60,9 +68,11 @@ Widget-based architecture using Qt signal/slot for inter-component communication
 
 ### Services (stateless modules)
 
-- **export_service.py** — `export_html()`, `export_pdf()`, `export_docx()`, `has_pandoc()`
+- **export_service.py** — `export_html()`, `export_pdf()`, `export_docx()`, `has_pandoc()`. HTML export supports `backend="viewer"` (rich, offline-capable, default) or `backend="basic"` (simple).
+- **viewer_export.py** — Standalone viewer-quality HTML export pipeline. `viewer_export_html()` produces the same output as the live preview but offline-capable (all JS/CSS inlined). Handles image embedding (single-file) and resource copying (project export).
+- **asset_cache.py** — Downloads and caches CDN assets (KaTeX, Mermaid, viz.js) to `~/.cache/markdown-editor/assets/` for offline HTML export.
 - **graphviz_service.py** — Graphviz rendering with caching
-- **markdown_extensions.py** — `CalloutExtension`, `CodeBlockPreprocessor`
+- **markdown_extensions.py** — `CalloutExtension`, `SourceLineExtension`, `MathExtension`, `MermaidExtension`, `GraphvizExtension`, `TaskListExtension`, and others
 
 ### Key Patterns
 

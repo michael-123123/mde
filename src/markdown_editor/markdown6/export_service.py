@@ -16,8 +16,26 @@ def has_pandoc() -> bool:
     return _has_pandoc()
 
 
-def markdown_to_html(content: str, title: str = "Document") -> str:
-    """Convert markdown content to a complete HTML document."""
+def markdown_to_html(
+    content: str,
+    title: str = "Document",
+    backend: str = "viewer",
+    **kwargs,
+) -> str:
+    """Convert markdown content to a complete HTML document.
+
+    Args:
+        content: Raw markdown text.
+        title: Document title for the <title> tag.
+        backend: "viewer" (rich, offline-capable) or "basic" (simple).
+        **kwargs: Passed to viewer_export_html when backend="viewer".
+            Useful keys: dark_mode, font_size, base_path, logseq_mode.
+    """
+    if backend == "viewer":
+        from markdown_editor.markdown6.viewer_export import viewer_export_html
+        return viewer_export_html(content, title=title, **kwargs)
+
+    # Basic backend — original minimal pipeline
     html_content = md.markdown(
         content,
         extensions=["extra", "codehilite", "tables", "toc"]
@@ -55,9 +73,40 @@ def markdown_to_html(content: str, title: str = "Document") -> str:
 </html>"""
 
 
-def export_html(content: str, output_path: str | Path, title: str = "Document") -> None:
-    """Export markdown to HTML file."""
-    html = markdown_to_html(content, title)
+def export_html(
+    content: str,
+    output_path: str | Path,
+    title: str = "Document",
+    backend: str = "viewer",
+    single_file: bool = True,
+    base_path: Path | None = None,
+    output_dir: Path | None = None,
+    **kwargs,
+) -> None:
+    """Export markdown to HTML file.
+
+    Args:
+        content: Raw markdown text.
+        output_path: Path to write the HTML file.
+        title: Document title.
+        backend: "viewer" or "basic".
+        single_file: If True and backend="viewer", embed images as base64.
+        base_path: Directory for resolving relative image paths.
+        output_dir: For project export — copy resources here instead of embedding.
+        **kwargs: Passed to markdown_to_html (e.g. dark_mode, font_size).
+    """
+    html = markdown_to_html(content, title, backend=backend, base_path=base_path, **kwargs)
+
+    if backend == "viewer" and base_path:
+        from markdown_editor.markdown6.viewer_export import (
+            embed_local_images,
+            copy_resources_for_project,
+        )
+        if single_file:
+            html = embed_local_images(html, base_path)
+        elif output_dir:
+            html = copy_resources_for_project(html, base_path, output_dir)
+
     Path(output_path).write_text(html, encoding="utf-8")
 
 

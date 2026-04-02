@@ -2573,11 +2573,17 @@ class MarkdownEditor(QMainWindow):
             return
 
         try:
-            self.md.reset()
-            html_content = self.md.convert(tab.editor.toPlainText())
-            full_html = self.get_html_template(html_content)
+            content = tab.editor.toPlainText()
+            title = tab.file_path.stem if tab.file_path else "Document"
+            base_path = tab.file_path.parent if tab.file_path else None
+            dark_mode = self.settings.get("view.theme") == "dark"
+            font_size = self.settings.get("view.preview_font_size", 14)
 
-            Path(file_path).write_text(full_html, encoding="utf-8")
+            export_service.export_html(
+                content, file_path, title=title,
+                backend="viewer", single_file=True,
+                base_path=base_path, dark_mode=dark_mode, font_size=font_size,
+            )
             self.status_bar.showMessage(f"Exported to: {file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not export file: {e}")

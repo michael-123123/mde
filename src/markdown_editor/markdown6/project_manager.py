@@ -446,6 +446,21 @@ class ProjectExportDialog(QDialog):
         format_layout.addStretch()
         options_layout.addLayout(format_layout)
 
+        self.backend_row = QWidget()
+        backend_layout = QHBoxLayout(self.backend_row)
+        backend_layout.setContentsMargins(0, 0, 0, 0)
+        backend_layout.addWidget(QLabel("HTML Backend:"))
+        self.html_backend_combo = QComboBox()
+        self.html_backend_combo.addItems(["Viewer (rich)", "Basic"])
+        self.html_backend_combo.setToolTip(
+            "Viewer: same rich output as the live preview, offline-capable\n"
+            "Basic: simple HTML with minimal styling"
+        )
+        backend_layout.addWidget(self.html_backend_combo)
+        backend_layout.addStretch()
+        options_layout.addWidget(self.backend_row)
+        self.format_combo.currentTextChanged.connect(self._on_format_changed)
+
         self.include_toc = QCheckBox("Include Table of Contents")
         self.include_toc.setChecked(True)
         options_layout.addWidget(self.include_toc)
@@ -485,6 +500,10 @@ class ProjectExportDialog(QDialog):
             StyleSheets.combo_box(theme) +
             StyleSheets.check_box(theme)
         )
+
+    def _on_format_changed(self, text: str):
+        """Show/hide HTML backend combo based on selected format."""
+        self.backend_row.setVisible(text == "HTML")
 
     def _load_files(self):
         """Load project files into the tree.
@@ -585,7 +604,13 @@ class ProjectExportDialog(QDialog):
             if format_type == "markdown":
                 Path(output_path).write_text(combined, encoding="utf-8")
             elif format_type == "html":
-                export_service.export_html(combined, output_path, title)
+                backend = "viewer" if self.html_backend_combo.currentIndex() == 0 else "basic"
+                output_dir = Path(output_path).parent if backend == "viewer" else None
+                export_service.export_html(
+                    combined, output_path, title,
+                    backend=backend, single_file=False,
+                    base_path=self.project_path, output_dir=output_dir,
+                )
             elif format_type == "pdf":
                 export_service.export_pdf(combined, output_path, title, use_pandoc)
             elif format_type == "docx":

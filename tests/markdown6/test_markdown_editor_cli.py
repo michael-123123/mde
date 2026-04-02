@@ -125,48 +125,67 @@ class TestParserArguments:
 class TestExportSubcommand:
     """Tests for export subcommand parsing."""
 
-    def test_export_basic(self):
-        """Test basic export command."""
+    def test_export_html_basic(self):
+        """Test basic export html command."""
         parser = create_parser()
-        args = parser.parse_args(["export", "doc.md"])
+        args = parser.parse_args(["export", "html", "doc.md"])
         assert args.command == "export"
+        assert args.export_format == "html"
         assert args.files[0] == Path("doc.md")
+
+    def test_export_pdf_basic(self):
+        """Test basic export pdf command."""
+        parser = create_parser()
+        args = parser.parse_args(["export", "pdf", "doc.md"])
+        assert args.export_format == "pdf"
 
     def test_export_output(self):
         """Test export with output file."""
         parser = create_parser()
-        args = parser.parse_args(["export", "doc.md", "-o", "out.pdf"])
-        assert args.output == Path("out.pdf")
-
-    def test_export_format(self):
-        """Test export with format."""
-        parser = create_parser()
-        args = parser.parse_args(["export", "doc.md", "-f", "html"])
-        assert args.format == "html"
+        args = parser.parse_args(["export", "html", "doc.md", "-o", "out.html"])
+        assert args.output == Path("out.html")
 
     def test_export_toc(self):
         """Test export with TOC flag."""
         parser = create_parser()
-        args = parser.parse_args(["export", "-p", "./proj", "--toc"])
+        args = parser.parse_args(["export", "html", "-p", "./proj", "--toc"])
         assert args.toc is True
 
     def test_export_page_breaks(self):
         """Test export with page breaks."""
         parser = create_parser()
-        args = parser.parse_args(["export", "-p", "./proj", "--page-breaks"])
+        args = parser.parse_args(["export", "html", "-p", "./proj", "--page-breaks"])
         assert args.page_breaks is True
 
     def test_export_title(self):
         """Test export with custom title."""
         parser = create_parser()
-        args = parser.parse_args(["export", "doc.md", "--title", "My Doc"])
+        args = parser.parse_args(["export", "html", "doc.md", "--title", "My Doc"])
         assert args.title == "My Doc"
 
-    def test_export_use_pandoc(self):
-        """Test export with pandoc flag."""
+    def test_export_pdf_use_pandoc(self):
+        """Test export pdf with pandoc flag."""
         parser = create_parser()
-        args = parser.parse_args(["export", "doc.md", "--use-pandoc"])
+        args = parser.parse_args(["export", "pdf", "doc.md", "--use-pandoc"])
         assert args.use_pandoc is True
+
+    def test_export_html_backend(self):
+        """Test export html with backend flag."""
+        parser = create_parser()
+        args = parser.parse_args(["export", "html", "doc.md", "--backend", "basic"])
+        assert args.backend == "basic"
+
+    def test_export_md_alias(self):
+        """Test export md and markdown are equivalent."""
+        parser = create_parser()
+        args = parser.parse_args(["export", "md", "doc.md"])
+        assert args.export_format == "md"
+
+    def test_export_no_format_errors(self, capsys):
+        """Test export without format subcommand."""
+        parser = create_parser()
+        args = parser.parse_args(["export"])
+        assert args.export_format is None
 
 
 class TestGraphSubcommand:
@@ -416,7 +435,7 @@ class TestCmdExport:
         doc.write_text("# Hello World")
 
         parser = create_parser()
-        args = parser.parse_args(["export", str(doc), "-f", "html"])
+        args = parser.parse_args(["export", "html", str(doc)])
         result = cmd_export(args)
 
         assert result == 0
@@ -431,7 +450,7 @@ class TestCmdExport:
         output = tmp_path / "out.html"
 
         parser = create_parser()
-        args = parser.parse_args(["export", str(doc), "-f", "html", "-o", str(output)])
+        args = parser.parse_args(["export", "html", str(doc), "-o", str(output)])
         result = cmd_export(args)
 
         assert result == 0
@@ -445,7 +464,7 @@ class TestCmdExport:
         output = tmp_path / "combined.md"
 
         parser = create_parser()
-        args = parser.parse_args(["export", "-p", str(tmp_path), "-f", "md", "-o", str(output)])
+        args = parser.parse_args(["export", "md", "-p", str(tmp_path), "-o", str(output)])
         result = cmd_export(args)
 
         assert result == 0
@@ -459,7 +478,7 @@ class TestCmdExport:
         output = tmp_path / "out.md"
 
         parser = create_parser()
-        args = parser.parse_args(["export", "-p", str(tmp_path), "-f", "md", "-o", str(output), "--toc"])
+        args = parser.parse_args(["export", "md", "-p", str(tmp_path), "-o", str(output), "--toc"])
         result = cmd_export(args)
 
         assert result == 0
@@ -469,7 +488,7 @@ class TestCmdExport:
     def test_export_file_not_found(self, capsys):
         """Test export with non-existent file."""
         parser = create_parser()
-        args = parser.parse_args(["export", "/nonexistent/file.md", "-f", "html"])
+        args = parser.parse_args(["export", "html", "/nonexistent/file.md"])
         result = cmd_export(args)
 
         assert result == 1
@@ -482,12 +501,22 @@ class TestCmdExport:
         doc.write_text("# Hello")
 
         parser = create_parser()
-        args = parser.parse_args(["export", str(doc), "-f", "pdf"])
+        args = parser.parse_args(["export", "pdf", str(doc)])
         result = cmd_export(args)
 
         assert result == 1
         captured = capsys.readouterr()
         assert "Output file required" in captured.err
+
+    def test_export_no_format_returns_error(self, capsys):
+        """Test export without format subcommand returns error."""
+        parser = create_parser()
+        args = parser.parse_args(["export"])
+        result = cmd_export(args)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "requires a format" in captured.err
 
 
 class TestCmdGraph:
@@ -822,7 +851,7 @@ class TestMainFunction:
         doc = tmp_path / "doc.md"
         doc.write_text("# Test")
 
-        result = main(["export", str(doc), "-f", "html"])
+        result = main(["export", "html", str(doc)])
         assert result == 0
 
     def test_main_graph(self, tmp_path, capsys):
