@@ -1167,6 +1167,10 @@ class EnhancedEditor(QPlainTextEdit):
         scrollbar = self.verticalScrollBar()
         scrollbar.setValue(int(ratio * scrollbar.maximum()))
 
+    def get_first_visible_line(self) -> int:
+        """Get the 0-based line number of the first visible line."""
+        return self.firstVisibleBlock().blockNumber()
+
     # ==================== FOLDING SUPPORT ====================
 
     def _do_update_folding_regions(self):

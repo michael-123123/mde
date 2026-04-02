@@ -237,6 +237,7 @@ from markdown_editor.markdown6.markdown_extensions import (
     MermaidExtension,
     GraphvizExtension,
     TaskListExtension,
+    SourceLineExtension,
     get_callout_css,
     get_math_js,
     get_mermaid_js,
@@ -674,6 +675,7 @@ class DocumentTab(QWidget):
         self.file_path: Path | None = None
         self.unsaved_changes = False
         self._sync_scrolling = True
+        self._pending_scroll_line: int | None = None
         self._preview_needs_full_reload = True
         self._preview_zoom_factor = 1.0
         self._pending_render_generation = 0  # bumped on each render to discard stale results
@@ -947,13 +949,19 @@ class DocumentTab(QWidget):
 
     def _on_editor_scroll(self):
         """Handle editor scroll for sync scrolling."""
-        if self._sync_scrolling and self.preview.isVisible():
-            ratio = self.editor.get_scroll_ratio()
-            if self._use_webengine:
-                # Use JavaScript to scroll QWebEngineView
-                js = f"window.scrollTo(0, document.body.scrollHeight * {ratio});"
+        if not self._sync_scrolling:
+            return
+        if self._use_webengine:
+            line = self.editor.get_first_visible_line()
+            if self.preview.isVisible():
+                self._pending_scroll_line = None
+                js = f"if (typeof scrollToSourceLine === 'function') scrollToSourceLine({line});"
                 self.preview.page().runJavaScript(js)
             else:
+                self._pending_scroll_line = line
+        else:
+            if self.preview.isVisible():
+                ratio = self.editor.get_scroll_ratio()
                 preview_scrollbar = self.preview.verticalScrollBar()
                 preview_scrollbar.setValue(int(ratio * preview_scrollbar.maximum()))
 
@@ -967,6 +975,7 @@ class DocumentTab(QWidget):
         import json
 
         text = self.editor.toPlainText()
+        total_lines = text.count('\n') + 1
         self.main_window.md.reset()
         self.main_window.md._pending_diagrams = []
 
@@ -984,6 +993,7 @@ class DocumentTab(QWidget):
         if self._use_webengine and not self._preview_needs_full_reload:
             escaped = json.dumps(html_content)
             js = f"document.getElementById('md-content').innerHTML = {escaped};"
+            js += f"document.body.dataset.totalLines = '{total_lines}';"
             js += """
             if (typeof renderMathInElement !== 'undefined') {
                 renderMathInElement(document.body, {
@@ -1007,7 +1017,8 @@ class DocumentTab(QWidget):
         if not self._use_webengine:
             html_content = convert_lists_for_qtextbrowser(html_content)
         full_html = self.main_window.get_html_template(
-            html_content, for_qtextbrowser=not self._use_webengine
+            html_content, for_qtextbrowser=not self._use_webengine,
+            total_lines=total_lines,
         )
         # Set base URL for relative link resolution
         if self.file_path:
@@ -1170,6 +1181,7 @@ class MarkdownEditor(QMainWindow):
                 MermaidExtension(),
                 GraphvizExtension(),
                 TaskListExtension(),
+                SourceLineExtension(),
             ]
         )
 
@@ -1744,7 +1756,7 @@ class MarkdownEditor(QMainWindow):
         if index >= 0:
             self.tab_widget.setTabText(index, tab.get_tab_title())
 
-    def get_html_template(self, content: str, for_qtextbrowser: bool = False) -> str:
+    def get_html_template(self, content: str, for_qtextbrowser: bool = False, total_lines: int = 0) -> str:
         """Wrap rendered markdown in HTML with styling.
 
         Args:
@@ -2023,7 +2035,7 @@ class MarkdownEditor(QMainWindow):
                 }}
             </style>
         </head>
-        <body class="{body_class}">
+        <body class="{body_class}" data-total-lines="{total_lines}">
             <div id="md-content">{content}</div>
             {mermaid_js}
             {graphviz_js}
@@ -2067,6 +2079,53 @@ class MarkdownEditor(QMainWindow):
                     el = el.parentElement;
                 }}
             }}, true);
+
+            /* Source-line-based scroll synchronization */
+            function scrollToSourceLine(line) {{
+                var anchors = document.querySelectorAll('[data-source-line]');
+                if (anchors.length === 0) {{
+                    /* Fallback to proportional scroll */
+                    var total = document.body.dataset.totalLines || 1;
+                    window.scrollTo(0, document.body.scrollHeight * (line / total));
+                    return;
+                }}
+
+                var before = null, after = null;
+                for (var i = 0; i < anchors.length; i++) {{
+                    var al = parseInt(anchors[i].dataset.sourceLine, 10);
+                    if (al <= line) {{
+                        before = {{ el: anchors[i], line: al }};
+                    }}
+                    if (al > line && after === null) {{
+                        after = {{ el: anchors[i], line: al }};
+                        break;
+                    }}
+                }}
+
+                if (!before && !after) return;
+
+                var targetY;
+                if (!before) {{
+                    targetY = after.el.getBoundingClientRect().top + window.scrollY;
+                }} else if (!after) {{
+                    var beforeY = before.el.getBoundingClientRect().top + window.scrollY;
+                    var docBottom = document.body.scrollHeight;
+                    var totalLines = parseInt(document.body.dataset.totalLines || '0', 10);
+                    if (totalLines > before.line) {{
+                        var t = (line - before.line) / (totalLines - before.line);
+                        targetY = beforeY + t * (docBottom - beforeY);
+                    }} else {{
+                        targetY = beforeY;
+                    }}
+                }} else {{
+                    var beforeY = before.el.getBoundingClientRect().top + window.scrollY;
+                    var afterY = after.el.getBoundingClientRect().top + window.scrollY;
+                    var t = (after.line === before.line) ? 0 : (line - before.line) / (after.line - before.line);
+                    targetY = beforeY + t * (afterY - beforeY);
+                }}
+
+                window.scrollTo(0, Math.max(0, targetY));
+            }}
             </script>
         </body>
         </html>
@@ -2815,54 +2874,36 @@ class MarkdownEditor(QMainWindow):
         if not tab or not tab.preview.isVisible():
             return
 
-        # Calculate ratio based on cursor line position, not scroll position
-        # This is more accurate after go_to_line + centerCursor
         cursor = tab.editor.textCursor()
         current_line = cursor.blockNumber()
-        total_lines = tab.editor.document().blockCount()
-
-        if total_lines <= 1:
-            ratio = 0.0
-        else:
-            ratio = current_line / (total_lines - 1)
 
         if tab._use_webengine:
-            # Use JavaScript to scroll QWebEngineView
-            # Wait for document to be ready before scrolling, with retry mechanism
             js = f"""
             (function() {{
                 function doScroll() {{
-                    var docHeight = document.body.scrollHeight;
-                    var viewHeight = window.innerHeight;
-                    // Only scroll if document has meaningful height (content loaded)
-                    if (docHeight > viewHeight) {{
-                        var targetY = docHeight * {ratio};
-                        // Center the target position in the viewport
-                        var scrollY = Math.max(0, targetY - viewHeight / 2);
-                        window.scrollTo(0, scrollY);
+                    if (typeof scrollToSourceLine === 'function' &&
+                        document.querySelectorAll('[data-source-line]').length > 0) {{
+                        scrollToSourceLine({current_line});
                         return true;
                     }}
                     return false;
                 }}
-                // Try immediately
                 if (!doScroll()) {{
-                    // If doc not ready, try again after a short delay
                     setTimeout(doScroll, 100);
                 }}
             }})();
             """
             tab.preview.page().runJavaScript(js)
 
-            # For QWebEngineView, if this is the first attempt, retry after content loads
             if retry_count == 0:
                 QTimer.singleShot(200, lambda: self._sync_preview_to_editor(tab, retry_count=1))
         else:
+            total_lines = tab.editor.document().blockCount()
+            ratio = current_line / (total_lines - 1) if total_lines > 1 else 0.0
             preview_scrollbar = tab.preview.verticalScrollBar()
-            # Calculate position to center the target line
             max_scroll = preview_scrollbar.maximum()
             page_step = preview_scrollbar.pageStep()
             target_pos = int(ratio * (max_scroll + page_step))
-            # Adjust to center
             scroll_pos = max(0, target_pos - page_step // 2)
             preview_scrollbar.setValue(min(scroll_pos, max_scroll))
 
@@ -3155,6 +3196,18 @@ class MarkdownEditor(QMainWindow):
         # Restore preview scroll position after reflow
         if current_tab and current_tab._use_webengine:
             QTimer.singleShot(150, lambda: self._restore_preview_scroll_after_resize(current_tab))
+
+        # Apply any scroll position deferred while the preview was hidden
+        if preview_visible and current_tab and current_tab._pending_scroll_line is not None:
+            line = current_tab._pending_scroll_line
+            current_tab._pending_scroll_line = None
+            if current_tab._use_webengine:
+                QTimer.singleShot(
+                    200,
+                    lambda: current_tab.preview.page().runJavaScript(
+                        f"if (typeof scrollToSourceLine === 'function') scrollToSourceLine({line});"
+                    ),
+                )
 
         # Re-center any active search match in newly-visible panes
         tab = self.tab_widget.currentWidget()
