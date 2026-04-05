@@ -6,8 +6,6 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0",
     "email-validator",
-    "PyQt5>=5.15",
-    "PyQtWebEngine>=5.15",
     "PySide6>=6.5",
     "PySide6-Addons>=6.5",  # Includes QtWebEngine for proper HTML rendering
     "markdown>=3.5",
