@@ -6,6 +6,7 @@ This is a **bold** and *italic* demo with `inline code`.
 
 - [x] Task list support
 - [ ] More features coming
+- [ ] Even more features coming
 - Regular bullet point
 
 ### Code Block
