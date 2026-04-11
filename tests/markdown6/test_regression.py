@@ -5,9 +5,33 @@ These tests ensure that previously fixed bugs don't reoccur.
 
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 from PySide6.QtCore import Qt
+
+
+class FakeMainWindow:
+    """Lightweight stand-in for MarkdownEditor when testing DocumentTab.
+
+    Provides the minimal interface DocumentTab needs without pulling in
+    the full MarkdownEditor (which initialises WebEngine, sidebar, etc.).
+    Unlike MagicMock, attribute access doesn't create new mocks that can
+    leak into the AppContext via signals.
+    """
+
+    def __init__(self, ctx):
+        import markdown
+        from markdown_editor.markdown6.extensions.math import MathExtension
+
+        self.ctx = ctx
+        self.md = markdown.Markdown(extensions=["extra", MathExtension()])
+
+    def update_tab_title(self, tab):
+        pass
+
+    def update_window_title(self):
+        pass
+
+    def get_html_template(self, content, **kwargs):
+        return f"<html><body>{content}</body></html>"
 
 
 class TestGraphExportLabelSpacing:
@@ -365,7 +389,6 @@ class TestPreviewDarkModeBackground:
 
     def test_preview_background_dark_mode(self, qtbot, tmp_path):
         """Test that preview has dark background in dark mode."""
-        from unittest.mock import MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
         from markdown_editor.markdown6.app_context import get_app_context
 
@@ -375,9 +398,7 @@ class TestPreviewDarkModeBackground:
         ctx = get_app_context()
         ctx.set("view.theme", "dark", save=False)
 
-        mock_main_window = MagicMock()
-        mock_main_window.ctx = ctx
-        tab = DocumentTab(mock_main_window)
+        tab = DocumentTab(FakeMainWindow(ctx))
         qtbot.addWidget(tab)
 
         # Check that background color was set on the page
@@ -387,7 +408,6 @@ class TestPreviewDarkModeBackground:
 
     def test_preview_background_light_mode(self, qtbot, tmp_path):
         """Test that preview has white background in light mode."""
-        from unittest.mock import MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
         from markdown_editor.markdown6.app_context import get_app_context
 
@@ -397,9 +417,7 @@ class TestPreviewDarkModeBackground:
         ctx = get_app_context()
         ctx.set("view.theme", "light", save=False)
 
-        mock_main_window = MagicMock()
-        mock_main_window.ctx = ctx
-        tab = DocumentTab(mock_main_window)
+        tab = DocumentTab(FakeMainWindow(ctx))
         qtbot.addWidget(tab)
 
         # Check that background color was set on the page
@@ -634,6 +652,54 @@ class TestGraphvizDarkMode:
         # Should keep the red fill, not add another one
         assert 'fill="red"' in result
         assert result.count('fill=') == 1
+
+
+class TestMathRendering:
+    """Regression test: math should render when file has a file:// base URL.
+
+    Bug: KaTeX loads from CDN (https://), but when a saved file is previewed,
+    the base URL is file:// which blocks https:// resource loading due to
+    Qt's mixed-content security policy. Math shows as raw $...$ text.
+    """
+
+    def test_katex_loads_with_file_base_url(self, qtbot, tmp_path):
+        """KaTeX scripts must load even when preview uses file:// base URL."""
+        from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.app_context import get_app_context
+        from markdown_editor.markdown6.extensions.math import get_math_js
+
+        if not HAS_WEBENGINE:
+            pytest.skip("WebEngine not available")
+
+        ctx = get_app_context()
+        main = FakeMainWindow(ctx)
+        main.get_html_template = lambda content, **kw: (
+            '<!DOCTYPE html><html><head>'
+            + get_math_js()
+            + '</head><body>' + content + '</body></html>'
+        )
+
+        tab = DocumentTab(main)
+        qtbot.addWidget(tab)
+        # Simulate a saved file — this sets the file:// base URL
+        test_file = tmp_path / "test.md"
+        test_file.write_text("$E=mc^2$")
+        tab.file_path = test_file
+        tab._preview_needs_full_reload = True
+        tab.editor.setPlainText("$E=mc^2$")
+        tab.render_markdown()
+
+        # Wait for CDN script to load
+        def katex_loaded():
+            result = [None]
+            tab.preview.page().runJavaScript(
+                "typeof katex !== 'undefined'",
+                lambda r: result.__setitem__(0, r),
+            )
+            qtbot.wait(100)
+            return result[0] is True
+
+        qtbot.waitUntil(katex_loaded, timeout=8000)
 
 
 class TestSettingsChangeDirtyFlag:

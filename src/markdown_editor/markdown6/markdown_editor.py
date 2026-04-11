@@ -798,6 +798,7 @@ class DocumentTab(QWidget):
 
         # Preview pane - use QWebEngineView if available for better CSS support
         if HAS_WEBENGINE:
+            from PySide6.QtWebEngineCore import QWebEngineSettings
             self.preview = QWebEngineView()
             # Use custom page to intercept link clicks
             self._custom_page = LinkInterceptPage(self.preview)
@@ -805,6 +806,10 @@ class DocumentTab(QWidget):
             self._custom_page.open_image_requested.connect(self._on_open_image)
             self._custom_page.linkHovered.connect(self._on_link_hovered)
             self.preview.setPage(self._custom_page)
+            # Allow loading CDN resources (KaTeX, Mermaid) from file:// pages
+            self._custom_page.settings().setAttribute(
+                QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True
+            )
             self._use_webengine = True
         else:
             self.preview = QTextBrowser()
