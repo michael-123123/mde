@@ -93,13 +93,13 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         # Inline code
         fmt = QTextCharFormat()
         fmt.setForeground(QColor(colors["code"]))
-        fmt.setFontFamily("Monospace")
+        fmt.setFontFamilies(["Monospace"])
         self.formats["code"] = fmt
 
         # Code block
         fmt = QTextCharFormat()
         fmt.setForeground(QColor(colors["code_block"]))
-        fmt.setFontFamily("Monospace")
+        fmt.setFontFamilies(["Monospace"])
         self.formats["code_block"] = fmt
 
         # Link text

@@ -71,7 +71,8 @@ class TestHighlighterFormats:
         """Test that code format uses monospace font."""
         fmt = highlighter.formats["code"]
         # Font family should be set to monospace
-        assert "mono" in fmt.fontFamily().lower() or fmt.fontFamily() == "Monospace"
+        families = fmt.fontFamilies()
+        assert any("mono" in f.lower() for f in families)
 
 
 class TestDarkModeToggle:
