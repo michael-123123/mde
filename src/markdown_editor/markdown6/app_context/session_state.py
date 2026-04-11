@@ -70,8 +70,8 @@ class SessionState(QObject):
             if k not in DEFAULT_SESSION_STATE or v != DEFAULT_SESSION_STATE[k]
         }
         try:
-            with open(self._state_file, "w") as f:
-                json.dump(state_to_save, f, indent=2)
+            from markdown_editor.markdown6.temp_files import atomic_write
+            atomic_write(self._state_file, json.dumps(state_to_save, indent=2))
         except OSError:
             logger.exception(f"Could not save session state to {self._state_file}")
 

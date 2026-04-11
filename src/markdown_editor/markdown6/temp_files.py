@@ -95,3 +95,27 @@ def cleanup():
 
 
 atexit.register(cleanup)
+
+
+def atomic_write(path: Path, data: str) -> None:
+    """Write data to a file atomically via temp-file-and-rename.
+
+    Writes to a temporary file in the same directory as *path*, then
+    renames it over the target. This ensures that a crash mid-write
+    cannot leave a half-written file. On POSIX the rename is atomic;
+    on Windows it uses MoveFileEx(REPLACE_EXISTING) which is the best
+    available guarantee.
+
+    Args:
+        path: Destination file path.
+        data: String content to write (UTF-8).
+    """
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    tmp_path = Path(tmp)
+    try:
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(data)
+        tmp_path.replace(path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise

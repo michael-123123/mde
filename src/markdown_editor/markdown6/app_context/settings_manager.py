@@ -99,8 +99,8 @@ class SettingsManager(QObject):
             if k not in DEFAULT_SETTINGS or v != DEFAULT_SETTINGS[k]
         }
         try:
-            with open(self._settings_file, "w") as f:
-                json.dump(settings_to_save, f, indent=2)
+            from markdown_editor.markdown6.temp_files import atomic_write
+            atomic_write(self._settings_file, json.dumps(settings_to_save, indent=2))
         except OSError:
             logger.exception(f"Could not save settings to {self._settings_file}")
 
