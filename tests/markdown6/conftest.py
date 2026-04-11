@@ -32,3 +32,11 @@ def ephemeral_settings():
 
     # Reset after test to clean up
     ctx_module._app_context = None
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Flush pending widget deletions before Qt tears down profiles."""
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    if app:
+        app.processEvents()

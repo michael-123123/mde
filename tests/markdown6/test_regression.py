@@ -391,6 +391,7 @@ class TestPreviewDarkModeBackground:
         """Test that preview has dark background in dark mode."""
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
         from markdown_editor.markdown6.app_context import get_app_context
+        from PySide6.QtWidgets import QApplication
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -399,17 +400,18 @@ class TestPreviewDarkModeBackground:
         ctx.set("view.theme", "dark", save=False)
 
         tab = DocumentTab(FakeMainWindow(ctx))
-        qtbot.addWidget(tab)
 
-        # Check that background color was set on the page
         bg_color = tab.preview.page().backgroundColor()
-        # Dark mode background should be #1e1e1e
         assert bg_color.name() == "#1e1e1e"
+
+        del tab
+        QApplication.processEvents()
 
     def test_preview_background_light_mode(self, qtbot, tmp_path):
         """Test that preview has white background in light mode."""
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
         from markdown_editor.markdown6.app_context import get_app_context
+        from PySide6.QtWidgets import QApplication
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -418,12 +420,12 @@ class TestPreviewDarkModeBackground:
         ctx.set("view.theme", "light", save=False)
 
         tab = DocumentTab(FakeMainWindow(ctx))
-        qtbot.addWidget(tab)
 
-        # Check that background color was set on the page
         bg_color = tab.preview.page().backgroundColor()
-        # Light mode background should be white
         assert bg_color.name() == "#ffffff"
+
+        del tab
+        QApplication.processEvents()
 
 
 class TestDarkModeTheming:
@@ -534,16 +536,20 @@ class TestDarkModeTheming:
         """Test that sidebar applies dark colors in dark mode."""
         from markdown_editor.markdown6.markdown_editor import MarkdownEditor
         from markdown_editor.markdown6.app_context import get_app_context
+        from PySide6.QtWidgets import QApplication
 
         ctx = get_app_context()
         ctx.set("view.theme", "dark", save=False)
 
         editor = MarkdownEditor()
-        qtbot.addWidget(editor)
 
         # Check sidebar exists and has activity bar
         assert hasattr(editor, 'sidebar')
         assert hasattr(editor.sidebar, 'activity_bar')
+
+        editor.close()
+        del editor
+        QApplication.processEvents()
 
     def test_all_stylesheets_contain_background_color(self):
         """Test that all relevant stylesheets set background-color."""
@@ -667,6 +673,7 @@ class TestMathRendering:
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
         from markdown_editor.markdown6.app_context import get_app_context
         from markdown_editor.markdown6.extensions.math import get_math_js
+        from PySide6.QtWidgets import QApplication
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -680,7 +687,6 @@ class TestMathRendering:
         )
 
         tab = DocumentTab(main)
-        qtbot.addWidget(tab)
         # Simulate a saved file — this sets the file:// base URL
         test_file = tmp_path / "test.md"
         test_file.write_text("$E=mc^2$")
@@ -700,6 +706,9 @@ class TestMathRendering:
             return result[0] is True
 
         qtbot.waitUntil(katex_loaded, timeout=8000)
+
+        del tab
+        QApplication.processEvents()
 
 
 class TestPreviewWheelScrollSync:
@@ -722,7 +731,6 @@ class TestPreviewWheelScrollSync:
         ctx = get_app_context()
         main = FakeMainWindow(ctx)
         tab = DocumentTab(main)
-        qtbot.addWidget(tab)
 
         # Trigger a render so loadFinished fires and filter gets installed
         tab.editor.setPlainText("test content\n" * 50)
@@ -733,6 +741,10 @@ class TestPreviewWheelScrollSync:
         assert tab._wheel_filter_installed, (
             "Wheel event filter should be installed after first page load"
         )
+
+        del tab
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
 
 
 class TestSettingsChangeDirtyFlag:

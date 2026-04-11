@@ -821,8 +821,11 @@ class DocumentTab(QWidget):
         if HAS_WEBENGINE:
             from PySide6.QtWebEngineCore import QWebEngineSettings
             self.preview = QWebEngineView()
-            # Use custom page to intercept link clicks
-            self._custom_page = LinkInterceptPage(self.preview)
+            # Custom page to intercept link clicks. Parented to self (not
+            # the view) so Qt destroys the page before the view — avoiding
+            # "Release of profile requested but WebEnginePage still not
+            # deleted" warnings.
+            self._custom_page = LinkInterceptPage(self)
             self._custom_page.link_clicked.connect(self._on_link_clicked)
             self._custom_page.open_image_requested.connect(self._on_open_image)
             self._custom_page.linkHovered.connect(self._on_link_hovered)
