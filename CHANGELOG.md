@@ -3,6 +3,23 @@
 All notable changes to markdown-editor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.9] - 2026-04-11
+
+### Added
+- Bidirectional scroll sync — scrolling the preview now scrolls the editor
+- Logging infrastructure across all modules for diagnostics
+
+### Changed
+- Settings architecture refactored into AppContext with dependency injection
+- Markdown extensions split into individual modules under `extensions/` subpackage
+- "Preview Typography" settings tab renamed to "Appearance"
+
+### Fixed
+- Math (KaTeX) and Mermaid diagrams not rendering in saved files due to CDN blocking
+- Theme change incorrectly marking documents as having unsaved changes
+- Deprecated Qt `setFontFamily` API replaced with `setFontFamilies`
+- WebEngine page cleanup warnings during test runs
+
 ## [0.1.7] - 2026-04-11
 
 ### Added
