@@ -4,12 +4,13 @@ import pytest
 from PySide6.QtCore import Qt
 
 from markdown_editor.markdown6.outline_panel import OutlinePanel, Heading
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 @pytest.fixture
 def panel(qtbot):
     """Create an OutlinePanel instance."""
-    p = OutlinePanel()
+    p = OutlinePanel(get_app_context())
     qtbot.addWidget(p)
     return p
 

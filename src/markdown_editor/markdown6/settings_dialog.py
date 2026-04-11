@@ -32,16 +32,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from markdown_editor.markdown6.settings import get_settings, DEFAULT_SETTINGS, DEFAULT_SHORTCUTS
+from markdown_editor.markdown6.app_context import get_app_context, DEFAULT_SETTINGS
+from markdown_editor.markdown6.app_context import DEFAULT_SHORTCUTS
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
 class SettingsDialog(QDialog):
     """Dialog for editing application settings."""
 
-    def __init__(self, parent=None):
+    def __init__(self, ctx=None, parent=None):
         super().__init__(parent)
-        self.settings = get_settings()
+        if ctx is None:
+            ctx = get_app_context()
+        self.ctx = ctx
         self.pending_shortcuts = {}
 
         self.setWindowTitle("Settings")
@@ -52,7 +55,7 @@ class SettingsDialog(QDialog):
         self._load_settings()
         self._apply_theme()
         # Listen for theme changes
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""
@@ -61,7 +64,7 @@ class SettingsDialog(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.setStyleSheet(
@@ -96,7 +99,7 @@ class SettingsDialog(QDialog):
         categories = [
             ("Editor", "editor"),
             ("View", "view"),
-            ("Preview Typography", "typography"),
+            ("Appearance", "appearance"),
             ("Files", "files"),
             ("External Tools", "tools"),
             ("Keyboard Shortcuts", "shortcuts"),
@@ -116,7 +119,7 @@ class SettingsDialog(QDialog):
 
         self.stack.addWidget(self._create_editor_page())
         self.stack.addWidget(self._create_view_page())
-        self.stack.addWidget(self._create_typography_page())
+        self.stack.addWidget(self._create_appearance_page())
         self.stack.addWidget(self._create_files_page())
         self.stack.addWidget(self._create_tools_page())
         self.stack.addWidget(self._create_shortcuts_page())
@@ -284,7 +287,7 @@ class SettingsDialog(QDialog):
         return scroll
 
     def _create_font_size_row(self, label: str, key_prefix: str) -> tuple:
-        """Create a row with a size spinbox and unit combo for a typography element.
+        """Create a row with a size spinbox and unit combo for an appearance element.
 
         Returns (size_spinbox, unit_combo) so they can be stored for load/save.
         """
@@ -302,8 +305,8 @@ class SettingsDialog(QDialog):
 
         return size_spin, unit_combo, row
 
-    def _create_typography_page(self) -> QWidget:
-        """Create the preview typography settings page."""
+    def _create_appearance_page(self) -> QWidget:
+        """Create the appearance settings page."""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -564,75 +567,75 @@ class SettingsDialog(QDialog):
     def _load_settings(self):
         """Load current settings into the UI."""
         # Editor settings
-        self.font_family.setText(self.settings.get("editor.font_family", "Monospace"))
-        self.font_size.setValue(self.settings.get("editor.font_size", 11))
-        self.tab_size.setValue(self.settings.get("editor.tab_size", 4))
-        self.use_spaces.setChecked(self.settings.get("editor.use_spaces", True))
-        self.auto_indent.setChecked(self.settings.get("editor.auto_indent", True))
-        self.word_wrap.setChecked(self.settings.get("editor.word_wrap", True))
-        self.auto_pairs.setChecked(self.settings.get("editor.auto_pairs", True))
+        self.font_family.setText(self.ctx.get("editor.font_family", "Monospace"))
+        self.font_size.setValue(self.ctx.get("editor.font_size", 11))
+        self.tab_size.setValue(self.ctx.get("editor.tab_size", 4))
+        self.use_spaces.setChecked(self.ctx.get("editor.use_spaces", True))
+        self.auto_indent.setChecked(self.ctx.get("editor.auto_indent", True))
+        self.word_wrap.setChecked(self.ctx.get("editor.word_wrap", True))
+        self.auto_pairs.setChecked(self.ctx.get("editor.auto_pairs", True))
         self.highlight_current_line.setChecked(
-            self.settings.get("editor.highlight_current_line", True)
+            self.ctx.get("editor.highlight_current_line", True)
         )
-        self.show_whitespace.setChecked(self.settings.get("editor.show_whitespace", False))
-        self.auto_save.setChecked(self.settings.get("editor.auto_save", False))
-        self.auto_save_interval.setValue(self.settings.get("editor.auto_save_interval", 60))
+        self.show_whitespace.setChecked(self.ctx.get("editor.show_whitespace", False))
+        self.auto_save.setChecked(self.ctx.get("editor.auto_save", False))
+        self.auto_save_interval.setValue(self.ctx.get("editor.auto_save_interval", 60))
 
         # View settings
-        theme = self.settings.get("view.theme", "light")
+        theme = self.ctx.get("view.theme", "light")
         self.theme.setCurrentIndex(0 if theme == "light" else 1)
-        self.show_line_numbers.setChecked(self.settings.get("editor.show_line_numbers", True))
-        self.show_preview.setChecked(self.settings.get("view.show_preview", True))
-        self.sync_scrolling.setChecked(self.settings.get("view.sync_scrolling", True))
-        self.scroll_past_end.setChecked(self.settings.get("editor.scroll_past_end", True))
-        self.preview_font_size.setValue(self.settings.get("view.preview_font_size", 14))
+        self.show_line_numbers.setChecked(self.ctx.get("editor.show_line_numbers", True))
+        self.show_preview.setChecked(self.ctx.get("view.show_preview", True))
+        self.sync_scrolling.setChecked(self.ctx.get("view.sync_scrolling", True))
+        self.scroll_past_end.setChecked(self.ctx.get("editor.scroll_past_end", True))
+        self.preview_font_size.setValue(self.ctx.get("view.preview_font_size", 14))
 
         # Files settings
         self.detect_external_changes.setChecked(
-            self.settings.get("files.detect_external_changes", True)
+            self.ctx.get("files.detect_external_changes", True)
         )
         self.restore_tree_state.setChecked(
-            self.settings.get("project.restore_tree_state", True)
+            self.ctx.get("project.restore_tree_state", True)
         )
         self.show_hidden_files.setChecked(
-            self.settings.get("files.show_hidden", False)
+            self.ctx.get("files.show_hidden", False)
         )
-        self.max_recent_files.setValue(self.settings.get("files.max_recent_files", 10))
+        self.max_recent_files.setValue(self.ctx.get("files.max_recent_files", 10))
 
         # External tools settings
-        self.pandoc_path.setText(self.settings.get("tools.pandoc_path", ""))
-        self.dot_path.setText(self.settings.get("tools.dot_path", ""))
-        self.mmdc_path.setText(self.settings.get("tools.mmdc_path", ""))
+        self.pandoc_path.setText(self.ctx.get("tools.pandoc_path", ""))
+        self.dot_path.setText(self.ctx.get("tools.dot_path", ""))
+        self.mmdc_path.setText(self.ctx.get("tools.mmdc_path", ""))
 
-        # Preview typography
+        # Appearance
         from PySide6.QtGui import QFont, QFontDatabase
-        body_font_name = self.settings.get("preview.body_font_family", "")
+        body_font_name = self.ctx.get("preview.body_font_family", "")
         if not body_font_name:
             # Resolve the default system font
             body_font_name = QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family()
         self.preview_body_font.setCurrentFont(QFont(body_font_name))
 
-        heading_font_name = self.settings.get("preview.heading_font_family", "")
+        heading_font_name = self.ctx.get("preview.heading_font_family", "")
         if heading_font_name:
             self.preview_heading_font.setCurrentFont(QFont(heading_font_name))
         else:
             # Show same as body when inheriting
             self.preview_heading_font.setCurrentFont(QFont(body_font_name))
-        self._heading_font_customized = bool(self.settings.get("preview.heading_font_family", ""))
+        self._heading_font_customized = bool(self.ctx.get("preview.heading_font_family", ""))
 
-        code_font_name = self.settings.get("preview.code_font_family", "")
+        code_font_name = self.ctx.get("preview.code_font_family", "")
         if not code_font_name:
             code_font_name = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
         self.preview_code_font.setCurrentFont(QFont(code_font_name))
-        self.preview_line_height.setValue(self.settings.get("preview.line_height", 1.5))
+        self.preview_line_height.setValue(self.ctx.get("preview.line_height", 1.5))
         for level in range(1, 7):
             key = f"h{level}"
             spin, combo = self._heading_controls[key]
-            spin.setValue(self.settings.get(f"preview.{key}_size", 1.0))
-            unit = self.settings.get(f"preview.{key}_size_unit", "em")
+            spin.setValue(self.ctx.get(f"preview.{key}_size", 1.0))
+            unit = self.ctx.get(f"preview.{key}_size_unit", "em")
             combo.setCurrentText(unit)
-        self._code_size_spin.setValue(self.settings.get("preview.code_size", 85))
-        self._code_size_combo.setCurrentText(self.settings.get("preview.code_size_unit", "%"))
+        self._code_size_spin.setValue(self.ctx.get("preview.code_size", 85))
+        self._code_size_combo.setCurrentText(self.ctx.get("preview.code_size_unit", "%"))
 
         # Load shortcuts
         self._populate_shortcuts_table()
@@ -641,7 +644,7 @@ class SettingsDialog(QDialog):
         """Populate the shortcuts table."""
         self.shortcuts_table.setRowCount(0)
 
-        shortcuts = self.settings.get_all_shortcuts()
+        shortcuts = self.ctx.get_all_shortcuts()
 
         # Group shortcuts by category
         categories = {
@@ -722,13 +725,13 @@ class SettingsDialog(QDialog):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.settings.reset_shortcuts()
+            self.ctx.reset_shortcuts()
             self.pending_shortcuts.clear()
             self._populate_shortcuts_table()
 
     def _clear_recent_files(self):
         """Clear the recent files list."""
-        self.settings.clear_recent_files()
+        self.ctx.clear_recent_files()
         QMessageBox.information(self, "Recent Files", "Recent files list cleared.")
 
     def _reset_to_defaults(self):
@@ -739,14 +742,14 @@ class SettingsDialog(QDialog):
             "This will delete your saved settings and keyboard shortcuts, "
             "restoring everything to factory defaults.\n\n"
             "Config files will be removed from:\n"
-            f"{self.settings.config_dir}\n\n"
+            f"{self.ctx.config_dir}\n\n"
             "Are you sure you want to continue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.settings.restore_all_defaults()
+            self.ctx.restore_all_defaults()
             self.pending_shortcuts.clear()
             self._load_settings()
             QMessageBox.information(
@@ -758,59 +761,59 @@ class SettingsDialog(QDialog):
     def _apply(self):
         """Apply the current settings."""
         # Editor settings
-        self.settings.set("editor.font_family", self.font_family.text())
-        self.settings.set("editor.font_size", self.font_size.value())
-        self.settings.set("editor.tab_size", self.tab_size.value())
-        self.settings.set("editor.use_spaces", self.use_spaces.isChecked())
-        self.settings.set("editor.auto_indent", self.auto_indent.isChecked())
-        self.settings.set("editor.word_wrap", self.word_wrap.isChecked())
-        self.settings.set("editor.auto_pairs", self.auto_pairs.isChecked())
-        self.settings.set("editor.highlight_current_line", self.highlight_current_line.isChecked())
-        self.settings.set("editor.show_whitespace", self.show_whitespace.isChecked())
-        self.settings.set("editor.auto_save", self.auto_save.isChecked())
-        self.settings.set("editor.auto_save_interval", self.auto_save_interval.value())
+        self.ctx.set("editor.font_family", self.font_family.text())
+        self.ctx.set("editor.font_size", self.font_size.value())
+        self.ctx.set("editor.tab_size", self.tab_size.value())
+        self.ctx.set("editor.use_spaces", self.use_spaces.isChecked())
+        self.ctx.set("editor.auto_indent", self.auto_indent.isChecked())
+        self.ctx.set("editor.word_wrap", self.word_wrap.isChecked())
+        self.ctx.set("editor.auto_pairs", self.auto_pairs.isChecked())
+        self.ctx.set("editor.highlight_current_line", self.highlight_current_line.isChecked())
+        self.ctx.set("editor.show_whitespace", self.show_whitespace.isChecked())
+        self.ctx.set("editor.auto_save", self.auto_save.isChecked())
+        self.ctx.set("editor.auto_save_interval", self.auto_save_interval.value())
 
         # View settings
-        self.settings.set("view.theme", "light" if self.theme.currentIndex() == 0 else "dark")
-        self.settings.set("editor.show_line_numbers", self.show_line_numbers.isChecked())
-        self.settings.set("view.show_preview", self.show_preview.isChecked())
-        self.settings.set("view.sync_scrolling", self.sync_scrolling.isChecked())
-        self.settings.set("editor.scroll_past_end", self.scroll_past_end.isChecked())
-        self.settings.set("view.preview_font_size", self.preview_font_size.value())
+        self.ctx.set("view.theme", "light" if self.theme.currentIndex() == 0 else "dark")
+        self.ctx.set("editor.show_line_numbers", self.show_line_numbers.isChecked())
+        self.ctx.set("view.show_preview", self.show_preview.isChecked())
+        self.ctx.set("view.sync_scrolling", self.sync_scrolling.isChecked())
+        self.ctx.set("editor.scroll_past_end", self.scroll_past_end.isChecked())
+        self.ctx.set("view.preview_font_size", self.preview_font_size.value())
 
         # Files settings
-        self.settings.set("files.detect_external_changes", self.detect_external_changes.isChecked())
-        self.settings.set("project.restore_tree_state", self.restore_tree_state.isChecked())
-        self.settings.set("files.show_hidden", self.show_hidden_files.isChecked())
-        self.settings.set("files.max_recent_files", self.max_recent_files.value())
+        self.ctx.set("files.detect_external_changes", self.detect_external_changes.isChecked())
+        self.ctx.set("project.restore_tree_state", self.restore_tree_state.isChecked())
+        self.ctx.set("files.show_hidden", self.show_hidden_files.isChecked())
+        self.ctx.set("files.max_recent_files", self.max_recent_files.value())
 
         # External tools settings
-        self.settings.set("tools.pandoc_path", self.pandoc_path.text().strip())
-        self.settings.set("tools.dot_path", self.dot_path.text().strip())
-        self.settings.set("tools.mmdc_path", self.mmdc_path.text().strip())
+        self.ctx.set("tools.pandoc_path", self.pandoc_path.text().strip())
+        self.ctx.set("tools.dot_path", self.dot_path.text().strip())
+        self.ctx.set("tools.mmdc_path", self.mmdc_path.text().strip())
 
-        # Preview typography
-        self.settings.set("preview.body_font_family", self.preview_body_font.currentFont().family())
+        # Appearance
+        self.ctx.set("preview.body_font_family", self.preview_body_font.currentFont().family())
         # Only save heading font if user changed it from the body default
         heading_family = self.preview_heading_font.currentFont().family()
         body_family = self.preview_body_font.currentFont().family()
         if heading_family != body_family or self._heading_font_customized:
-            self.settings.set("preview.heading_font_family", heading_family)
+            self.ctx.set("preview.heading_font_family", heading_family)
         else:
-            self.settings.set("preview.heading_font_family", "")
-        self.settings.set("preview.code_font_family", self.preview_code_font.currentFont().family())
-        self.settings.set("preview.line_height", self.preview_line_height.value())
+            self.ctx.set("preview.heading_font_family", "")
+        self.ctx.set("preview.code_font_family", self.preview_code_font.currentFont().family())
+        self.ctx.set("preview.line_height", self.preview_line_height.value())
         for level in range(1, 7):
             key = f"h{level}"
             spin, combo = self._heading_controls[key]
-            self.settings.set(f"preview.{key}_size", spin.value())
-            self.settings.set(f"preview.{key}_size_unit", combo.currentText())
-        self.settings.set("preview.code_size", self._code_size_spin.value())
-        self.settings.set("preview.code_size_unit", self._code_size_combo.currentText())
+            self.ctx.set(f"preview.{key}_size", spin.value())
+            self.ctx.set(f"preview.{key}_size_unit", combo.currentText())
+        self.ctx.set("preview.code_size", self._code_size_spin.value())
+        self.ctx.set("preview.code_size_unit", self._code_size_combo.currentText())
 
         # Shortcuts
         for action, shortcut in self.pending_shortcuts.items():
-            self.settings.set_shortcut(action, shortcut)
+            self.ctx.set_shortcut(action, shortcut)
 
         self.pending_shortcuts.clear()
 

@@ -46,8 +46,8 @@ class _ColorFormatter(logging.Formatter):
 def getLogger(module_name: str) -> logging.Logger:
     """Get a logger under the ``mde`` namespace.
 
-    ``getLogger(__name__)`` in ``markdown_editor.markdown6.settings``
-    returns the logger ``mde.markdown_editor.markdown6.settings``.
+    ``getLogger(__name__)`` in ``markdown_editor.markdown6.app_context``
+    returns the logger ``mde.markdown_editor.markdown6.app_context``.
     """
     return logging.getLogger(f"{ROOT}.{module_name}")
 

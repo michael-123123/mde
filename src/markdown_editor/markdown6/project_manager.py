@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
+from markdown_editor.markdown6.app_context import get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import export_service
 
@@ -65,15 +65,15 @@ class ProjectPanel(QWidget):
     file_double_clicked = Signal(str)  # file path
     graph_export_requested = Signal()  # request to open graph export dialog
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, ctx, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.ctx = ctx
         self.project_path: Path | None = None
         self._lazy = False  # True when project root is outside $HOME
         self._filter_text = ""
         self._init_ui()
         self._apply_theme()
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _init_ui(self):
         """Initialize the UI."""
@@ -134,7 +134,7 @@ class ProjectPanel(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.setStyleSheet(
@@ -146,7 +146,7 @@ class ProjectPanel(QWidget):
 
     def _apply_hidden_filter(self):
         """Apply the hidden files filter based on settings."""
-        show_hidden = self.settings.get("files.show_hidden", False)
+        show_hidden = self.ctx.get("files.show_hidden", False)
         base_filters = QDir.Filter.AllDirs | QDir.Filter.Files | QDir.Filter.NoDotAndDotDot
         if show_hidden:
             base_filters |= QDir.Filter.Hidden
@@ -182,7 +182,7 @@ class ProjectPanel(QWidget):
         self.file_model.setRootPath(str(path))
         self.tree_view.setRootIndex(self.file_model.index(str(path)))
         # Remember last project
-        self.settings.set("project.last_path", str(path))
+        self.ctx.set("project.last_path", str(path))
         # Clear filter
         self.filter_input.clear()
         # Restore expanded directories from last session
@@ -195,7 +195,7 @@ class ProjectPanel(QWidget):
             return
         expanded = []
         self._collect_expanded(self.tree_view.rootIndex(), expanded)
-        self.settings.set("project.expanded_dirs", expanded)
+        self.ctx.set("project.expanded_dirs", expanded)
 
     def _collect_expanded(self, parent_index, result: list[str]):
         """Recursively collect expanded directory paths."""
@@ -216,9 +216,9 @@ class ProjectPanel(QWidget):
         """
         if not self.project_path:
             return
-        if not self.settings.get("project.restore_tree_state", True):
+        if not self.ctx.get("project.restore_tree_state", True):
             return
-        dirs = self.settings.get("project.expanded_dirs", [])
+        dirs = self.ctx.get("project.expanded_dirs", [])
         if not dirs:
             return
         # Only restore dirs that are under the current project root and exist
@@ -378,7 +378,7 @@ class ProjectPanel(QWidget):
             )
             return
 
-        dialog = ProjectExportDialog(self.project_path, self)
+        dialog = ProjectExportDialog(self.project_path, self.ctx, self)
         dialog.exec()
 
     def _on_graph_export_clicked(self):
@@ -406,10 +406,10 @@ class ProjectPanel(QWidget):
 class ProjectExportDialog(QDialog):
     """Dialog for exporting a project to a single document."""
 
-    def __init__(self, project_path: Path, parent: QWidget | None = None):
+    def __init__(self, project_path: Path, ctx, parent: QWidget | None = None):
         super().__init__(parent)
         self.project_path = project_path
-        self.settings = get_settings()
+        self.ctx = ctx
         self._init_ui()
         self._load_files()
         self._apply_theme()
@@ -483,7 +483,7 @@ class ProjectExportDialog(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.setStyleSheet(

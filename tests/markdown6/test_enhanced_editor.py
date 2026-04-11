@@ -2,7 +2,6 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
@@ -163,7 +162,7 @@ class TestEnhancedEditorLineNumbers:
     def test_line_numbers_visible_by_default(self, editor):
         """Test that line numbers are visible by default."""
         # Check via settings or the line number area visibility
-        assert editor.line_number_area.isVisible() or editor.settings.get("editor.show_line_numbers")
+        assert editor.line_number_area.isVisible() or editor.ctx.get("editor.show_line_numbers")
 
 
 class TestEnhancedEditorModification:

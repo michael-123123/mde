@@ -281,7 +281,7 @@ def read_stdin() -> str:
 
 def get_project_files(project_path: Path) -> list[Path]:
     """Get all markdown files in a project."""
-    from markdown_editor.markdown6.settings import get_project_markdown_files
+    from markdown_editor.markdown6.app_context import get_project_markdown_files
     return get_project_markdown_files(project_path)
 
 
@@ -1155,35 +1155,35 @@ def cmd_uninstall_autocomplete(args: argparse.Namespace) -> int:
 
 def cmd_gui(args: argparse.Namespace) -> int:
     """Launch the GUI editor."""
-    from markdown_editor.markdown6.settings import init_settings
+    from markdown_editor.markdown6.app_context import init_app_context
 
     # Initialize settings before importing editor
     # --reset: delete all config files and start clean
     # --new-session: use ephemeral settings (defaults only, no save)
     # --config: use custom config directory
     if args.reset:
-        from markdown_editor.markdown6.settings import _default_config_dir
+        from markdown_editor.markdown6.app_context import _default_config_dir
         config_dir = args.config or _default_config_dir()
         if config_dir.exists():
             shutil.rmtree(config_dir)
             print(f"Reset: deleted {config_dir}", file=sys.stderr)
-        init_settings(ephemeral=True)
+        init_app_context(ephemeral=True)
     elif args.new_session:
-        init_settings(ephemeral=True)
+        init_app_context(ephemeral=True)
     elif args.config:
-        init_settings(config_dir=args.config)
+        init_app_context(config_dir=args.config)
 
     # Import Qt and editor
     from PySide6.QtWidgets import QApplication
     from markdown_editor.markdown6.markdown_editor import MarkdownEditor, apply_application_theme
-    from markdown_editor.markdown6.settings import get_settings
+    from markdown_editor.markdown6.app_context import get_app_context
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")
 
     # Apply saved theme at startup (before creating editor)
-    settings = get_settings()
-    theme = args.theme if args.theme else settings.get("view.theme", "light")
+    ctx = get_app_context()
+    theme = args.theme if args.theme else ctx.get("view.theme", "light")
     apply_application_theme(theme == "dark")
 
     # Create editor
@@ -1191,7 +1191,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     # Apply theme override (also update settings if specified)
     if args.theme:
-        editor.settings.set("view.theme", args.theme)
+        editor.ctx.set("view.theme", args.theme)
 
     # Open project
     if args.project:
@@ -1218,7 +1218,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
             editor.new_tab()
     else:
         # No explicit files — restore previous session if project matches
-        last_path = settings.get("project.last_path")
+        last_path = ctx.get("project.last_path")
         project_path = str(args.project.resolve()) if args.project and args.project.is_dir() else None
         if last_path and (project_path is None or project_path == last_path):
             editor.restore_open_files()

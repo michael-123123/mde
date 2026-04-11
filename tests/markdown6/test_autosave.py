@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QWidget
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 class FakeTab:
@@ -111,30 +111,30 @@ class TestAutosaveTimer:
 
     def test_default_off(self):
         """Auto-save is disabled by default."""
-        assert get_settings().get("editor.auto_save") is False
+        assert get_app_context().get("editor.auto_save") is False
 
     def test_timer_starts_and_stops(self, qtbot):
         """Timer activates/deactivates when setting toggles."""
         timer = QTimer()
-        settings = get_settings()
+        ctx = get_app_context()
 
         # Simulate what _configure_autosave does
         def configure():
-            if settings.get("editor.auto_save", False):
-                timer.start(settings.get("editor.auto_save_interval", 60) * 1000)
+            if ctx.get("editor.auto_save", False):
+                timer.start(ctx.get("editor.auto_save_interval", 60) * 1000)
             else:
                 timer.stop()
 
-        settings.settings_changed.connect(lambda k, v: configure())
+        ctx.settings_changed.connect(lambda k, v: configure())
 
-        settings.set("editor.auto_save", True)
+        ctx.set("editor.auto_save", True)
         assert timer.isActive()
         assert timer.interval() == 60_000
 
-        settings.set("editor.auto_save_interval", 30)
+        ctx.set("editor.auto_save_interval", 30)
         assert timer.interval() == 30_000
 
-        settings.set("editor.auto_save", False)
+        ctx.set("editor.auto_save", False)
         assert not timer.isActive()
 
         timer.stop()

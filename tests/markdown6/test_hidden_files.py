@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from markdown_editor.markdown6.settings import (
-    get_settings,
+from markdown_editor.markdown6.app_context import (
+    get_app_context,
     is_hidden_path,
     get_project_markdown_files,
 )
@@ -77,14 +77,14 @@ class TestGetProjectMarkdownFiles:
         assert ".secret.md" in names
 
     def test_reads_setting_when_show_hidden_is_none(self, project_tree):
-        settings = get_settings()
+        ctx = get_app_context()
         # Default is False
         files = get_project_markdown_files(project_tree)
         names = {f.name for f in files}
         assert ".hidden_note.md" not in names
 
         # Change setting
-        settings.set("files.show_hidden", True)
+        ctx.set("files.show_hidden", True)
         files = get_project_markdown_files(project_tree)
         names = {f.name for f in files}
         assert ".hidden_note.md" in names
@@ -125,5 +125,5 @@ class TestGetProjectMarkdownFiles:
 
 class TestDefaultSetting:
     def test_default_is_false(self):
-        settings = get_settings()
-        assert settings.get("files.show_hidden") is False
+        ctx = get_app_context()
+        assert ctx.get("files.show_hidden") is False

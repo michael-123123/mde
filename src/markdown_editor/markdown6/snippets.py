@@ -351,8 +351,8 @@ class SnippetManager:
 class SnippetPopup(SearchablePopup):
     """A popup for selecting snippets."""
 
-    def __init__(self, snippets: list[Snippet], parent: QWidget | None = None):
-        super().__init__(parent)
+    def __init__(self, snippets: list[Snippet], ctx=None, parent: QWidget | None = None):
+        super().__init__(ctx=ctx, parent=parent)
         self.snippets = snippets
         self.selected_snippet: Snippet | None = None
         self._init_snippet_ui()

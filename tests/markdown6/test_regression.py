@@ -5,9 +5,33 @@ These tests ensure that previously fixed bugs don't reoccur.
 
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 from PySide6.QtCore import Qt
+
+
+class FakeMainWindow:
+    """Lightweight stand-in for MarkdownEditor when testing DocumentTab.
+
+    Provides the minimal interface DocumentTab needs without pulling in
+    the full MarkdownEditor (which initialises WebEngine, sidebar, etc.).
+    Unlike MagicMock, attribute access doesn't create new mocks that can
+    leak into the AppContext via signals.
+    """
+
+    def __init__(self, ctx):
+        import markdown
+        from markdown_editor.markdown6.extensions.math import MathExtension
+
+        self.ctx = ctx
+        self.md = markdown.Markdown(extensions=["extra", MathExtension()])
+
+    def update_tab_title(self, tab):
+        pass
+
+    def update_window_title(self):
+        pass
+
+    def get_html_template(self, content, **kwargs):
+        return f"<html><body>{content}</body></html>"
 
 
 class TestGraphExportLabelSpacing:
@@ -314,33 +338,33 @@ class TestSettingsPersistence:
 
     def test_recent_files_handles_deleted_files(self, tmp_path):
         """Test that recent files filters out deleted files."""
-        from markdown_editor.markdown6.settings import Settings
+        from markdown_editor.markdown6.app_context import AppContext
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
-        settings = Settings(config_dir=config_dir)
+        ctx = AppContext(config_dir=config_dir)
 
         # Clear and add a file
-        settings.set("files.recent_files", [], save=False)
+        ctx.set("files.recent_files", [], save=False)
 
         test_file = tmp_path / "exists.md"
         test_file.touch()
-        settings.add_recent_file(test_file)
+        ctx.add_recent_file(test_file)
 
         # File exists, should be returned
-        recent = settings.get_recent_files()
+        recent = ctx.get_recent_files()
         assert len(recent) == 1
 
         # Delete the file
         test_file.unlink()
 
         # Now it should be filtered out
-        recent = settings.get_recent_files()
+        recent = ctx.get_recent_files()
         assert len(recent) == 0
 
     def test_corrupt_settings_file_uses_defaults(self, tmp_path):
         """Test that corrupt settings file falls back to defaults."""
-        from markdown_editor.markdown6.settings import Settings, DEFAULT_SETTINGS
+        from markdown_editor.markdown6.app_context import AppContext, DEFAULT_SETTINGS
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
@@ -349,8 +373,8 @@ class TestSettingsPersistence:
         (config_dir / "settings.json").write_text("{invalid json")
 
         # Should load defaults without crashing
-        settings = Settings(config_dir=config_dir)
-        assert settings.get("editor.font_size") == DEFAULT_SETTINGS["editor.font_size"]
+        ctx = AppContext(config_dir=config_dir)
+        assert ctx.get("editor.font_size") == DEFAULT_SETTINGS["editor.font_size"]
 
 
 class TestPreviewDarkModeBackground:
@@ -365,59 +389,43 @@ class TestPreviewDarkModeBackground:
 
     def test_preview_background_dark_mode(self, qtbot, tmp_path):
         """Test that preview has dark background in dark mode."""
-        from unittest.mock import patch, MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.app_context import get_app_context
+        from PySide6.QtWidgets import QApplication
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
 
-        # Mock settings to return dark theme
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "dark",
-            "view.show_preview": True,
-            "view.sync_scrolling": True,
-        }.get(key, default)
-        mock_settings.settings_changed = MagicMock()
-        mock_settings.settings_changed.connect = MagicMock()
+        ctx = get_app_context()
+        ctx.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            mock_main_window = MagicMock()
-            tab = DocumentTab(mock_main_window)
-            qtbot.addWidget(tab)
+        tab = DocumentTab(FakeMainWindow(ctx))
 
-            # Check that background color was set on the page
-            bg_color = tab.preview.page().backgroundColor()
-            # Dark mode background should be #1e1e1e
-            assert bg_color.name() == "#1e1e1e"
+        bg_color = tab.preview.page().backgroundColor()
+        assert bg_color.name() == "#1e1e1e"
+
+        del tab
+        QApplication.processEvents()
 
     def test_preview_background_light_mode(self, qtbot, tmp_path):
         """Test that preview has white background in light mode."""
-        from unittest.mock import patch, MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.app_context import get_app_context
+        from PySide6.QtWidgets import QApplication
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
 
-        # Mock settings to return light theme
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "light",
-            "view.show_preview": True,
-            "view.sync_scrolling": True,
-        }.get(key, default)
-        mock_settings.settings_changed = MagicMock()
-        mock_settings.settings_changed.connect = MagicMock()
+        ctx = get_app_context()
+        ctx.set("view.theme", "light", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            mock_main_window = MagicMock()
-            tab = DocumentTab(mock_main_window)
-            qtbot.addWidget(tab)
+        tab = DocumentTab(FakeMainWindow(ctx))
 
-            # Check that background color was set on the page
-            bg_color = tab.preview.page().backgroundColor()
-            # Light mode background should be white
-            assert bg_color.name() == "#ffffff"
+        bg_color = tab.preview.page().backgroundColor()
+        assert bg_color.name() == "#ffffff"
+
+        del tab
+        QApplication.processEvents()
 
 
 class TestDarkModeTheming:
@@ -526,42 +534,22 @@ class TestDarkModeTheming:
 
     def test_sidebar_theme_applies_dark_colors(self, qtbot):
         """Test that sidebar applies dark colors in dark mode."""
-        from unittest.mock import patch, MagicMock
         from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+        from markdown_editor.markdown6.app_context import get_app_context
+        from PySide6.QtWidgets import QApplication
 
-        # Mock settings for dark mode
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "dark",
-            "view.show_preview": True,
-            "view.show_editor": True,
-            "view.show_explorer": True,
-            "project.last_path": "",
-            "files.recent_files": [],
-            "editor.show_line_numbers": True,
-        }.get(key, default)
-        mock_settings.get_shortcut.return_value = ""
-        mock_settings.get_all_shortcuts.return_value = {}
-        mock_settings.settings_changed = MagicMock()
-        mock_settings.settings_changed.connect = MagicMock()
-        mock_settings.shortcut_changed = MagicMock()
-        mock_settings.shortcut_changed.connect = MagicMock()
-        mock_settings.theme_changed = MagicMock()
-        mock_settings.theme_changed.connect = MagicMock()
+        ctx = get_app_context()
+        ctx.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            with patch("markdown_editor.markdown6.project_manager.get_settings", return_value=mock_settings):
-                with patch("markdown_editor.markdown6.outline_panel.get_settings", return_value=mock_settings):
-                    with patch("markdown_editor.markdown6.references_panel.get_settings", return_value=mock_settings):
-                        with patch("markdown_editor.markdown6.search_panel.get_settings", return_value=mock_settings):
-                            with patch("markdown_editor.markdown6.sidebar.get_settings", return_value=mock_settings):
-                                with patch("markdown_editor.markdown6.activity_bar.get_settings", return_value=mock_settings):
-                                    editor = MarkdownEditor()
-                                    qtbot.addWidget(editor)
+        editor = MarkdownEditor()
 
-                                    # Check sidebar exists and has activity bar
-                                    assert hasattr(editor, 'sidebar')
-                                    assert hasattr(editor.sidebar, 'activity_bar')
+        # Check sidebar exists and has activity bar
+        assert hasattr(editor, 'sidebar')
+        assert hasattr(editor.sidebar, 'activity_bar')
+
+        editor.close()
+        del editor
+        QApplication.processEvents()
 
     def test_all_stylesheets_contain_background_color(self):
         """Test that all relevant stylesheets set background-color."""
@@ -586,33 +574,29 @@ class TestDarkModeTheming:
 
     def test_graph_export_dialog_theming(self, qtbot, tmp_path):
         """Test that GraphExportDialog has proper dark mode theming."""
-        from unittest.mock import patch, MagicMock
         from markdown_editor.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.app_context import get_app_context
 
         project = tmp_path / "project"
         project.mkdir()
         (project / "test.md").write_text("# Test")
 
-        # Mock settings for dark mode
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "dark",
-        }.get(key, default)
+        ctx = get_app_context()
+        ctx.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.graph_export.get_settings", return_value=mock_settings):
-            dialog = GraphExportDialog(project)
-            qtbot.addWidget(dialog)
+        dialog = GraphExportDialog(project, ctx=ctx)
+        qtbot.addWidget(dialog)
 
-            stylesheet = dialog.styleSheet()
+        stylesheet = dialog.styleSheet()
 
-            # Should have styling for all key widgets
-            assert "QTreeWidget" in stylesheet
-            assert "QComboBox" in stylesheet
-            assert "QCheckBox" in stylesheet
-            assert "QRadioButton" in stylesheet
-            assert "QSplitter" in stylesheet
-            # Should use dark theme colors
-            assert "#" in stylesheet  # Has color values
+        # Should have styling for all key widgets
+        assert "QTreeWidget" in stylesheet
+        assert "QComboBox" in stylesheet
+        assert "QCheckBox" in stylesheet
+        assert "QRadioButton" in stylesheet
+        assert "QSplitter" in stylesheet
+        # Should use dark theme colors
+        assert "#" in stylesheet  # Has color values
 
 
 class TestGraphvizDarkMode:
@@ -674,3 +658,121 @@ class TestGraphvizDarkMode:
         # Should keep the red fill, not add another one
         assert 'fill="red"' in result
         assert result.count('fill=') == 1
+
+
+class TestMathRendering:
+    """Regression test: math should render when file has a file:// base URL.
+
+    Bug: KaTeX loads from CDN (https://), but when a saved file is previewed,
+    the base URL is file:// which blocks https:// resource loading due to
+    Qt's mixed-content security policy. Math shows as raw $...$ text.
+    """
+
+    def test_katex_loads_with_file_base_url(self, qtbot, tmp_path):
+        """KaTeX scripts must load even when preview uses file:// base URL."""
+        from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.app_context import get_app_context
+        from markdown_editor.markdown6.extensions.math import get_math_js
+        from PySide6.QtWidgets import QApplication
+
+        if not HAS_WEBENGINE:
+            pytest.skip("WebEngine not available")
+
+        ctx = get_app_context()
+        main = FakeMainWindow(ctx)
+        main.get_html_template = lambda content, **kw: (
+            '<!DOCTYPE html><html><head>'
+            + get_math_js()
+            + '</head><body>' + content + '</body></html>'
+        )
+
+        tab = DocumentTab(main)
+        # Simulate a saved file — this sets the file:// base URL
+        test_file = tmp_path / "test.md"
+        test_file.write_text("$E=mc^2$")
+        tab.file_path = test_file
+        tab._preview_needs_full_reload = True
+        tab.editor.setPlainText("$E=mc^2$")
+        tab.render_markdown()
+
+        # Wait for CDN script to load
+        def katex_loaded():
+            result = [None]
+            tab.preview.page().runJavaScript(
+                "typeof katex !== 'undefined'",
+                lambda r: result.__setitem__(0, r),
+            )
+            qtbot.wait(100)
+            return result[0] is True
+
+        qtbot.waitUntil(katex_loaded, timeout=8000)
+
+        del tab
+        QApplication.processEvents()
+
+
+class TestPreviewWheelScrollSync:
+    """Regression test: wheel-scrolling the preview should scroll the editor.
+
+    Bug: Scrolling the preview pane did not move the editor — only
+    editor→preview sync existed. Fix: an event filter on WebEngine's
+    internal rendering widget forwards wheel events to the editor.
+    The editor's valueChanged then syncs the preview via scrollToSourceLine.
+    """
+
+    def test_wheel_filter_installed(self, qtbot):
+        """The wheel event filter should be installed on the preview."""
+        from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.app_context import get_app_context
+
+        if not HAS_WEBENGINE:
+            pytest.skip("WebEngine not available")
+
+        ctx = get_app_context()
+        main = FakeMainWindow(ctx)
+        tab = DocumentTab(main)
+
+        # Trigger a render so loadFinished fires and filter gets installed
+        tab.editor.setPlainText("test content\n" * 50)
+        tab._preview_needs_full_reload = True
+        tab.render_markdown()
+        qtbot.wait(500)
+
+        assert tab._wheel_filter_installed, (
+            "Wheel event filter should be installed after first page load"
+        )
+
+        del tab
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
+
+
+class TestSettingsChangeDirtyFlag:
+    """Regression test: changing a setting should not mark the document dirty.
+
+    Bug: Toggling settings like show_whitespace or word_wrap causes
+    EnhancedEditor to call document().setDefaultTextOption() or
+    setLineWrapMode(), which Qt treats as a content change, emitting
+    textChanged and marking the tab as having unsaved changes.
+    """
+
+    def test_toggle_theme_does_not_emit_text_changed(self, qtbot):
+        """Toggling theme should not emit textChanged on the editor.
+
+        Root cause: set_dark_mode() calls rehighlight(), which Qt treats
+        as a content modification, emitting textChanged on the editor.
+        DocumentTab._on_text_changed picks this up and sets unsaved_changes.
+
+        Fix: EnhancedEditor blocks signals during setting application.
+        """
+        from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+        from markdown_editor.markdown6.app_context import get_app_context
+
+        ctx = get_app_context()
+        editor = EnhancedEditor(ctx=ctx)
+        qtbot.addWidget(editor)
+        editor.setPlainText("hello world")
+
+        # Theme change should NOT emit textChanged
+        with qtbot.assertNotEmitted(editor.textChanged):
+            ctx.set("view.theme", "dark", save=False)

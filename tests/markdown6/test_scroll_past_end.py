@@ -4,19 +4,19 @@ import pytest
 
 from PySide6.QtWidgets import QApplication
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 class TestScrollPastEndSetting:
     """Test the scroll_past_end setting default and persistence."""
 
     def test_default_on(self):
-        assert get_settings().get("editor.scroll_past_end") is True
+        assert get_app_context().get("editor.scroll_past_end") is True
 
     def test_toggle_off(self):
-        settings = get_settings()
-        settings.set("editor.scroll_past_end", False)
-        assert settings.get("editor.scroll_past_end") is False
+        ctx = get_app_context()
+        ctx.set("editor.scroll_past_end", False)
+        assert ctx.get("editor.scroll_past_end") is False
 
 
 class TestScrollPastEndEditor:
@@ -81,15 +81,15 @@ class TestScrollPastEndEditor:
 
     def test_disabled_uses_normal_scroll(self, editor):
         """With scroll-past-end off, centerOnScroll should be False."""
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         assert editor.centerOnScroll() is False
 
     def test_toggle_on_off(self, editor):
         """Toggling the setting should change centerOnScroll."""
         assert editor.centerOnScroll() is True
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         assert editor.centerOnScroll() is False
-        get_settings().set("editor.scroll_past_end", True)
+        get_app_context().set("editor.scroll_past_end", True)
         assert editor.centerOnScroll() is True
 
     def test_short_document_no_crash(self, qtbot):
@@ -106,34 +106,38 @@ class TestScrollPastEndEditor:
         assert ed.verticalScrollBar().maximum() >= 0
 
 
+class _TemplateHelper:
+    """Minimal stand-in for MarkdownEditor — just enough for get_html_template."""
+
+    def __init__(self):
+        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+        self.ctx = get_app_context()
+        self.get_html_template = MarkdownEditor.get_html_template.__get__(self)
+
+
 class TestScrollPastEndPreview:
     """Test that the preview HTML includes scroll-past-end padding."""
 
     @pytest.fixture
-    def main_window(self, qtbot):
-        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+    def tmpl(self):
+        return _TemplateHelper()
 
-        window = MarkdownEditor()
-        qtbot.addWidget(window)
-        yield window
-        window.close()
-
-    def test_webengine_html_has_spacer(self, main_window):
-        html = main_window.get_html_template("<p>test</p>")
+    def test_webengine_html_has_spacer(self, tmpl):
+        html = tmpl.get_html_template("<p>test</p>")
         assert "height: 80vh" in html
 
-    def test_webengine_html_no_spacer_when_disabled(self, main_window):
-        get_settings().set("editor.scroll_past_end", False)
-        html = main_window.get_html_template("<p>test</p>")
+    def test_webengine_html_no_spacer_when_disabled(self, tmpl):
+        get_app_context().set("editor.scroll_past_end", False)
+        html = tmpl.get_html_template("<p>test</p>")
         assert "height: 80vh" not in html
 
-    def test_qtextbrowser_html_has_spacer(self, main_window):
-        html = main_window.get_html_template("<p>test</p>", for_qtextbrowser=True)
+    def test_qtextbrowser_html_has_spacer(self, tmpl):
+        html = tmpl.get_html_template("<p>test</p>", for_qtextbrowser=True)
         assert "height: 80vh" in html
 
-    def test_qtextbrowser_html_no_spacer_when_disabled(self, main_window):
-        get_settings().set("editor.scroll_past_end", False)
-        html = main_window.get_html_template("<p>test</p>", for_qtextbrowser=True)
+    def test_qtextbrowser_html_no_spacer_when_disabled(self, tmpl):
+        get_app_context().set("editor.scroll_past_end", False)
+        html = tmpl.get_html_template("<p>test</p>", for_qtextbrowser=True)
         assert "height: 80vh" not in html
 
 
@@ -141,25 +145,25 @@ class TestScrollPastEndSync:
     """Test that both editor and preview have padding in lockstep."""
 
     @pytest.fixture
-    def main_window(self, qtbot):
-        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+    def editor(self, qtbot):
+        from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+        ed = EnhancedEditor()
+        qtbot.addWidget(ed)
+        return ed
 
-        window = MarkdownEditor()
-        qtbot.addWidget(window)
-        yield window
-        window.close()
+    @pytest.fixture
+    def tmpl(self):
+        return _TemplateHelper()
 
-    def test_both_sides_enabled_by_default(self, main_window):
+    def test_both_sides_enabled_by_default(self, editor, tmpl):
         """Editor extended scroll AND preview spacer present by default."""
-        tab = main_window.current_tab()
-        assert tab.editor.centerOnScroll() is True
-        html = main_window.get_html_template("<p>x</p>")
+        assert editor.centerOnScroll() is True
+        html = tmpl.get_html_template("<p>x</p>")
         assert "height: 80vh" in html
 
-    def test_both_sides_disabled_together(self, main_window):
+    def test_both_sides_disabled_together(self, editor, tmpl):
         """Disabling removes scroll-past-end from both sides."""
-        get_settings().set("editor.scroll_past_end", False)
-        tab = main_window.current_tab()
-        assert tab.editor.centerOnScroll() is False
-        html = main_window.get_html_template("<p>x</p>")
+        get_app_context().set("editor.scroll_past_end", False)
+        assert editor.centerOnScroll() is False
+        html = tmpl.get_html_template("<p>x</p>")
         assert "height: 80vh" not in html

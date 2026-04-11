@@ -1,14 +1,14 @@
 """Tests for the ExternalChangeBar non-modal notification widget."""
 
 import pytest
-from unittest.mock import MagicMock
 
 from markdown_editor.markdown6.markdown_editor import ExternalChangeBar
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 @pytest.fixture
 def bar(qtbot):
-    b = ExternalChangeBar()
+    b = ExternalChangeBar(get_app_context())
     qtbot.addWidget(b)
     return b
 

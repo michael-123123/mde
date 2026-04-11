@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
 
 
@@ -148,9 +148,11 @@ class EnhancedEditor(QPlainTextEdit):
         "_": "_",
     }
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, ctx=None, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        if ctx is None:
+            ctx = get_app_context()
+        self.ctx = ctx
         self.file_path: Path | None = None
         self._file_watcher: QFileSystemWatcher | None = None
         self._ignore_next_file_change = False
@@ -184,14 +186,14 @@ class EnhancedEditor(QPlainTextEdit):
         self._hover_link_range: tuple[int, int] | None = None  # (start, end) positions
 
         # Set font
-        font_family = self.settings.get("editor.font_family", "Monospace")
-        font_size = self.settings.get("editor.font_size", 11)
+        font_family = self.ctx.get("editor.font_family", "Monospace")
+        font_size = self.ctx.get("editor.font_size", 11)
         font = QFont(font_family, font_size)
         font.setStyleHint(QFont.StyleHint.Monospace)
         self.setFont(font)
 
         # Tab settings
-        tab_size = self.settings.get("editor.tab_size", 4)
+        tab_size = self.ctx.get("editor.tab_size", 4)
         self.setTabStopDistance(
             self.fontMetrics().horizontalAdvance(" ") * tab_size
         )
@@ -205,7 +207,7 @@ class EnhancedEditor(QPlainTextEdit):
 
     def _init_highlighter(self):
         """Initialize syntax highlighter."""
-        dark_mode = self.settings.get("view.theme", "light") == "dark"
+        dark_mode = self.ctx.get("view.theme", "light") == "dark"
         self.highlighter = MarkdownHighlighter(self.document(), dark_mode)
 
     def _init_timers(self):
@@ -232,7 +234,7 @@ class EnhancedEditor(QPlainTextEdit):
         self.textChanged.connect(self._on_text_changed)
         self.textChanged.connect(self._schedule_folding_update)
         self.cursorPositionChanged.connect(self._on_cursor_position_changed)
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _schedule_folding_update(self):
         """Schedule a debounced folding regions update."""
@@ -241,13 +243,13 @@ class EnhancedEditor(QPlainTextEdit):
     def _apply_settings(self):
         """Apply current settings."""
         # Word wrap
-        if self.settings.get("editor.word_wrap", True):
+        if self.ctx.get("editor.word_wrap", True):
             self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         else:
             self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
 
         # Show whitespace
-        if self.settings.get("editor.show_whitespace", False):
+        if self.ctx.get("editor.show_whitespace", False):
             option = self.document().defaultTextOption()
             option.setFlags(
                 option.flags() | QTextOption.Flag.ShowTabsAndSpaces
@@ -262,20 +264,20 @@ class EnhancedEditor(QPlainTextEdit):
 
         # Line numbers
         self.line_number_area.setVisible(
-            self.settings.get("editor.show_line_numbers", True)
+            self.ctx.get("editor.show_line_numbers", True)
         )
         self._update_line_number_area_width()
 
         # Scroll past end — uses centerOnScroll for the extended scrollbar
         # range, with ensureCursorVisible overridden to suppress centering.
-        self.setCenterOnScroll(self.settings.get("editor.scroll_past_end", True))
+        self.setCenterOnScroll(self.ctx.get("editor.scroll_past_end", True))
 
         # Theme
         self._apply_theme()
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme = self.settings.get("view.theme", "light")
+        theme = self.ctx.get("view.theme", "light")
         dark = theme == "dark"
 
         if dark:
@@ -298,7 +300,21 @@ class EnhancedEditor(QPlainTextEdit):
         self.highlighter.set_dark_mode(dark)
 
     def _on_setting_changed(self, key: str, value):
-        """Handle setting changes."""
+        """Handle setting changes.
+
+        Blocks signals during operations that cause Qt to emit
+        textChanged spuriously (rehighlight, setDefaultTextOption, etc.)
+        so that DocumentTab doesn't mark the document as dirty.
+        """
+        editor_blocked = self.blockSignals(True)
+        doc_blocked = self.document().blockSignals(True)
+        try:
+            self._apply_setting(key, value)
+        finally:
+            self.document().blockSignals(doc_blocked)
+            self.blockSignals(editor_blocked)
+
+    def _apply_setting(self, key: str, value):
         if key == "editor.word_wrap":
             if value:
                 self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
@@ -337,7 +353,7 @@ class EnhancedEditor(QPlainTextEdit):
         self.cursor_position_changed.emit(line, column)
 
         # Update current line highlight
-        if self.settings.get("editor.highlight_current_line", True):
+        if self.ctx.get("editor.highlight_current_line", True):
             self._highlight_current_line()
 
     def _highlight_current_line(self):
@@ -347,7 +363,7 @@ class EnhancedEditor(QPlainTextEdit):
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
 
-            theme = self.settings.get("view.theme", "light")
+            theme = self.ctx.get("view.theme", "light")
             if theme == "dark":
                 line_color = QColor(40, 40, 40)
             else:
@@ -371,7 +387,7 @@ class EnhancedEditor(QPlainTextEdit):
     # Line number methods
     def line_number_area_width(self) -> int:
         """Calculate the width needed for line numbers."""
-        if not self.settings.get("editor.show_line_numbers", True):
+        if not self.ctx.get("editor.show_line_numbers", True):
             return 0
 
         digits = len(str(max(1, self.blockCount()))) + 1  # +1 for padding
@@ -433,7 +449,7 @@ class EnhancedEditor(QPlainTextEdit):
         """Paint the line number area."""
         painter = QPainter(self.line_number_area)
 
-        theme = self.settings.get("view.theme", "light")
+        theme = self.ctx.get("view.theme", "light")
         if theme == "dark":
             painter.fillRect(event.rect(), QColor(30, 30, 30))
             number_color = QColor(100, 100, 100)
@@ -522,7 +538,7 @@ class EnhancedEditor(QPlainTextEdit):
         self.file_path = path
 
         # Watch new file
-        if path and self.settings.get("files.detect_external_changes", True):
+        if path and self.ctx.get("files.detect_external_changes", True):
             if self._file_watcher is None:
                 self._file_watcher = QFileSystemWatcher()
                 self._file_watcher.fileChanged.connect(self._on_file_changed)
@@ -650,8 +666,8 @@ class EnhancedEditor(QPlainTextEdit):
     def indent_selection(self):
         """Indent the selection or current line."""
         cursor = self.textCursor()
-        use_spaces = self.settings.get("editor.use_spaces", True)
-        tab_size = self.settings.get("editor.tab_size", 4)
+        use_spaces = self.ctx.get("editor.use_spaces", True)
+        tab_size = self.ctx.get("editor.tab_size", 4)
         indent_char = " " * tab_size if use_spaces else "\t"
 
         if cursor.hasSelection():
@@ -684,7 +700,7 @@ class EnhancedEditor(QPlainTextEdit):
     def outdent_selection(self):
         """Outdent the selection or current line."""
         cursor = self.textCursor()
-        tab_size = self.settings.get("editor.tab_size", 4)
+        tab_size = self.ctx.get("editor.tab_size", 4)
 
         if cursor.hasSelection():
             start = cursor.selectionStart()
@@ -879,7 +895,7 @@ class EnhancedEditor(QPlainTextEdit):
         if size < 72:
             font.setPointSize(size + 1)
             self.setFont(font)
-            self.settings.set("editor.font_size", size + 1, save=False)
+            self.ctx.set("editor.font_size", size + 1, save=False)
             self._update_line_number_area_width()
 
     def zoom_out(self):
@@ -889,7 +905,7 @@ class EnhancedEditor(QPlainTextEdit):
         if size > 6:
             font.setPointSize(size - 1)
             self.setFont(font)
-            self.settings.set("editor.font_size", size - 1, save=False)
+            self.ctx.set("editor.font_size", size - 1, save=False)
             self._update_line_number_area_width()
 
     def zoom_reset(self):
@@ -897,7 +913,7 @@ class EnhancedEditor(QPlainTextEdit):
         font = self.font()
         font.setPointSize(11)
         self.setFont(font)
-        self.settings.set("editor.font_size", 11, save=False)
+        self.ctx.set("editor.font_size", 11, save=False)
         self._update_line_number_area_width()
 
     # Mouse event handling
@@ -1041,7 +1057,7 @@ class EnhancedEditor(QPlainTextEdit):
                 return
 
         # Auto-pairs
-        if self.settings.get("editor.auto_pairs", True):
+        if self.ctx.get("editor.auto_pairs", True):
             char = event.text()
 
             # Skip markdown-only auto-pairs (* _) inside inline code
@@ -1088,7 +1104,7 @@ class EnhancedEditor(QPlainTextEdit):
                     return
 
         # Auto-indent on Enter
-        if event.key() == Qt.Key.Key_Return and self.settings.get("editor.auto_indent", True):
+        if event.key() == Qt.Key.Key_Return and self.ctx.get("editor.auto_indent", True):
             cursor = self.textCursor()
             block_text = cursor.block().text()
 

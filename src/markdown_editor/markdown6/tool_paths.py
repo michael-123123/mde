@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 from markdown_editor.markdown6.logger import getLogger
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 
 logger = getLogger(__name__)
 
@@ -17,8 +17,8 @@ def _resolve(settings_key: str, default_cmd: str) -> str | None:
 
     Returns the full path string if found, None otherwise.
     """
-    settings = get_settings()
-    configured = settings.get(settings_key, "")
+    ctx = get_app_context()
+    configured = ctx.get(settings_key, "")
 
     if configured:
         # User configured a specific path
