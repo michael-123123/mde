@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
 from markdown_editor.markdown6.app_context import get_project_markdown_files
-from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 from markdown_editor.markdown6 import export_service
 
 
@@ -134,8 +134,7 @@ class ProjectPanel(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
 
         self.setStyleSheet(
             StyleSheets.panel(theme) +
@@ -483,8 +482,7 @@ class ProjectExportDialog(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
 
         self.setStyleSheet(
             StyleSheets.dialog(theme) +

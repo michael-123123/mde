@@ -20,7 +20,7 @@ from PySide6.QtGui import QFont
 
 from markdown_editor.markdown6.activity_bar import ActivityBar
 
-from markdown_editor.markdown6.theme import get_theme
+from markdown_editor.markdown6.theme import get_theme_from_ctx
 
 
 class Sidebar(QWidget):
@@ -245,8 +245,7 @@ class Sidebar(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
 
         self.tool_window.setStyleSheet(f"""
             #ToolWindow {{

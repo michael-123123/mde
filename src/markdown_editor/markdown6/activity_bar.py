@@ -11,7 +11,7 @@ from PySide6.QtGui import QPainter, QFontMetrics, QColor, QFont
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QFrame
 
 
-from markdown_editor.markdown6.theme import get_theme, ThemeColors
+from markdown_editor.markdown6.theme import get_theme_from_ctx, ThemeColors
 
 
 class ActivityTab(QWidget):
@@ -183,8 +183,7 @@ class ActivityBar(QFrame):
         tab.clicked.connect(self._on_tab_clicked)
 
         # Apply current theme
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
         tab.setTheme(theme)
 
         self._tabs.append(tab)
@@ -220,8 +219,7 @@ class ActivityBar(QFrame):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
 
         self.setStyleSheet(f"""
             #ActivityBar {{
