@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QDoubleSpinBox,
+    QFontComboBox,
     QSpinBox,
     QSplitter,
     QStackedWidget,
@@ -94,6 +96,7 @@ class SettingsDialog(QDialog):
         categories = [
             ("Editor", "editor"),
             ("View", "view"),
+            ("Preview Typography", "typography"),
             ("Files", "files"),
             ("External Tools", "tools"),
             ("Keyboard Shortcuts", "shortcuts"),
@@ -113,6 +116,7 @@ class SettingsDialog(QDialog):
 
         self.stack.addWidget(self._create_editor_page())
         self.stack.addWidget(self._create_view_page())
+        self.stack.addWidget(self._create_typography_page())
         self.stack.addWidget(self._create_files_page())
         self.stack.addWidget(self._create_tools_page())
         self.stack.addWidget(self._create_shortcuts_page())
@@ -274,6 +278,85 @@ class SettingsDialog(QDialog):
         preview_layout.addRow("Font Size:", self.preview_font_size)
 
         layout.addWidget(preview_group)
+
+        layout.addStretch()
+        scroll.setWidget(page)
+        return scroll
+
+    def _create_font_size_row(self, label: str, key_prefix: str) -> tuple:
+        """Create a row with a size spinbox and unit combo for a typography element.
+
+        Returns (size_spinbox, unit_combo) so they can be stored for load/save.
+        """
+        size_spin = QDoubleSpinBox()
+        size_spin.setRange(0.1, 200.0)
+        size_spin.setDecimals(2)
+        size_spin.setSingleStep(0.25)
+
+        unit_combo = QComboBox()
+        unit_combo.addItems(["em", "%", "px"])
+
+        row = QHBoxLayout()
+        row.addWidget(size_spin, 1)
+        row.addWidget(unit_combo)
+
+        return size_spin, unit_combo, row
+
+    def _create_typography_page(self) -> QWidget:
+        """Create the preview typography settings page."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Body text group
+        body_group = QGroupBox("Body Text")
+        body_layout = QFormLayout(body_group)
+
+        self.preview_body_font = QFontComboBox()
+        body_layout.addRow("Font Family:", self.preview_body_font)
+
+        self.preview_line_height = QDoubleSpinBox()
+        self.preview_line_height.setRange(0.5, 5.0)
+        self.preview_line_height.setDecimals(2)
+        self.preview_line_height.setSingleStep(0.1)
+        body_layout.addRow("Line Height:", self.preview_line_height)
+
+        layout.addWidget(body_group)
+
+        # Headings group
+        heading_group = QGroupBox("Headings")
+        heading_layout = QFormLayout(heading_group)
+
+        self.preview_heading_font = QFontComboBox()
+        heading_layout.addRow("Font Family:", self.preview_heading_font)
+
+        self._heading_controls = {}
+        for level in range(1, 7):
+            key = f"h{level}"
+            spin, combo, row = self._create_font_size_row(f"H{level}:", key)
+            heading_layout.addRow(f"H{level} Size:", row)
+            self._heading_controls[key] = (spin, combo)
+
+        layout.addWidget(heading_group)
+
+        # Code group
+        code_group = QGroupBox("Code")
+        code_layout = QFormLayout(code_group)
+
+        self.preview_code_font = QFontComboBox()
+        self.preview_code_font.setFontFilters(QFontComboBox.FontFilter.MonospacedFonts)
+        code_layout.addRow("Font Family:", self.preview_code_font)
+
+        spin, combo, row = self._create_font_size_row("Code Size:", "code")
+        code_layout.addRow("Size:", row)
+        self._code_size_spin = spin
+        self._code_size_combo = combo
+
+        layout.addWidget(code_group)
 
         layout.addStretch()
         scroll.setWidget(page)
@@ -521,6 +604,36 @@ class SettingsDialog(QDialog):
         self.dot_path.setText(self.settings.get("tools.dot_path", ""))
         self.mmdc_path.setText(self.settings.get("tools.mmdc_path", ""))
 
+        # Preview typography
+        from PySide6.QtGui import QFont, QFontDatabase
+        body_font_name = self.settings.get("preview.body_font_family", "")
+        if not body_font_name:
+            # Resolve the default system font
+            body_font_name = QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family()
+        self.preview_body_font.setCurrentFont(QFont(body_font_name))
+
+        heading_font_name = self.settings.get("preview.heading_font_family", "")
+        if heading_font_name:
+            self.preview_heading_font.setCurrentFont(QFont(heading_font_name))
+        else:
+            # Show same as body when inheriting
+            self.preview_heading_font.setCurrentFont(QFont(body_font_name))
+        self._heading_font_customized = bool(self.settings.get("preview.heading_font_family", ""))
+
+        code_font_name = self.settings.get("preview.code_font_family", "")
+        if not code_font_name:
+            code_font_name = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+        self.preview_code_font.setCurrentFont(QFont(code_font_name))
+        self.preview_line_height.setValue(self.settings.get("preview.line_height", 1.5))
+        for level in range(1, 7):
+            key = f"h{level}"
+            spin, combo = self._heading_controls[key]
+            spin.setValue(self.settings.get(f"preview.{key}_size", 1.0))
+            unit = self.settings.get(f"preview.{key}_size_unit", "em")
+            combo.setCurrentText(unit)
+        self._code_size_spin.setValue(self.settings.get("preview.code_size", 85))
+        self._code_size_combo.setCurrentText(self.settings.get("preview.code_size_unit", "%"))
+
         # Load shortcuts
         self._populate_shortcuts_table()
 
@@ -675,6 +788,25 @@ class SettingsDialog(QDialog):
         self.settings.set("tools.pandoc_path", self.pandoc_path.text().strip())
         self.settings.set("tools.dot_path", self.dot_path.text().strip())
         self.settings.set("tools.mmdc_path", self.mmdc_path.text().strip())
+
+        # Preview typography
+        self.settings.set("preview.body_font_family", self.preview_body_font.currentFont().family())
+        # Only save heading font if user changed it from the body default
+        heading_family = self.preview_heading_font.currentFont().family()
+        body_family = self.preview_body_font.currentFont().family()
+        if heading_family != body_family or self._heading_font_customized:
+            self.settings.set("preview.heading_font_family", heading_family)
+        else:
+            self.settings.set("preview.heading_font_family", "")
+        self.settings.set("preview.code_font_family", self.preview_code_font.currentFont().family())
+        self.settings.set("preview.line_height", self.preview_line_height.value())
+        for level in range(1, 7):
+            key = f"h{level}"
+            spin, combo = self._heading_controls[key]
+            self.settings.set(f"preview.{key}_size", spin.value())
+            self.settings.set(f"preview.{key}_size_unit", combo.currentText())
+        self.settings.set("preview.code_size", self._code_size_spin.value())
+        self.settings.set("preview.code_size_unit", self._code_size_combo.currentText())
 
         # Shortcuts
         for action, shortcut in self.pending_shortcuts.items():

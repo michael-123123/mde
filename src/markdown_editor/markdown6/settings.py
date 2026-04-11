@@ -28,6 +28,25 @@ DEFAULT_SETTINGS = {
     "view.sync_scrolling": True,
     "view.theme": "light",  # light, dark
     "view.preview_font_size": 14,
+    # Preview typography (empty = use built-in CSS font stack)
+    "preview.body_font_family": "",
+    "preview.code_font_family": "",
+    "preview.heading_font_family": "",  # empty = inherit from body
+    "preview.h1_size": 2.0,
+    "preview.h1_size_unit": "em",
+    "preview.h2_size": 1.5,
+    "preview.h2_size_unit": "em",
+    "preview.h3_size": 1.25,
+    "preview.h3_size_unit": "em",
+    "preview.h4_size": 1.0,
+    "preview.h4_size_unit": "em",
+    "preview.h5_size": 0.875,
+    "preview.h5_size_unit": "em",
+    "preview.h6_size": 0.85,
+    "preview.h6_size_unit": "em",
+    "preview.code_size": 85,
+    "preview.code_size_unit": "%",
+    "preview.line_height": 1.5,
     # File settings
     "files.recent_files": [],
     "files.max_recent_files": 10,

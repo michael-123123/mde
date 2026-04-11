@@ -986,6 +986,9 @@ class DocumentTab(QWidget):
         elif key == "editor.scroll_past_end":
             self._preview_needs_full_reload = True
             self.render_markdown()
+        elif key.startswith("preview."):
+            self._preview_needs_full_reload = True
+            self.render_markdown()
 
     def preview_zoom_in(self):
         """Zoom in the preview pane (text + images + diagrams)."""
@@ -1911,6 +1914,34 @@ class MarkdownEditor(QMainWindow):
 
         font_size = self.settings.get("view.preview_font_size", 14)
 
+        _DEFAULT_BODY_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
+        _DEFAULT_CODE_FONT = '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace'
+
+        body_font_setting = self.settings.get("preview.body_font_family", "")
+        body_font = f'"{body_font_setting}", sans-serif' if body_font_setting else _DEFAULT_BODY_FONT
+
+        code_font_setting = self.settings.get("preview.code_font_family", "")
+        code_font = f'"{code_font_setting}", monospace' if code_font_setting else _DEFAULT_CODE_FONT
+
+        heading_font_setting = self.settings.get("preview.heading_font_family", "")
+        heading_font = f'"{heading_font_setting}", sans-serif' if heading_font_setting else ""
+        line_height = self.settings.get("preview.line_height", 1.5)
+
+        def _sz(key_prefix):
+            """Build a CSS font-size value from a size + unit setting pair."""
+            val = self.settings.get(f"preview.{key_prefix}_size", 1.0)
+            unit = self.settings.get(f"preview.{key_prefix}_size_unit", "em")
+            return f"{val}{unit}"
+
+        h1_size = _sz("h1")
+        h2_size = _sz("h2")
+        h3_size = _sz("h3")
+        h4_size = _sz("h4")
+        h5_size = _sz("h5")
+        h6_size = _sz("h6")
+        code_size = _sz("code")
+        heading_font_css = f'font-family: {heading_font};' if heading_font else ""
+
         # Generate Pygments CSS for syntax highlighting (use cached formatter)
         formatter = get_cached_html_formatter(pygments_style)
         pygments_css = formatter.get_style_defs(".highlight")
@@ -1938,12 +1969,12 @@ class MarkdownEditor(QMainWindow):
 <html>
 <head>
     <style>
-        body {{ font-size: {font_size}px; color: {text_color}; background-color: {bg_color}; padding: 10px; }}
-        h1 {{ font-size: 2em; font-weight: bold; }}
-        h2 {{ font-size: 1.5em; font-weight: bold; }}
-        h3 {{ font-size: 1.25em; font-weight: bold; }}
-        code {{ background-color: {code_bg}; }}
-        pre {{ background-color: {code_bg}; padding: 10px; }}
+        body {{ font-family: {body_font}; font-size: {font_size}px; line-height: {line_height}; color: {text_color}; background-color: {bg_color}; padding: 10px; }}
+        h1 {{ font-size: {h1_size}; font-weight: bold; {heading_font_css} }}
+        h2 {{ font-size: {h2_size}; font-weight: bold; {heading_font_css} }}
+        h3 {{ font-size: {h3_size}; font-weight: bold; {heading_font_css} }}
+        code {{ font-family: {code_font}; font-size: {code_size}; background-color: {code_bg}; }}
+        pre {{ font-family: {code_font}; font-size: {code_size}; background-color: {code_bg}; padding: 10px; }}
         blockquote {{ color: {blockquote_color}; margin-left: 20px; padding-left: 10px; border-left: 3px solid {heading_border}; }}
         a {{ color: {link_color}; }}
         table {{ border-collapse: collapse; }}
@@ -1964,9 +1995,9 @@ class MarkdownEditor(QMainWindow):
             {math_js}
             <style>
                 body {{
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                    font-family: {body_font};
                     font-size: {font_size}px;
-                    line-height: 1.5;
+                    line-height: {line_height};
                     color: {text_color};
                     background-color: {bg_color};
                     max-width: 100%;
@@ -1977,34 +2008,38 @@ class MarkdownEditor(QMainWindow):
                     box-sizing: border-box;
                 }}
                 h1 {{
-                    font-size: 2em;
+                    font-size: {h1_size};
                     font-weight: 600;
+                    {heading_font_css}
                     border-bottom: 1px solid {heading_border};
                     padding-bottom: 0.3em;
                     margin-top: 24px;
                     margin-bottom: 16px;
                 }}
                 h2 {{
-                    font-size: 1.5em;
+                    font-size: {h2_size};
                     font-weight: 600;
+                    {heading_font_css}
                     border-bottom: 1px solid {heading_border};
                     padding-bottom: 0.3em;
                     margin-top: 24px;
                     margin-bottom: 16px;
                 }}
-                h3 {{ font-size: 1.25em; font-weight: 600; margin-top: 24px; margin-bottom: 16px; }}
-                h4, h5, h6 {{ font-weight: 600; margin-top: 24px; margin-bottom: 16px; }}
+                h3 {{ font-size: {h3_size}; font-weight: 600; {heading_font_css} margin-top: 24px; margin-bottom: 16px; }}
+                h4 {{ font-size: {h4_size}; font-weight: 600; {heading_font_css} margin-top: 24px; margin-bottom: 16px; }}
+                h5 {{ font-size: {h5_size}; font-weight: 600; {heading_font_css} margin-top: 24px; margin-bottom: 16px; }}
+                h6 {{ font-size: {h6_size}; font-weight: 600; {heading_font_css} margin-top: 24px; margin-bottom: 16px; }}
                 p {{ margin-top: 0; margin-bottom: 16px; }}
                 code {{
-                    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-                    font-size: 85%;
+                    font-family: {code_font};
+                    font-size: {code_size};
                     background-color: {code_bg};
                     padding: 0.2em 0.4em;
                     border-radius: 3px;
                 }}
                 pre {{
-                    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-                    font-size: 85%;
+                    font-family: {code_font};
+                    font-size: {code_size};
                     background-color: {code_bg};
                     padding: 16px;
                     overflow: auto;

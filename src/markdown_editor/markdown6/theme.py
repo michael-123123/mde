@@ -283,7 +283,6 @@ class StyleSheets:
                 border-color: {theme.accent};
             }}
             QComboBox::drop-down {{
-                border: none;
             }}
             QComboBox QAbstractItemView {{
                 background-color: {theme.bg_primary};
@@ -294,17 +293,15 @@ class StyleSheets:
 
     @staticmethod
     def spin_box(theme: ThemeColors) -> str:
-        """Stylesheet for spin boxes."""
+        """Stylesheet for spin boxes.
+
+        Only style colors — avoid border/padding overrides that break
+        native up/down button rendering on some platforms (e.g. GTK).
+        """
         return f"""
-            QSpinBox {{
+            QSpinBox, QDoubleSpinBox {{
                 background-color: {theme.bg_input};
                 color: {theme.text_primary};
-                border: 1px solid {theme.border};
-                padding: 4px;
-                border-radius: 2px;
-            }}
-            QSpinBox:hover {{
-                border-color: {theme.accent};
             }}
         """
 
