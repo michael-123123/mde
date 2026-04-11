@@ -907,7 +907,7 @@ class DocumentTab(QWidget):
 
     def _init_timer(self):
         """Initialize the render debounce timer."""
-        self.render_timer = QTimer()
+        self.render_timer = QTimer(self)
         self.render_timer.setSingleShot(True)
         self.render_timer.timeout.connect(self.render_markdown)
 
@@ -2862,7 +2862,7 @@ class MarkdownEditor(QMainWindow):
     def _init_debounce_timers(self):
         """Initialize debounce timers for expensive operations."""
         # Outline panel update timer (debounce 500ms)
-        self._outline_update_timer = QTimer()
+        self._outline_update_timer = QTimer(self)
         self._outline_update_timer.setSingleShot(True)
         self._outline_update_timer.timeout.connect(self._do_update_outline)
 

@@ -175,7 +175,7 @@ class GraphExportDialog(QDialog):
         self._preview_shown = False
 
         # Debounce timer for preview updates
-        self._preview_timer = QTimer()
+        self._preview_timer = QTimer(self)
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(500)
         self._preview_timer.timeout.connect(self._update_preview)

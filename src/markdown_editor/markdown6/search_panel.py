@@ -43,7 +43,7 @@ class SearchPanel(QWidget):
         self.ctx = ctx
         self.project_path: Path | None = None
         self._matches: list[SearchMatch] = []
-        self._search_timer = QTimer()
+        self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.setInterval(300)  # Debounce
         self._search_timer.timeout.connect(self._do_search)

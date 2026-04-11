@@ -213,12 +213,12 @@ class EnhancedEditor(QPlainTextEdit):
     def _init_timers(self):
         """Initialize timers."""
         # Word count update timer
-        self.word_count_timer = QTimer()
+        self.word_count_timer = QTimer(self)
         self.word_count_timer.setSingleShot(True)
         self.word_count_timer.timeout.connect(self._update_word_count)
 
         # Folding regions update timer (debounce expensive parsing)
-        self.folding_timer = QTimer()
+        self.folding_timer = QTimer(self)
         self.folding_timer.setSingleShot(True)
         self.folding_timer.timeout.connect(self._do_update_folding_regions)
 
