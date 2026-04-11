@@ -9,6 +9,10 @@ import html
 import subprocess
 from pathlib import Path
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 # In-memory cache: hash -> (svg_string, error_string or None)
 _render_cache: dict[str, tuple[str, str | None]] = {}
 
@@ -89,10 +93,12 @@ def _render_mermaid_impl(source: str, dark_mode: bool) -> tuple[str, str | None]
 
         if result.returncode != 0:
             error = result.stderr.strip() or result.stdout.strip() or "mmdc failed"
+            logger.warning(f"mmdc failed (rc={result.returncode}): {error}")
             return _format_error(source, error), error
 
         if not output_path.exists():
             error = "mmdc produced no output"
+            logger.warning(error)
             return _format_error(source, error), error
 
         svg_string = output_path.read_text(encoding="utf-8")
@@ -101,8 +107,10 @@ def _render_mermaid_impl(source: str, dark_mode: bool) -> tuple[str, str | None]
 
     except subprocess.TimeoutExpired:
         error = "Mermaid rendering timed out (15s)"
+        logger.warning(error)
         return _format_error(source, error), error
     except Exception as e:
+        logger.exception("Mermaid render failed")
         error = str(e)
         return _format_error(source, error), error
 

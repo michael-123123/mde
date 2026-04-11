@@ -4,6 +4,9 @@ import sys
 from pathlib import Path
 
 from concurrent.futures import ThreadPoolExecutor
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QFont, QIcon, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
 from PySide6.QtWidgets import (
@@ -941,6 +944,7 @@ class DocumentTab(QWidget):
                 try:
                     svg_path = future.result()
                 except Exception:
+                    logger.exception("Diagram export failed")
                     QApplication.restoreOverrideCursor()
                     return
                 if svg_path:
@@ -1158,6 +1162,7 @@ class DocumentTab(QWidget):
                 try:
                     svg_html, css_class = future.result()
                 except Exception as e:
+                    logger.exception("Diagram render failed")
                     import html
                     svg_html = f'<div class="diagram-loading">Error: {html.escape(str(e))}</div>'
                     css_class = 'mermaid-diagram'
@@ -1798,7 +1803,7 @@ class MarkdownEditor(QMainWindow):
                     tab.editor.document().setModified(False)
                     self.update_tab_title(tab)
                 except OSError:
-                    pass  # Silently skip tabs that can't be saved
+                    logger.exception(f"Autosave failed for {tab.file_path}")
         self.update_window_title()
 
     def _update_recent_files_menu(self):
@@ -2591,6 +2596,7 @@ class MarkdownEditor(QMainWindow):
 
             self.status_bar.showMessage(f"Opened: {path}")
         except Exception as e:
+            logger.exception(f"Could not open file: {path}")
             QMessageBox.critical(self, "Error", f"Could not open file: {e}")
 
     def save_file(self) -> bool:
@@ -2612,6 +2618,7 @@ class MarkdownEditor(QMainWindow):
             self.status_bar.showMessage(f"Saved: {tab.file_path}")
             return True
         except Exception as e:
+            logger.exception(f"Could not save file: {tab.file_path}")
             QMessageBox.critical(self, "Error", f"Could not save file: {e}")
             return False
 
@@ -2657,6 +2664,7 @@ class MarkdownEditor(QMainWindow):
             Path(file_path).write_text(full_html, encoding="utf-8")
             self.status_bar.showMessage(f"Exported to: {file_path}")
         except Exception as e:
+            logger.exception(f"Could not export HTML to {file_path}")
             QMessageBox.critical(self, "Error", f"Could not export file: {e}")
 
     def _close_current_tab(self):
@@ -2981,9 +2989,8 @@ class MarkdownEditor(QMainWindow):
         try:
             self._do_handle_link_click(url)
         except Exception as e:
+            logger.exception(f"Error handling link: {url.toString()}")
             self.status_bar.showMessage(f"Error handling link: {e}")
-            import traceback
-            traceback.print_exc()
 
     def _do_handle_link_click(self, url: QUrl):
         """Internal link click handler."""
@@ -3523,8 +3530,10 @@ class MarkdownEditor(QMainWindow):
             export_service.export_pdf(tab.editor.toPlainText(), file_path, title)
             self.status_bar.showMessage(f"Exported to: {file_path}")
         except export_service.ExportError as e:
+            logger.warning(f"PDF export error: {e}")
             QMessageBox.warning(self, "Export Error", str(e))
         except Exception as e:
+            logger.exception(f"PDF export failed: {file_path}")
             QMessageBox.critical(self, "Error", f"Export failed: {e}")
 
     def _export_docx(self):
@@ -3547,8 +3556,10 @@ class MarkdownEditor(QMainWindow):
             export_service.export_docx(tab.editor.toPlainText(), file_path, title)
             self.status_bar.showMessage(f"Exported to: {file_path}")
         except export_service.ExportError as e:
+            logger.warning(f"DOCX export error: {e}")
             QMessageBox.warning(self, "Export Error", str(e))
         except Exception as e:
+            logger.exception(f"DOCX export failed: {file_path}")
             QMessageBox.critical(self, "Error", f"Export failed: {e}")
 
     # ==================== INSERT FEATURES ====================
@@ -3615,6 +3626,9 @@ class MarkdownEditor(QMainWindow):
 
 def main():
     """Run the Markdown editor application."""
+    from markdown_editor.markdown6.logger import setup as setup_logging
+    setup_logging()
+
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")
 

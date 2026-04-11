@@ -5,6 +5,10 @@ import uuid
 from pathlib import Path
 from datetime import datetime
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 from PySide6.QtCore import Qt, QRect, QSize, QTimer, Signal, QFileSystemWatcher, QMimeData, QPoint
 from PySide6.QtGui import (
     QColor,
@@ -550,6 +554,7 @@ class EnhancedEditor(QPlainTextEdit):
             self.document().setModified(False)
             return True
         except Exception:
+            logger.exception(f"Could not save {self.file_path}")
             return False
 
     # Go to line

@@ -5,6 +5,10 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 
 _tracked: set[Path] = set()
 _cache_dir: Path | None = None
@@ -31,7 +35,7 @@ def _get_cache_dir() -> Path:
             _cache_dir = d
             return _cache_dir
     except Exception:
-        pass
+        logger.debug("QStandardPaths unavailable, using system temp dir")
 
     _cache_dir = Path(tempfile.gettempdir())
     return _cache_dir
@@ -86,7 +90,7 @@ def cleanup():
             elif path.is_dir():
                 shutil.rmtree(path)
         except OSError:
-            pass
+            logger.warning(f"Could not clean up temp path: {path}")
     _tracked.clear()
 
 

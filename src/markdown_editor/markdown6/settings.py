@@ -6,6 +6,10 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QStandardPaths, Signal
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 
 DEFAULT_SETTINGS = {
     # Editor settings
@@ -268,7 +272,7 @@ class Settings(QObject):
                     saved = json.load(f)
                 self._settings.update(saved)
             except (json.JSONDecodeError, OSError):
-                pass
+                logger.exception(f"Could not load settings from {self.settings_file}")
 
         # Load shortcuts from disk
         if self.shortcuts_file.exists():
@@ -277,7 +281,7 @@ class Settings(QObject):
                     saved = json.load(f)
                 self._shortcuts.update(saved)
             except (json.JSONDecodeError, OSError):
-                pass
+                logger.exception(f"Could not load shortcuts from {self.shortcuts_file}")
 
     def save(self):
         """Save settings to disk (no-op if ephemeral)."""
@@ -294,7 +298,7 @@ class Settings(QObject):
             with open(self.settings_file, "w") as f:
                 json.dump(settings_to_save, f, indent=2)
         except OSError:
-            pass  # Silently fail - settings will be in memory but not persisted
+            logger.exception(f"Could not save settings to {self.settings_file}")
 
         shortcuts_to_save = {
             k: v for k, v in self._shortcuts.items()
@@ -304,7 +308,7 @@ class Settings(QObject):
             with open(self.shortcuts_file, "w") as f:
                 json.dump(shortcuts_to_save, f, indent=2)
         except OSError:
-            pass  # Silently fail - shortcuts will be in memory but not persisted
+            logger.exception(f"Could not save shortcuts to {self.shortcuts_file}")
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value."""

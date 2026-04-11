@@ -6,7 +6,10 @@ Uses configured paths from settings, falling back to system PATH lookup.
 import shutil
 from pathlib import Path
 
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.settings import get_settings
+
+logger = getLogger(__name__)
 
 
 def _resolve(settings_key: str, default_cmd: str) -> str | None:
@@ -21,13 +24,21 @@ def _resolve(settings_key: str, default_cmd: str) -> str | None:
         # User configured a specific path
         path = Path(configured)
         if path.is_file():
+            logger.debug(f"Resolved {default_cmd} from settings: {path}")
             return str(path)
         # Maybe they typed just a command name — try which
         found = shutil.which(configured)
+        if found:
+            logger.debug(f"Resolved {default_cmd} via which: {found}")
+        else:
+            logger.warning(f"Configured {settings_key}={configured!r} not found")
         return found
 
     # Fall back to system PATH
-    return shutil.which(default_cmd)
+    found = shutil.which(default_cmd)
+    if found:
+        logger.debug(f"Found {default_cmd} on PATH: {found}")
+    return found
 
 
 def get_pandoc_path() -> str | None:

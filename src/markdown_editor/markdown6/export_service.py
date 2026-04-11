@@ -9,6 +9,10 @@ from pathlib import Path
 
 import markdown as md
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 
 def has_pandoc() -> bool:
     """Check if pandoc is available on the system."""
@@ -110,9 +114,11 @@ def _export_pdf_pandoc(content: str, output_path: str | Path) -> None:
 
     pandoc = get_pandoc_path() or "pandoc"
     cmd = [pandoc, str(temp_path), "-o", str(output_path), "--pdf-engine=xelatex"]
+    logger.info(f"Running pandoc PDF export: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
     if result.returncode != 0:
+        logger.error(f"Pandoc PDF export failed (rc={result.returncode}): {result.stderr}")
         raise ExportError(f"Pandoc error: {result.stderr or 'Unknown error'}")
 
 
@@ -127,6 +133,7 @@ def _export_pdf_weasyprint(content: str, output_path: str | Path, title: str) ->
         )
 
     html = markdown_to_html(content, title)
+    logger.info(f"Exporting PDF via weasyprint to {output_path}")
     HTML(string=html).write_pdf(str(output_path))
 
 
@@ -139,9 +146,11 @@ def _export_docx_pandoc(content: str, output_path: str | Path) -> None:
 
     pandoc = get_pandoc_path() or "pandoc"
     cmd = [pandoc, str(temp_path), "-o", str(output_path)]
+    logger.info(f"Running pandoc DOCX export: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
     if result.returncode != 0:
+        logger.error(f"Pandoc DOCX export failed (rc={result.returncode}): {result.stderr}")
         raise ExportError(f"Pandoc error: {result.stderr or 'Unknown error'}")
 
 

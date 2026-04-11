@@ -5,6 +5,10 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 from PySide6.QtCore import Qt, Signal, QDir
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtWidgets import (
@@ -321,6 +325,7 @@ class ProjectPanel(QWidget):
                 new_path.touch()
                 self.file_double_clicked.emit(str(new_path))
             except OSError as e:
+                logger.exception(f"Could not create file: {new_path}")
                 QMessageBox.critical(self, "Error", f"Could not create file: {e}")
 
     def _new_folder(self, parent: Path):
@@ -333,6 +338,7 @@ class ProjectPanel(QWidget):
             try:
                 new_path.mkdir(exist_ok=True)
             except OSError as e:
+                logger.exception(f"Could not create folder: {new_path}")
                 QMessageBox.critical(self, "Error", f"Could not create folder: {e}")
 
     def _rename_file(self, path: Path):
@@ -345,6 +351,7 @@ class ProjectPanel(QWidget):
             try:
                 path.rename(new_path)
             except OSError as e:
+                logger.exception(f"Could not rename {path} to {new_path}")
                 QMessageBox.critical(self, "Error", f"Could not rename file: {e}")
 
     def _delete_file(self, path: Path):
@@ -360,6 +367,7 @@ class ProjectPanel(QWidget):
             try:
                 path.unlink()
             except OSError as e:
+                logger.exception(f"Could not delete {path}")
                 QMessageBox.critical(self, "Error", f"Could not delete file: {e}")
 
     def _show_export_dialog(self):

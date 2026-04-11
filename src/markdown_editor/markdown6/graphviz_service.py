@@ -4,6 +4,10 @@ import hashlib
 import shutil
 from pathlib import Path
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 # In-memory cache: hash -> (svg_string, error_string or None)
 _render_cache: dict[str, tuple[str, str | None]] = {}
 
@@ -79,11 +83,12 @@ def _render_dot_impl(source: str, dark_mode: bool) -> tuple[str, str | None]:
         return svg_string, None
 
     except graphviz.CalledProcessError as e:
-        # Graphviz execution error (syntax error, etc.)
         error = e.stderr.decode('utf-8') if e.stderr else str(e)
+        logger.warning(f"Graphviz render error: {error}")
         return _format_error(source, error), error
     except Exception as e:
         error = str(e)
+        logger.exception("Graphviz render failed")
         return _format_error(source, error), error
 
 
