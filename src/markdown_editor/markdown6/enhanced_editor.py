@@ -216,12 +216,7 @@ class EnhancedEditor(QPlainTextEdit):
         self.folding_timer.setSingleShot(True)
         self.folding_timer.timeout.connect(self._do_update_folding_regions)
 
-        # Auto-save timer
-        self.auto_save_timer = QTimer()
-        self.auto_save_timer.timeout.connect(self._auto_save)
-        if self.settings.get("editor.auto_save", False):
-            interval = self.settings.get("editor.auto_save_interval", 60) * 1000
-            self.auto_save_timer.start(interval)
+        # Auto-save is handled by MarkdownEditor._init_autosave()
 
     def _init_wiki_completer(self):
         """Initialize wiki-link autocomplete."""
@@ -318,12 +313,7 @@ class EnhancedEditor(QPlainTextEdit):
             font.setPointSize(value)
             self.setFont(font)
             self._update_line_number_area_width()
-        elif key == "editor.auto_save":
-            if value:
-                interval = self.settings.get("editor.auto_save_interval", 60) * 1000
-                self.auto_save_timer.start(interval)
-            else:
-                self.auto_save_timer.stop()
+        # editor.auto_save is handled by MarkdownEditor._init_autosave()
 
     def _on_text_changed(self):
         """Handle text changes."""
@@ -367,11 +357,6 @@ class EnhancedEditor(QPlainTextEdit):
         char_count = len(text)
         word_count = len(text.split()) if text.strip() else 0
         self.word_count_changed.emit(word_count, char_count)
-
-    def _auto_save(self):
-        """Auto-save the document if it has a file path."""
-        if self.file_path and self.document().isModified():
-            self.save_file()
 
     # Line number methods
     def line_number_area_width(self) -> int:
