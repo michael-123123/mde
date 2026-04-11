@@ -1215,6 +1215,7 @@ class MarkdownEditor(QMainWindow):
         self._init_actions()
         self._init_shortcuts()
         self._connect_signals()
+        self._init_autosave()
         self.new_tab()
         self._update_recent_files_menu()
         self._restore_last_project()
@@ -1758,6 +1759,41 @@ class MarkdownEditor(QMainWindow):
             tab = self.current_tab()
             if tab:
                 tab.render_markdown()
+        elif key == "editor.auto_save":
+            self._configure_autosave()
+        elif key == "editor.auto_save_interval":
+            self._configure_autosave()
+
+    def _init_autosave(self):
+        """Initialize the autosave timer."""
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.timeout.connect(self._auto_save_all)
+        self._configure_autosave()
+
+    def _configure_autosave(self):
+        """Start or stop the autosave timer based on settings."""
+        if self.settings.get("editor.auto_save", False):
+            interval_s = self.settings.get("editor.auto_save_interval", 60)
+            self._autosave_timer.start(interval_s * 1000)
+        else:
+            self._autosave_timer.stop()
+
+    def _auto_save_all(self):
+        """Save all tabs that have a file path and unsaved changes."""
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if tab and tab.file_path and tab.unsaved_changes:
+                try:
+                    tab.editor._ignore_next_file_change = True
+                    tab.file_path.write_text(
+                        tab.editor.toPlainText(), encoding="utf-8"
+                    )
+                    tab.unsaved_changes = False
+                    tab.editor.document().setModified(False)
+                    self.update_tab_title(tab)
+                except OSError:
+                    pass  # Silently skip tabs that can't be saved
+        self.update_window_title()
 
     def _update_recent_files_menu(self):
         """Update the recent files menu."""
