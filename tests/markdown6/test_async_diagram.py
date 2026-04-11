@@ -85,11 +85,12 @@ class TestAsyncDiagramUnit:
             assert css == "graphviz-diagram"
 
     def test_executor_runs_and_returns(self):
-        """Verify the executor runs the render function and produces a result."""
-        from markdown_editor.markdown6.markdown_editor import _diagram_executor
+        """Verify a ThreadPoolExecutor runs the render function and produces a result."""
+        from concurrent.futures import ThreadPoolExecutor
 
-        future = _diagram_executor.submit(_render_fake_slow, "mermaid", "graph TD", False)
-        svg, css = future.result(timeout=5)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_render_fake_slow, "mermaid", "graph TD", False)
+            svg, css = future.result(timeout=5)
         assert svg == "<svg>rendered-mermaid</svg>"
         assert css == "mermaid-diagram"
 

@@ -64,8 +64,6 @@ def get_cached_html_formatter(style: str) -> HtmlFormatter:
 
 
 
-# Shared executor for background diagram rendering (mermaid/graphviz)
-_diagram_executor = ThreadPoolExecutor(max_workers=4)
 
 
 def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
@@ -1194,7 +1192,7 @@ class DocumentTab(QWidget):
         gen = self._pending_render_generation
         futures = []
         for idx, (kind, source, dark_mode) in enumerate(pending):
-            future = _diagram_executor.submit(_render_diagram, kind, source, dark_mode)
+            future = self.main_window._diagram_executor.submit(_render_diagram, kind, source, dark_mode)
             futures.append((idx, future))
         self._poll_diagram_futures(futures, gen)
 
@@ -1267,6 +1265,7 @@ class MarkdownEditor(QMainWindow):
         super().__init__()
         self.ctx = get_app_context()
         self._is_fullscreen = False
+        self._diagram_executor = ThreadPoolExecutor(max_workers=4)
         self._set_application_icon()
         self._init_markdown()
         self._init_ui()
@@ -2780,6 +2779,7 @@ class MarkdownEditor(QMainWindow):
                 event.ignore()
                 return
         self._save_open_files()
+        self._diagram_executor.shutdown(wait=False, cancel_futures=True)
         event.accept()
 
     def _save_open_files(self):
