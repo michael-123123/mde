@@ -7,6 +7,10 @@ from typing import Any
 from PySide6.QtCore import QObject, QStandardPaths, Signal
 
 from markdown_editor.markdown6.logger import getLogger
+from markdown_editor.markdown6.shortcut_manager import (
+    DEFAULT_SHORTCUTS,
+    ShortcutManager,
+)
 
 logger = getLogger(__name__)
 
@@ -74,78 +78,9 @@ DEFAULT_SETTINGS = {
     "tools.mmdc_path": "",
 }
 
-DEFAULT_SHORTCUTS = {
-    # File operations
-    "file.new": "Ctrl+N",
-    "file.open": "Ctrl+O",
-    "file.open_project": "Ctrl+Shift+O",
-    "file.save": "Ctrl+S",
-    "file.save_as": "Ctrl+Shift+S",
-    "file.close_tab": "Ctrl+W",
-    "file.quit": "Ctrl+Q",
-    # Edit operations
-    "edit.undo": "Ctrl+Z",
-    "edit.redo": "Ctrl+Shift+Z",
-    "edit.cut": "Ctrl+X",
-    "edit.copy": "Ctrl+C",
-    "edit.paste": "Ctrl+V",
-    "edit.select_all": "Ctrl+A",
-    "edit.find": "Ctrl+F",
-    "edit.replace": "Ctrl+R",
-    "edit.go_to_line": "Ctrl+G",
-    "edit.duplicate_line": "Ctrl+Shift+D",
-    "edit.delete_line": "Ctrl+Shift+K",
-    "edit.move_line_up": "Alt+Up",
-    "edit.move_line_down": "Alt+Down",
-    "edit.indent": "Tab",
-    "edit.outdent": "Shift+Tab",
-    "edit.toggle_comment": "Ctrl+/",
-    # Markdown formatting
-    "markdown.bold": "Ctrl+B",
-    "markdown.italic": "Ctrl+I",
-    "markdown.link": "Ctrl+K",
-    "markdown.image": "Ctrl+Shift+I",
-    "markdown.code": "Ctrl+`",
-    "markdown.heading_increase": "Ctrl+]",
-    "markdown.heading_decrease": "Ctrl+[",
-    # View operations
-    "view.refresh_preview": "F5",
-    "view.toggle_preview": "Ctrl+Shift+V",
-    "view.toggle_line_numbers": "Ctrl+Shift+L",
-    "view.toggle_word_wrap": "Alt+Z",
-    "view.toggle_whitespace": "Ctrl+Alt+W",
-    "view.fullscreen": "F11",
-    "view.zoom_in": "Ctrl++",
-    "view.zoom_out": "Ctrl+-",
-    "view.zoom_reset": "Ctrl+0",
-    "view.command_palette": "Ctrl+Shift+P",
-    "view.toggle_outline": "Ctrl+Alt+O",
-    "view.toggle_project": "Ctrl+Shift+E",
-    "view.toggle_references": "Ctrl+Shift+R",
-    "view.toggle_search": "Ctrl+Shift+F",
-    "view.toggle_sidebar": "Ctrl+Shift+B",
-    "view.fold_all": "Ctrl+Shift+[",
-    "view.unfold_all": "Ctrl+Shift+]",
-    "view.toggle_logseq_mode": "Ctrl+Alt+L",
-    # Insert operations
-    "insert.snippet": "Ctrl+J",
-    "insert.table": "Ctrl+Shift+T",
-    # Tab navigation
-    "tabs.next": "Ctrl+Tab",
-    "tabs.previous": "Ctrl+Shift+Tab",
-    "tabs.go_to_1": "Alt+1",
-    "tabs.go_to_2": "Alt+2",
-    "tabs.go_to_3": "Alt+3",
-    "tabs.go_to_4": "Alt+4",
-    "tabs.go_to_5": "Alt+5",
-    "tabs.go_to_6": "Alt+6",
-    "tabs.go_to_7": "Alt+7",
-    "tabs.go_to_8": "Alt+8",
-    "tabs.go_to_9": "Alt+9",
-    # Find operations
-    "find.next": "F3",
-    "find.previous": "Shift+F3",
-}
+
+# Re-exported for backward compatibility — canonical source is shortcut_manager.py
+# DEFAULT_SHORTCUTS is imported above
 
 
 MARKDOWN_EXTENSIONS = {".md", ".markdown"}
@@ -227,7 +162,6 @@ class Settings(QObject):
     """Application settings manager with persistence."""
 
     settings_changed = Signal(str, object)  # key, new_value
-    shortcut_changed = Signal(str, str)  # action, new_shortcut
     theme_changed = Signal(str)  # theme name
 
     def __init__(self, config_dir: Path | None = None, ephemeral: bool = False):
@@ -248,10 +182,16 @@ class Settings(QObject):
             self.config_dir.mkdir(parents=True, exist_ok=True)
 
         self.settings_file = self.config_dir / "settings.json"
-        self.shortcuts_file = self.config_dir / "shortcuts.json"
 
         self._settings: dict[str, Any] = {}
-        self._shortcuts: dict[str, str] = {}
+
+        # Delegate shortcut management
+        self._shortcut_manager = ShortcutManager(
+            shortcuts_file=self.config_dir / "shortcuts.json",
+            ephemeral=ephemeral,
+        )
+        # Expose the signal directly for backward compatibility
+        self.shortcut_changed = self._shortcut_manager.shortcut_changed
 
         self.load()
 
@@ -259,7 +199,6 @@ class Settings(QObject):
         """Load settings from disk (or use defaults if ephemeral)."""
         # Start with defaults
         self._settings = DEFAULT_SETTINGS.copy()
-        self._shortcuts = DEFAULT_SHORTCUTS.copy()
 
         # In ephemeral mode, don't load from disk
         if self._ephemeral:
@@ -273,15 +212,6 @@ class Settings(QObject):
                 self._settings.update(saved)
             except (json.JSONDecodeError, OSError):
                 logger.exception(f"Could not load settings from {self.settings_file}")
-
-        # Load shortcuts from disk
-        if self.shortcuts_file.exists():
-            try:
-                with open(self.shortcuts_file) as f:
-                    saved = json.load(f)
-                self._shortcuts.update(saved)
-            except (json.JSONDecodeError, OSError):
-                logger.exception(f"Could not load shortcuts from {self.shortcuts_file}")
 
     def save(self):
         """Save settings to disk (no-op if ephemeral)."""
@@ -300,16 +230,6 @@ class Settings(QObject):
         except OSError:
             logger.exception(f"Could not save settings to {self.settings_file}")
 
-        shortcuts_to_save = {
-            k: v for k, v in self._shortcuts.items()
-            if k not in DEFAULT_SHORTCUTS or v != DEFAULT_SHORTCUTS[k]
-        }
-        try:
-            with open(self.shortcuts_file, "w") as f:
-                json.dump(shortcuts_to_save, f, indent=2)
-        except OSError:
-            logger.exception(f"Could not save shortcuts to {self.shortcuts_file}")
-
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value."""
         return self._settings.get(key, default)
@@ -325,27 +245,26 @@ class Settings(QObject):
             if key == "view.theme":
                 self.theme_changed.emit(value)
 
+    @property
+    def shortcuts(self) -> ShortcutManager:
+        """Access the shortcut manager directly."""
+        return self._shortcut_manager
+
     def get_shortcut(self, action: str) -> str:
         """Get a keyboard shortcut for an action."""
-        return self._shortcuts.get(action, "")
+        return self._shortcut_manager.get_shortcut(action)
 
     def set_shortcut(self, action: str, shortcut: str, save: bool = True):
         """Set a keyboard shortcut for an action."""
-        old_shortcut = self._shortcuts.get(action)
-        self._shortcuts[action] = shortcut
-        if save:
-            self.save()
-        if old_shortcut != shortcut:
-            self.shortcut_changed.emit(action, shortcut)
+        self._shortcut_manager.set_shortcut(action, shortcut, save=save)
 
     def get_all_shortcuts(self) -> dict[str, str]:
         """Get all keyboard shortcuts."""
-        return self._shortcuts.copy()
+        return self._shortcut_manager.get_all_shortcuts()
 
     def reset_shortcuts(self):
         """Reset all shortcuts to defaults."""
-        self._shortcuts = DEFAULT_SHORTCUTS.copy()
-        self.save()
+        self._shortcut_manager.reset_shortcuts()
 
     def reset_settings(self):
         """Reset all settings to defaults."""
@@ -354,23 +273,19 @@ class Settings(QObject):
 
     def restore_all_defaults(self):
         """Restore all defaults by deleting config files."""
-        # Delete config files if they exist
+        # Delete settings config file if it exists
         if self.settings_file.exists():
             self.settings_file.unlink()
-        if self.shortcuts_file.exists():
-            self.shortcuts_file.unlink()
 
-        # Reset in-memory values to defaults
+        # Reset in-memory settings to defaults
         self._settings = DEFAULT_SETTINGS.copy()
-        self._shortcuts = DEFAULT_SHORTCUTS.copy()
 
         # Emit signals for all settings to update UI
         for key, value in self._settings.items():
             self.settings_changed.emit(key, value)
 
-        # Emit signals for all shortcuts
-        for action, shortcut in self._shortcuts.items():
-            self.shortcut_changed.emit(action, shortcut)
+        # Restore shortcut defaults (handles file deletion and signals)
+        self._shortcut_manager.restore_defaults()
 
     def add_recent_file(self, file_path: Path):
         """Add a file to the recent files list."""
