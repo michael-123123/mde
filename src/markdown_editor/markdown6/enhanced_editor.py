@@ -300,7 +300,21 @@ class EnhancedEditor(QPlainTextEdit):
         self.highlighter.set_dark_mode(dark)
 
     def _on_setting_changed(self, key: str, value):
-        """Handle setting changes."""
+        """Handle setting changes.
+
+        Blocks signals during operations that cause Qt to emit
+        textChanged spuriously (rehighlight, setDefaultTextOption, etc.)
+        so that DocumentTab doesn't mark the document as dirty.
+        """
+        editor_blocked = self.blockSignals(True)
+        doc_blocked = self.document().blockSignals(True)
+        try:
+            self._apply_setting(key, value)
+        finally:
+            self.document().blockSignals(doc_blocked)
+            self.blockSignals(editor_blocked)
+
+    def _apply_setting(self, key: str, value):
         if key == "editor.word_wrap":
             if value:
                 self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)

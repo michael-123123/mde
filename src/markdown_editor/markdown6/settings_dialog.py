@@ -99,7 +99,7 @@ class SettingsDialog(QDialog):
         categories = [
             ("Editor", "editor"),
             ("View", "view"),
-            ("Preview Typography", "typography"),
+            ("Appearance", "appearance"),
             ("Files", "files"),
             ("External Tools", "tools"),
             ("Keyboard Shortcuts", "shortcuts"),
@@ -119,7 +119,7 @@ class SettingsDialog(QDialog):
 
         self.stack.addWidget(self._create_editor_page())
         self.stack.addWidget(self._create_view_page())
-        self.stack.addWidget(self._create_typography_page())
+        self.stack.addWidget(self._create_appearance_page())
         self.stack.addWidget(self._create_files_page())
         self.stack.addWidget(self._create_tools_page())
         self.stack.addWidget(self._create_shortcuts_page())
@@ -287,7 +287,7 @@ class SettingsDialog(QDialog):
         return scroll
 
     def _create_font_size_row(self, label: str, key_prefix: str) -> tuple:
-        """Create a row with a size spinbox and unit combo for a typography element.
+        """Create a row with a size spinbox and unit combo for an appearance element.
 
         Returns (size_spinbox, unit_combo) so they can be stored for load/save.
         """
@@ -305,8 +305,8 @@ class SettingsDialog(QDialog):
 
         return size_spin, unit_combo, row
 
-    def _create_typography_page(self) -> QWidget:
-        """Create the preview typography settings page."""
+    def _create_appearance_page(self) -> QWidget:
+        """Create the appearance settings page."""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -607,7 +607,7 @@ class SettingsDialog(QDialog):
         self.dot_path.setText(self.ctx.get("tools.dot_path", ""))
         self.mmdc_path.setText(self.ctx.get("tools.mmdc_path", ""))
 
-        # Preview typography
+        # Appearance
         from PySide6.QtGui import QFont, QFontDatabase
         body_font_name = self.ctx.get("preview.body_font_family", "")
         if not body_font_name:
@@ -792,7 +792,7 @@ class SettingsDialog(QDialog):
         self.ctx.set("tools.dot_path", self.dot_path.text().strip())
         self.ctx.set("tools.mmdc_path", self.mmdc_path.text().strip())
 
-        # Preview typography
+        # Appearance
         self.ctx.set("preview.body_font_family", self.preview_body_font.currentFont().family())
         # Only save heading font if user changed it from the body default
         heading_family = self.preview_heading_font.currentFont().family()

@@ -640,3 +640,34 @@ class TestGraphvizDarkMode:
         # Should keep the red fill, not add another one
         assert 'fill="red"' in result
         assert result.count('fill=') == 1
+
+
+class TestSettingsChangeDirtyFlag:
+    """Regression test: changing a setting should not mark the document dirty.
+
+    Bug: Toggling settings like show_whitespace or word_wrap causes
+    EnhancedEditor to call document().setDefaultTextOption() or
+    setLineWrapMode(), which Qt treats as a content change, emitting
+    textChanged and marking the tab as having unsaved changes.
+    """
+
+    def test_toggle_theme_does_not_emit_text_changed(self, qtbot):
+        """Toggling theme should not emit textChanged on the editor.
+
+        Root cause: set_dark_mode() calls rehighlight(), which Qt treats
+        as a content modification, emitting textChanged on the editor.
+        DocumentTab._on_text_changed picks this up and sets unsaved_changes.
+
+        Fix: EnhancedEditor blocks signals during setting application.
+        """
+        from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+        from markdown_editor.markdown6.app_context import get_app_context
+
+        ctx = get_app_context()
+        editor = EnhancedEditor(ctx=ctx)
+        qtbot.addWidget(editor)
+        editor.setPlainText("hello world")
+
+        # Theme change should NOT emit textChanged
+        with qtbot.assertNotEmitted(editor.textChanged):
+            ctx.set("view.theme", "dark", save=False)
