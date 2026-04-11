@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QFont
 
-from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
+from markdown_editor.markdown6.settings import get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
@@ -38,9 +38,9 @@ class SearchPanel(QWidget):
     # Emitted when user wants to open a file at a specific line
     file_requested = Signal(str, int)  # file_path, line_number
 
-    def __init__(self, parent=None):
+    def __init__(self, settings, parent=None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
         self.project_path: Path | None = None
         self._matches: list[SearchMatch] = []
         self._search_timer = QTimer()

@@ -17,9 +17,11 @@ from markdown_editor.markdown6.theme import get_theme, StyleSheets
 class SearchablePopup(QDialog):
     """Base class for searchable popup dialogs with keyboard navigation."""
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings=None, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        if settings is None:
+            settings = get_settings()
+        self.settings = settings
         self._init_base_ui()
         self._apply_theme()
 

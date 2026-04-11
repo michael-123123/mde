@@ -23,8 +23,8 @@ class Command:
 class CommandPalette(SearchablePopup):
     """A searchable command palette dialog."""
 
-    def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+    def __init__(self, settings=None, parent: QWidget | None = None):
+        super().__init__(settings=settings, parent=parent)
         self.commands: list[Command] = []
         self.filtered_commands: list[Command] = []
         self._init_ui()

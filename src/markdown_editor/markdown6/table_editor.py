@@ -16,16 +16,18 @@ from PySide6.QtWidgets import (
     QHeaderView,
 )
 
-from markdown_editor.markdown6.settings import get_settings
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
 class TableEditorDialog(QDialog):
     """A dialog for creating and editing markdown tables visually."""
 
-    def __init__(self, parent: QWidget | None = None, initial_markdown: str = ""):
+    def __init__(self, settings=None, parent: QWidget | None = None, initial_markdown: str = ""):
         super().__init__(parent)
-        self.settings = get_settings()
+        if settings is None:
+            from markdown_editor.markdown6.settings import get_settings
+            settings = get_settings()
+        self.settings = settings
         self.initial_markdown = initial_markdown
         self._init_ui()
         self._apply_theme()

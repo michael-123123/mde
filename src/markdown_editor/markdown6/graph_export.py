@@ -156,10 +156,12 @@ class GraphExportDialog(QDialog):
 
     file_clicked = Signal(Path)
 
-    def __init__(self, project_path: Path, current_file: Path = None, parent=None):
+    def __init__(self, project_path: Path, current_file: Path = None, settings=None, parent=None):
         super().__init__(parent)
         self.project_path = project_path
-        self.settings = get_settings()
+        if settings is None:
+            settings = get_settings()
+        self.settings = settings
         self.setWindowTitle("Export Document Graph")
         self.setWindowFlags(
             Qt.WindowType.Window |

@@ -649,9 +649,9 @@ class ExternalChangeBar(QWidget):
     reload_requested = Signal()
     dismissed = Signal()
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
         self._init_ui()
         self._apply_theme()
         self.settings.settings_changed.connect(self._on_setting_changed)
@@ -762,7 +762,7 @@ class DocumentTab(QWidget):
     def __init__(self, parent: "MarkdownEditor"):
         super().__init__()
         self.main_window = parent
-        self.settings = get_settings()
+        self.settings = parent.settings
         self.file_path: Path | None = None
         self.unsaved_changes = False
         self._sync_scrolling = True
@@ -790,7 +790,7 @@ class DocumentTab(QWidget):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.setSpacing(0)
 
-        self.editor = EnhancedEditor()
+        self.editor = EnhancedEditor(settings=self.settings)
         self.editor.setAcceptDrops(True)
         self.editor.setAccessibleName("Markdown Editor")
 
@@ -822,7 +822,7 @@ class DocumentTab(QWidget):
         self.splitter.setSizes([600, 600])
 
         # External change notification bar spans both panes (above splitter)
-        self.external_change_bar = ExternalChangeBar(self)
+        self.external_change_bar = ExternalChangeBar(self.settings, self)
         self.external_change_bar.reload_requested.connect(self.reload_file)
 
         # Find/Replace bar spans both panes (below splitter)
@@ -1294,23 +1294,23 @@ class MarkdownEditor(QMainWindow):
         self.setCentralWidget(self.main_splitter)
 
         # Sidebar with activity bar and panels
-        self.sidebar = Sidebar()
+        self.sidebar = Sidebar(self.settings)
 
         # Create panels
-        self.project_panel = ProjectPanel()
+        self.project_panel = ProjectPanel(self.settings)
         self.project_panel.file_double_clicked.connect(self.open_file)
         self.project_panel.graph_export_requested.connect(self._show_graph_export)
         self.project_panel.setAccessibleName("Project Files Panel")
 
-        self.outline_panel = OutlinePanel()
+        self.outline_panel = OutlinePanel(self.settings)
         self.outline_panel.heading_clicked.connect(self._go_to_heading)
         self.outline_panel.setAccessibleName("Document Outline Panel")
 
-        self.references_panel = ReferencesPanel()
+        self.references_panel = ReferencesPanel(self.settings)
         self.references_panel.reference_clicked.connect(self._go_to_reference)
         self.references_panel.setAccessibleName("References Panel")
 
-        self.search_panel = SearchPanel()
+        self.search_panel = SearchPanel(self.settings)
         self.search_panel.file_requested.connect(self._on_search_file_requested)
         self.search_panel.setAccessibleName("Search Panel")
 
@@ -1346,7 +1346,7 @@ class MarkdownEditor(QMainWindow):
         self._create_view_toggle_buttons()
 
         # Command palette
-        self.command_palette = CommandPalette(self)
+        self.command_palette = CommandPalette(settings=self.settings, parent=self)
 
         self._create_menu_bar()
         self._create_status_bar()
@@ -2391,7 +2391,7 @@ class MarkdownEditor(QMainWindow):
             tab.editor.toggle_comment()
 
     def _show_settings(self):
-        dialog = SettingsDialog(self)
+        dialog = SettingsDialog(settings=self.settings, parent=self)
         dialog.exec()
 
     # Format menu actions
@@ -2800,7 +2800,7 @@ class MarkdownEditor(QMainWindow):
         if tab and tab.file_path:
             current_file = tab.file_path
 
-        dialog = GraphExportDialog(project_root, current_file, self)
+        dialog = GraphExportDialog(project_root, current_file, settings=self.settings, parent=self)
 
         # Connect file click signal to open the file
         def open_file_from_graph(file_path: Path):
@@ -3570,7 +3570,7 @@ class MarkdownEditor(QMainWindow):
         if not tab:
             return
 
-        dialog = TableEditorDialog(self)
+        dialog = TableEditorDialog(settings=self.settings, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             markdown_table = dialog.get_markdown()
             if markdown_table:
@@ -3586,7 +3586,7 @@ class MarkdownEditor(QMainWindow):
         manager = get_snippet_manager()
         snippets = manager.get_all_snippets()
 
-        popup = SnippetPopup(snippets, self)
+        popup = SnippetPopup(snippets, settings=self.settings, parent=self)
         if popup.exec() == QDialog.DialogCode.Accepted and popup.selected_snippet:
             content, placeholder_start, placeholder_end = manager.expand_snippet(popup.selected_snippet)
             cursor = tab.editor.textCursor()

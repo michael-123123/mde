@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
+from markdown_editor.markdown6.settings import get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import export_service
 
@@ -65,9 +65,9 @@ class ProjectPanel(QWidget):
     file_double_clicked = Signal(str)  # file path
     graph_export_requested = Signal()  # request to open graph export dialog
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
         self.project_path: Path | None = None
         self._lazy = False  # True when project root is outside $HOME
         self._filter_text = ""
@@ -378,7 +378,7 @@ class ProjectPanel(QWidget):
             )
             return
 
-        dialog = ProjectExportDialog(self.project_path, self)
+        dialog = ProjectExportDialog(self.project_path, self.settings, self)
         dialog.exec()
 
     def _on_graph_export_clicked(self):
@@ -406,10 +406,10 @@ class ProjectPanel(QWidget):
 class ProjectExportDialog(QDialog):
     """Dialog for exporting a project to a single document."""
 
-    def __init__(self, project_path: Path, parent: QWidget | None = None):
+    def __init__(self, project_path: Path, settings, parent: QWidget | None = None):
         super().__init__(parent)
         self.project_path = project_path
-        self.settings = get_settings()
+        self.settings = settings
         self._init_ui()
         self._load_files()
         self._apply_theme()

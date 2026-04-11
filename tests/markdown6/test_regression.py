@@ -365,59 +365,47 @@ class TestPreviewDarkModeBackground:
 
     def test_preview_background_dark_mode(self, qtbot, tmp_path):
         """Test that preview has dark background in dark mode."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.settings import get_settings
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
 
-        # Mock settings to return dark theme
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "dark",
-            "view.show_preview": True,
-            "view.sync_scrolling": True,
-        }.get(key, default)
-        mock_settings.settings_changed = MagicMock()
-        mock_settings.settings_changed.connect = MagicMock()
+        settings = get_settings()
+        settings.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            mock_main_window = MagicMock()
-            tab = DocumentTab(mock_main_window)
-            qtbot.addWidget(tab)
+        mock_main_window = MagicMock()
+        mock_main_window.settings = settings
+        tab = DocumentTab(mock_main_window)
+        qtbot.addWidget(tab)
 
-            # Check that background color was set on the page
-            bg_color = tab.preview.page().backgroundColor()
-            # Dark mode background should be #1e1e1e
-            assert bg_color.name() == "#1e1e1e"
+        # Check that background color was set on the page
+        bg_color = tab.preview.page().backgroundColor()
+        # Dark mode background should be #1e1e1e
+        assert bg_color.name() == "#1e1e1e"
 
     def test_preview_background_light_mode(self, qtbot, tmp_path):
         """Test that preview has white background in light mode."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.settings import get_settings
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
 
-        # Mock settings to return light theme
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "light",
-            "view.show_preview": True,
-            "view.sync_scrolling": True,
-        }.get(key, default)
-        mock_settings.settings_changed = MagicMock()
-        mock_settings.settings_changed.connect = MagicMock()
+        settings = get_settings()
+        settings.set("view.theme", "light", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            mock_main_window = MagicMock()
-            tab = DocumentTab(mock_main_window)
-            qtbot.addWidget(tab)
+        mock_main_window = MagicMock()
+        mock_main_window.settings = settings
+        tab = DocumentTab(mock_main_window)
+        qtbot.addWidget(tab)
 
-            # Check that background color was set on the page
-            bg_color = tab.preview.page().backgroundColor()
-            # Light mode background should be white
-            assert bg_color.name() == "#ffffff"
+        # Check that background color was set on the page
+        bg_color = tab.preview.page().backgroundColor()
+        # Light mode background should be white
+        assert bg_color.name() == "#ffffff"
 
 
 class TestDarkModeTheming:
@@ -526,42 +514,20 @@ class TestDarkModeTheming:
 
     def test_sidebar_theme_applies_dark_colors(self, qtbot):
         """Test that sidebar applies dark colors in dark mode."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
         from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+        from markdown_editor.markdown6.settings import get_settings
 
-        # Mock settings for dark mode
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
-            "view.theme": "dark",
-            "view.show_preview": True,
-            "view.show_editor": True,
-            "view.show_explorer": True,
-            "project.last_path": "",
-            "files.recent_files": [],
-            "editor.show_line_numbers": True,
-        }.get(key, default)
-        mock_settings.get_shortcut.return_value = ""
-        mock_settings.get_all_shortcuts.return_value = {}
-        mock_settings.settings_changed = MagicMock()
-        mock_settings.settings_changed.connect = MagicMock()
-        mock_settings.shortcut_changed = MagicMock()
-        mock_settings.shortcut_changed.connect = MagicMock()
-        mock_settings.theme_changed = MagicMock()
-        mock_settings.theme_changed.connect = MagicMock()
+        settings = get_settings()
+        settings.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=mock_settings):
-            with patch("markdown_editor.markdown6.project_manager.get_settings", return_value=mock_settings):
-                with patch("markdown_editor.markdown6.outline_panel.get_settings", return_value=mock_settings):
-                    with patch("markdown_editor.markdown6.references_panel.get_settings", return_value=mock_settings):
-                        with patch("markdown_editor.markdown6.search_panel.get_settings", return_value=mock_settings):
-                            with patch("markdown_editor.markdown6.sidebar.get_settings", return_value=mock_settings):
-                                with patch("markdown_editor.markdown6.activity_bar.get_settings", return_value=mock_settings):
-                                    editor = MarkdownEditor()
-                                    qtbot.addWidget(editor)
+        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=settings):
+            editor = MarkdownEditor()
+            qtbot.addWidget(editor)
 
-                                    # Check sidebar exists and has activity bar
-                                    assert hasattr(editor, 'sidebar')
-                                    assert hasattr(editor.sidebar, 'activity_bar')
+            # Check sidebar exists and has activity bar
+            assert hasattr(editor, 'sidebar')
+            assert hasattr(editor.sidebar, 'activity_bar')
 
     def test_all_stylesheets_contain_background_color(self):
         """Test that all relevant stylesheets set background-color."""

@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QFont
 
 from markdown_editor.markdown6.activity_bar import ActivityBar
-from markdown_editor.markdown6.settings import get_settings
+
 from markdown_editor.markdown6.theme import get_theme
 
 
@@ -35,9 +35,9 @@ class Sidebar(QWidget):
     # Emitted when sidebar width changes (for parent splitter updates)
     width_changed = Signal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, settings, parent=None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
 
         self._collapsed = False
         self._active_index = 0
@@ -57,7 +57,7 @@ class Sidebar(QWidget):
         layout.setSpacing(0)
 
         # Activity bar (always visible)
-        self.activity_bar = ActivityBar(width=48, parent=self)
+        self.activity_bar = ActivityBar(self.settings, width=48, parent=self)
         self.activity_bar.tab_clicked.connect(self._on_tab_clicked)
         layout.addWidget(self.activity_bar)
 

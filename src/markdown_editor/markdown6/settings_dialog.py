@@ -39,9 +39,11 @@ from markdown_editor.markdown6.theme import get_theme, StyleSheets
 class SettingsDialog(QDialog):
     """Dialog for editing application settings."""
 
-    def __init__(self, parent=None):
+    def __init__(self, settings=None, parent=None):
         super().__init__(parent)
-        self.settings = get_settings()
+        if settings is None:
+            settings = get_settings()
+        self.settings = settings
         self.pending_shortcuts = {}
 
         self.setWindowTitle("Settings")

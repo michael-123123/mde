@@ -148,9 +148,11 @@ class EnhancedEditor(QPlainTextEdit):
         "_": "_",
     }
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings=None, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        if settings is None:
+            settings = get_settings()
+        self.settings = settings
         self.file_path: Path | None = None
         self._file_watcher: QFileSystemWatcher | None = None
         self._ignore_next_file_change = False

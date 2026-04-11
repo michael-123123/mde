@@ -4,11 +4,12 @@ import pytest
 from unittest.mock import MagicMock
 
 from markdown_editor.markdown6.markdown_editor import ExternalChangeBar
+from markdown_editor.markdown6.settings import get_settings
 
 
 @pytest.fixture
 def bar(qtbot):
-    b = ExternalChangeBar()
+    b = ExternalChangeBar(get_settings())
     qtbot.addWidget(b)
     return b
 

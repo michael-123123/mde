@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.settings import Settings
 
 
 @dataclass
@@ -27,9 +27,9 @@ class OutlinePanel(QWidget):
 
     heading_clicked = Signal(int)  # line number
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
         self._init_ui()
         self._apply_theme()
         self.settings.settings_changed.connect(self._on_setting_changed)

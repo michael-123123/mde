@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 
-from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
+from markdown_editor.markdown6.settings import get_project_markdown_files
 
 
 @dataclass
@@ -33,9 +33,9 @@ class ReferencesPanel(QWidget):
     file_clicked = Signal(str)        # file path
     reference_clicked = Signal(str, int)  # file path, line number
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
         self.project_path: Path | None = None
         self.current_file: Path | None = None
         self._references: list[Reference] = []

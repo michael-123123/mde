@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QFontMetrics, QColor, QFont
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QFrame
 
-from markdown_editor.markdown6.settings import get_settings
+
 from markdown_editor.markdown6.theme import get_theme, ThemeColors
 
 
@@ -148,9 +148,9 @@ class ActivityBar(QFrame):
 
     tab_clicked = Signal(int)  # index
 
-    def __init__(self, width: int = 48, parent=None):
+    def __init__(self, settings, width: int = 48, parent=None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.settings = settings
         self._tabs: list[ActivityTab] = []
         self._active_index = 0
         self._bar_width = width
