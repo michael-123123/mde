@@ -95,6 +95,10 @@ Follow this process strictly when fixing bugs:
 
 Do not skip steps. Do not claim a bug is fixed without completing step 4.
 
+## Changelog
+
+`CHANGELOG.md` is maintained at the repo root. When tagging a new release (`vX.Y.Z`), summarize all commits since the previous tag into a new entry at the top of the changelog. Use the sections `Added`, `Changed`, `Fixed`, `Removed`, `Deprecated` — only include sections that apply. Entries should be user-facing descriptions, not implementation details. When reviewing commits for changelog entries, exclude changes to `CHANGELOG.md` itself from consideration — only look at the non-changelog parts of each diff.
+
 ## Known Technical Debt
 
 - `MarkdownEditor` is ~2800 lines; should be split into TabManager, PanelManager, ActionManager
