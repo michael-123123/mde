@@ -7,6 +7,7 @@ from typing import Any
 from PySide6.QtCore import QObject, QStandardPaths, Signal
 
 from markdown_editor.markdown6.logger import getLogger
+from markdown_editor.markdown6.session_state import SessionState
 from markdown_editor.markdown6.shortcut_manager import (
     DEFAULT_SHORTCUTS,
     ShortcutManager,
@@ -56,22 +57,11 @@ DEFAULT_SETTINGS = {
     "preview.code_size_unit": "%",
     "preview.line_height": 1.5,
     # File settings
-    "files.recent_files": [],
-    "files.max_recent_files": 10,
     "files.detect_external_changes": True,
-    # Project settings
-    "project.last_path": None,
-    "project.open_files": [],
-    "project.active_tab": 0,
-    "project.restore_tree_state": True,
-    "project.expanded_dirs": [],
     # File visibility
     "files.show_hidden": False,
     # Logseq mode
     "view.logseq_mode": False,
-    # Sidebar state
-    "sidebar.collapsed": False,
-    "sidebar.active_panel": 0,
     # External tool paths (empty string = use system PATH)
     "tools.pandoc_path": "",
     "tools.dot_path": "",
@@ -193,6 +183,12 @@ class Settings(QObject):
         # Expose the signal directly for backward compatibility
         self.shortcut_changed = self._shortcut_manager.shortcut_changed
 
+        # Delegate session state management
+        self._session_state = SessionState(
+            state_file=self.config_dir / "session.json",
+            ephemeral=ephemeral,
+        )
+
         self.load()
 
     def load(self):
@@ -232,10 +228,17 @@ class Settings(QObject):
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value."""
+        if SessionState.is_session_key(key):
+            return self._session_state.get(key, default)
         return self._settings.get(key, default)
 
     def set(self, key: str, value: Any, save: bool = True):
         """Set a setting value."""
+        if SessionState.is_session_key(key):
+            self._session_state.set(key, value, save=save)
+            # Also emit settings_changed for backward compatibility
+            self.settings_changed.emit(key, value)
+            return
         old_value = self._settings.get(key)
         self._settings[key] = value
         if save:
@@ -287,37 +290,25 @@ class Settings(QObject):
         # Restore shortcut defaults (handles file deletion and signals)
         self._shortcut_manager.restore_defaults()
 
+        # Restore session state defaults (handles file deletion)
+        self._session_state.restore_defaults()
+
+    @property
+    def session(self) -> SessionState:
+        """Access the session state manager directly."""
+        return self._session_state
+
     def add_recent_file(self, file_path: Path):
         """Add a file to the recent files list."""
-        recent = self.get("files.recent_files", [])
-        path_str = str(file_path.resolve())
-
-        # Remove if already exists
-        if path_str in recent:
-            recent.remove(path_str)
-
-        # Add to front
-        recent.insert(0, path_str)
-
-        # Trim to max
-        max_recent = self.get("files.max_recent_files", 10)
-        recent = recent[:max_recent]
-
-        self.set("files.recent_files", recent)
+        self._session_state.add_recent_file(file_path)
 
     def get_recent_files(self) -> list[Path]:
         """Get list of recent files that still exist."""
-        recent = self.get("files.recent_files", [])
-        result = []
-        for path_str in recent:
-            path = Path(path_str)
-            if path.exists():
-                result.append(path)
-        return result
+        return self._session_state.get_recent_files()
 
     def clear_recent_files(self):
         """Clear the recent files list."""
-        self.set("files.recent_files", [])
+        self._session_state.clear_recent_files()
 
 
 # Global settings instance
