@@ -1,76 +1,19 @@
 """Application context — settings, shortcuts, and session state."""
 
-import json
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QStandardPaths, Signal
+from PySide6.QtCore import QObject, QStandardPaths
 
-from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.session_state import SessionState
+from markdown_editor.markdown6.settings_manager import (
+    DEFAULT_SETTINGS,
+    SettingsManager,
+)
 from markdown_editor.markdown6.shortcut_manager import (
     DEFAULT_SHORTCUTS,
     ShortcutManager,
 )
-
-logger = getLogger(__name__)
-
-
-DEFAULT_SETTINGS = {
-    # Editor settings
-    "editor.font_family": "Monospace",
-    "editor.font_size": 11,
-    "editor.tab_size": 4,
-    "editor.use_spaces": True,
-    "editor.word_wrap": True,
-    "editor.show_line_numbers": True,
-    "editor.highlight_current_line": True,
-    "editor.show_whitespace": False,
-    "editor.auto_pairs": True,
-    "editor.auto_indent": True,
-    "editor.auto_save": False,
-    "editor.auto_save_interval": 60,  # seconds
-    "editor.scroll_past_end": True,
-    # View settings
-    "view.show_editor": True,
-    "view.show_preview": True,
-    "view.sync_scrolling": True,
-    "view.theme": "light",  # light, dark
-    "view.preview_font_size": 14,
-    # Preview typography (empty = use built-in CSS font stack)
-    "preview.body_font_family": "",
-    "preview.code_font_family": "",
-    "preview.heading_font_family": "",  # empty = inherit from body
-    "preview.h1_size": 2.0,
-    "preview.h1_size_unit": "em",
-    "preview.h2_size": 1.5,
-    "preview.h2_size_unit": "em",
-    "preview.h3_size": 1.25,
-    "preview.h3_size_unit": "em",
-    "preview.h4_size": 1.0,
-    "preview.h4_size_unit": "em",
-    "preview.h5_size": 0.875,
-    "preview.h5_size_unit": "em",
-    "preview.h6_size": 0.85,
-    "preview.h6_size_unit": "em",
-    "preview.code_size": 85,
-    "preview.code_size_unit": "%",
-    "preview.line_height": 1.5,
-    # File settings
-    "files.detect_external_changes": True,
-    # File visibility
-    "files.show_hidden": False,
-    # Logseq mode
-    "view.logseq_mode": False,
-    # External tool paths (empty string = use system PATH)
-    "tools.pandoc_path": "",
-    "tools.dot_path": "",
-    "tools.mmdc_path": "",
-}
-
-
-# Re-exported for backward compatibility — canonical source is shortcut_manager.py
-# DEFAULT_SHORTCUTS is imported above
 
 
 MARKDOWN_EXTENSIONS = {".md", ".markdown"}
@@ -149,10 +92,7 @@ def _default_config_dir() -> Path:
 
 
 class AppContext(QObject):
-    """Application context: settings, shortcuts, and session state."""
-
-    settings_changed = Signal(str, object)  # key, new_value
-    theme_changed = Signal(str)  # theme name
+    """Application context: facade over settings, shortcuts, and session state."""
 
     def __init__(self, config_dir: Path | None = None, ephemeral: bool = False):
         """Initialize the application context.
@@ -171,16 +111,20 @@ class AppContext(QObject):
         if not ephemeral:
             self.config_dir.mkdir(parents=True, exist_ok=True)
 
-        self.settings_file = self.config_dir / "settings.json"
-
-        self._settings: dict[str, Any] = {}
+        # Delegate settings management
+        self._settings_manager = SettingsManager(
+            settings_file=self.config_dir / "settings.json",
+            ephemeral=ephemeral,
+        )
+        # Expose signals directly
+        self.settings_changed = self._settings_manager.settings_changed
+        self.theme_changed = self._settings_manager.theme_changed
 
         # Delegate shortcut management
         self._shortcut_manager = ShortcutManager(
             shortcuts_file=self.config_dir / "shortcuts.json",
             ephemeral=ephemeral,
         )
-        # Expose the signal directly for backward compatibility
         self.shortcut_changed = self._shortcut_manager.shortcut_changed
 
         # Delegate session state management
@@ -189,64 +133,28 @@ class AppContext(QObject):
             ephemeral=ephemeral,
         )
 
-        self.load()
-
-    def load(self):
-        """Load settings from disk (or use defaults if ephemeral)."""
-        # Start with defaults
-        self._settings = DEFAULT_SETTINGS.copy()
-
-        # In ephemeral mode, don't load from disk
-        if self._ephemeral:
-            return
-
-        # Load settings from disk
-        if self.settings_file.exists():
-            try:
-                with open(self.settings_file) as f:
-                    saved = json.load(f)
-                self._settings.update(saved)
-            except (json.JSONDecodeError, OSError):
-                logger.exception(f"Could not load settings from {self.settings_file}")
-
-    def save(self):
-        """Save settings to disk (no-op if ephemeral)."""
-        # In ephemeral mode, don't save to disk
-        if self._ephemeral:
-            return
-
-        # Only save non-default values
-        settings_to_save = {
-            k: v for k, v in self._settings.items()
-            if k not in DEFAULT_SETTINGS or v != DEFAULT_SETTINGS[k]
-        }
-        try:
-            with open(self.settings_file, "w") as f:
-                json.dump(settings_to_save, f, indent=2)
-        except OSError:
-            logger.exception(f"Could not save settings to {self.settings_file}")
+    # --- Settings delegation ---
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Get a setting value."""
+        """Get a setting or session state value."""
         if SessionState.is_session_key(key):
             return self._session_state.get(key, default)
-        return self._settings.get(key, default)
+        return self._settings_manager.get(key, default)
 
     def set(self, key: str, value: Any, save: bool = True):
-        """Set a setting value."""
+        """Set a setting or session state value."""
         if SessionState.is_session_key(key):
             self._session_state.set(key, value, save=save)
-            # Also emit settings_changed for backward compatibility
+            # Also emit settings_changed so widgets listening for any key update
             self.settings_changed.emit(key, value)
             return
-        old_value = self._settings.get(key)
-        self._settings[key] = value
-        if save:
-            self.save()
-        if old_value != value:
-            self.settings_changed.emit(key, value)
-            if key == "view.theme":
-                self.theme_changed.emit(value)
+        self._settings_manager.set(key, value, save=save)
+
+    def reset_settings(self):
+        """Reset all settings to defaults."""
+        self._settings_manager.reset()
+
+    # --- Shortcut delegation ---
 
     @property
     def shortcuts(self) -> ShortcutManager:
@@ -269,29 +177,7 @@ class AppContext(QObject):
         """Reset all shortcuts to defaults."""
         self._shortcut_manager.reset_shortcuts()
 
-    def reset_settings(self):
-        """Reset all settings to defaults."""
-        self._settings = DEFAULT_SETTINGS.copy()
-        self.save()
-
-    def restore_all_defaults(self):
-        """Restore all defaults by deleting config files."""
-        # Delete settings config file if it exists
-        if self.settings_file.exists():
-            self.settings_file.unlink()
-
-        # Reset in-memory settings to defaults
-        self._settings = DEFAULT_SETTINGS.copy()
-
-        # Emit signals for all settings to update UI
-        for key, value in self._settings.items():
-            self.settings_changed.emit(key, value)
-
-        # Restore shortcut defaults (handles file deletion and signals)
-        self._shortcut_manager.restore_defaults()
-
-        # Restore session state defaults (handles file deletion)
-        self._session_state.restore_defaults()
+    # --- Session state delegation ---
 
     @property
     def session(self) -> SessionState:
@@ -309,6 +195,14 @@ class AppContext(QObject):
     def clear_recent_files(self):
         """Clear the recent files list."""
         self._session_state.clear_recent_files()
+
+    # --- Restore all ---
+
+    def restore_all_defaults(self):
+        """Restore all defaults by deleting config files."""
+        self._settings_manager.restore_defaults()
+        self._shortcut_manager.restore_defaults()
+        self._session_state.restore_defaults()
 
 
 # Global instance
