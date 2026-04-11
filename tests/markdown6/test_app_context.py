@@ -3,8 +3,6 @@
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import patch
-
 from markdown_editor.markdown6.app_context import (
     AppContext,
     DEFAULT_SETTINGS,

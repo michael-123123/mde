@@ -2,7 +2,6 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor

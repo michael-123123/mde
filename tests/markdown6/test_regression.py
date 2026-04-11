@@ -514,20 +514,18 @@ class TestDarkModeTheming:
 
     def test_sidebar_theme_applies_dark_colors(self, qtbot):
         """Test that sidebar applies dark colors in dark mode."""
-        from unittest.mock import patch
         from markdown_editor.markdown6.markdown_editor import MarkdownEditor
         from markdown_editor.markdown6.app_context import get_app_context
 
         ctx = get_app_context()
         ctx.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_app_context", return_value=ctx):
-            editor = MarkdownEditor()
-            qtbot.addWidget(editor)
+        editor = MarkdownEditor()
+        qtbot.addWidget(editor)
 
-            # Check sidebar exists and has activity bar
-            assert hasattr(editor, 'sidebar')
-            assert hasattr(editor.sidebar, 'activity_bar')
+        # Check sidebar exists and has activity bar
+        assert hasattr(editor, 'sidebar')
+        assert hasattr(editor.sidebar, 'activity_bar')
 
     def test_all_stylesheets_contain_background_color(self):
         """Test that all relevant stylesheets set background-color."""
@@ -552,33 +550,29 @@ class TestDarkModeTheming:
 
     def test_graph_export_dialog_theming(self, qtbot, tmp_path):
         """Test that GraphExportDialog has proper dark mode theming."""
-        from unittest.mock import patch, MagicMock
         from markdown_editor.markdown6.graph_export import GraphExportDialog
+        from markdown_editor.markdown6.app_context import get_app_context
 
         project = tmp_path / "project"
         project.mkdir()
         (project / "test.md").write_text("# Test")
 
-        # Mock settings for dark mode
-        mock_ctx = MagicMock()
-        mock_ctx.get.side_effect = lambda key, default=None: {
-            "view.theme": "dark",
-        }.get(key, default)
+        ctx = get_app_context()
+        ctx.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.graph_export.get_app_context", return_value=mock_ctx):
-            dialog = GraphExportDialog(project)
-            qtbot.addWidget(dialog)
+        dialog = GraphExportDialog(project, ctx=ctx)
+        qtbot.addWidget(dialog)
 
-            stylesheet = dialog.styleSheet()
+        stylesheet = dialog.styleSheet()
 
-            # Should have styling for all key widgets
-            assert "QTreeWidget" in stylesheet
-            assert "QComboBox" in stylesheet
-            assert "QCheckBox" in stylesheet
-            assert "QRadioButton" in stylesheet
-            assert "QSplitter" in stylesheet
-            # Should use dark theme colors
-            assert "#" in stylesheet  # Has color values
+        # Should have styling for all key widgets
+        assert "QTreeWidget" in stylesheet
+        assert "QComboBox" in stylesheet
+        assert "QCheckBox" in stylesheet
+        assert "QRadioButton" in stylesheet
+        assert "QSplitter" in stylesheet
+        # Should use dark theme colors
+        assert "#" in stylesheet  # Has color values
 
 
 class TestGraphvizDarkMode:
