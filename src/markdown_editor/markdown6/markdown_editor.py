@@ -983,6 +983,9 @@ class DocumentTab(QWidget):
             # Re-render preview with new font size (full reload needed)
             self._preview_needs_full_reload = True
             self.render_markdown()
+        elif key == "editor.scroll_past_end":
+            self._preview_needs_full_reload = True
+            self.render_markdown()
 
     def preview_zoom_in(self):
         """Zoom in the preview pane (text + images + diagrams)."""
@@ -1885,6 +1888,7 @@ class MarkdownEditor(QMainWindow):
         """
         theme = self.settings.get("view.theme", "light")
         dark_mode = theme == "dark"
+        scroll_past_end = self.settings.get("editor.scroll_past_end", True)
 
         if dark_mode:
             bg_color = "#1e1e1e"
@@ -1949,6 +1953,7 @@ class MarkdownEditor(QMainWindow):
 </head>
 <body>
 {content}
+{"<div style='height: 80vh;'></div>" if scroll_past_end else ""}
 </body>
 </html>"""
 
@@ -2157,6 +2162,7 @@ class MarkdownEditor(QMainWindow):
         </head>
         <body class="{body_class}" data-total-lines="{total_lines}">
             <div id="md-content">{content}</div>
+            {"<div style='height: 80vh;'></div>" if scroll_past_end else ""}
             {mermaid_js}
             {graphviz_js}
             <script>

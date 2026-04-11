@@ -262,6 +262,10 @@ class EnhancedEditor(QPlainTextEdit):
         )
         self._update_line_number_area_width()
 
+        # Scroll past end — uses centerOnScroll for the extended scrollbar
+        # range, with ensureCursorVisible overridden to suppress centering.
+        self.setCenterOnScroll(self.settings.get("editor.scroll_past_end", True))
+
         # Theme
         self._apply_theme()
 
@@ -314,6 +318,8 @@ class EnhancedEditor(QPlainTextEdit):
             self.setFont(font)
             self._update_line_number_area_width()
         # editor.auto_save is handled by MarkdownEditor._init_autosave()
+        elif key == "editor.scroll_past_end":
+            self.setCenterOnScroll(bool(value))
 
     def _on_text_changed(self):
         """Handle text changes."""
@@ -392,6 +398,32 @@ class EnhancedEditor(QPlainTextEdit):
         self.line_number_area.setGeometry(
             QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height())
         )
+
+    def ensureCursorVisible(self):
+        """Ensure the cursor is visible without centering it.
+
+        When centerOnScroll is True (scroll-past-end), Qt's default
+        ensureCursorVisible centers the cursor vertically. We override
+        to scroll the minimum amount instead. When centerOnScroll is
+        False, we delegate to Qt's native implementation.
+        """
+        if not self.centerOnScroll():
+            super().ensureCursorVisible()
+            return
+        cursor_rect = self.cursorRect()
+        viewport_rect = self.viewport().rect()
+        if viewport_rect.contains(cursor_rect):
+            return
+        # Scroll just enough to show the cursor at the top or bottom edge
+        vbar = self.verticalScrollBar()
+        if cursor_rect.bottom() > viewport_rect.bottom():
+            # Cursor is below viewport — scroll down
+            lines_below = (cursor_rect.bottom() - viewport_rect.bottom()) // self.fontMetrics().lineSpacing() + 1
+            vbar.setValue(vbar.value() + lines_below)
+        elif cursor_rect.top() < viewport_rect.top():
+            # Cursor is above viewport — scroll up
+            lines_above = (viewport_rect.top() - cursor_rect.top()) // self.fontMetrics().lineSpacing() + 1
+            vbar.setValue(vbar.value() - lines_above)
 
     def line_number_area_paint_event(self, event):
         """Paint the line number area."""

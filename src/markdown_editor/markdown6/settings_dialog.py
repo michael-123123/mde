@@ -260,6 +260,9 @@ class SettingsDialog(QDialog):
         self.sync_scrolling = QCheckBox("Sync scrolling between editor and preview")
         display_layout.addRow("", self.sync_scrolling)
 
+        self.scroll_past_end = QCheckBox("Scroll past end of document")
+        display_layout.addRow("", self.scroll_past_end)
+
         layout.addWidget(display_group)
 
         # Preview group
@@ -498,6 +501,7 @@ class SettingsDialog(QDialog):
         self.show_line_numbers.setChecked(self.settings.get("editor.show_line_numbers", True))
         self.show_preview.setChecked(self.settings.get("view.show_preview", True))
         self.sync_scrolling.setChecked(self.settings.get("view.sync_scrolling", True))
+        self.scroll_past_end.setChecked(self.settings.get("editor.scroll_past_end", True))
         self.preview_font_size.setValue(self.settings.get("view.preview_font_size", 14))
 
         # Files settings
@@ -658,6 +662,7 @@ class SettingsDialog(QDialog):
         self.settings.set("editor.show_line_numbers", self.show_line_numbers.isChecked())
         self.settings.set("view.show_preview", self.show_preview.isChecked())
         self.settings.set("view.sync_scrolling", self.sync_scrolling.isChecked())
+        self.settings.set("editor.scroll_past_end", self.scroll_past_end.isChecked())
         self.settings.set("view.preview_font_size", self.preview_font_size.value())
 
         # Files settings

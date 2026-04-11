@@ -21,6 +21,7 @@ DEFAULT_SETTINGS = {
     "editor.auto_indent": True,
     "editor.auto_save": False,
     "editor.auto_save_interval": 60,  # seconds
+    "editor.scroll_past_end": True,
     # View settings
     "view.show_editor": True,
     "view.show_preview": True,
