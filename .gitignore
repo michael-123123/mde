@@ -32,3 +32,6 @@ tests/markdown6/zoom_screenshots/
 
 # Project
 local/
+
+# worktrees
+.claude/worktrees
