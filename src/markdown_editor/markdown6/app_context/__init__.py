@@ -5,15 +5,31 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QStandardPaths
 
-from markdown_editor.markdown6.session_state import SessionState
-from markdown_editor.markdown6.settings_manager import (
+from markdown_editor.markdown6.app_context.session_state import SessionState
+from markdown_editor.markdown6.app_context.settings_manager import (
     DEFAULT_SETTINGS,
     SettingsManager,
 )
-from markdown_editor.markdown6.shortcut_manager import (
+from markdown_editor.markdown6.app_context.shortcut_manager import (
     DEFAULT_SHORTCUTS,
     ShortcutManager,
 )
+
+# Re-export subsystem classes so callers can import from app_context directly
+__all__ = [
+    "AppContext",
+    "DEFAULT_SETTINGS",
+    "DEFAULT_SHORTCUTS",
+    "MARKDOWN_EXTENSIONS",
+    "MARKDOWN_GLOBS",
+    "SessionState",
+    "SettingsManager",
+    "ShortcutManager",
+    "get_app_context",
+    "get_project_markdown_files",
+    "init_app_context",
+    "is_hidden_path",
+]
 
 
 MARKDOWN_EXTENSIONS = {".md", ".markdown"}

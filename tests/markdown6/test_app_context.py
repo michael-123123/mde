@@ -9,7 +9,7 @@ from markdown_editor.markdown6.app_context import (
     AppContext,
     DEFAULT_SETTINGS,
 )
-from markdown_editor.markdown6.shortcut_manager import DEFAULT_SHORTCUTS
+from markdown_editor.markdown6.app_context import DEFAULT_SHORTCUTS
 
 
 @pytest.fixture

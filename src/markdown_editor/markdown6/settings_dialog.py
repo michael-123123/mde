@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.app_context import get_app_context, DEFAULT_SETTINGS
-from markdown_editor.markdown6.shortcut_manager import DEFAULT_SHORTCUTS
+from markdown_editor.markdown6.app_context import DEFAULT_SHORTCUTS
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
