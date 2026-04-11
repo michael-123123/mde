@@ -38,7 +38,7 @@ except ImportError:
 
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
 from markdown_editor.markdown6.app_context import get_app_context, get_project_markdown_files
-from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 from markdown_editor.markdown6 import graphviz_service
 
 
@@ -440,8 +440,7 @@ class GraphExportDialog(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
         self.setStyleSheet(
             StyleSheets.dialog(theme) +
             StyleSheets.tree_widget(theme) +

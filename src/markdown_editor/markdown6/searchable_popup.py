@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 
 
 class SearchablePopup(QDialog):
@@ -47,8 +47,7 @@ class SearchablePopup(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
         self.setStyleSheet(StyleSheets.popup(theme))
 
     def _on_search_changed(self, text: str):

@@ -50,10 +50,9 @@ class OutlinePanel(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        from markdown_editor.markdown6.theme import get_theme, StyleSheets
+        from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
 
         self.setStyleSheet(
             StyleSheets.panel(theme) +

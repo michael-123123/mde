@@ -97,6 +97,11 @@ def get_theme(dark_mode: bool) -> ThemeColors:
     return DARK_THEME if dark_mode else LIGHT_THEME
 
 
+def get_theme_from_ctx(ctx) -> ThemeColors:
+    """Get the current theme from an AppContext."""
+    return get_theme(ctx.get("view.theme", "light") == "dark")
+
+
 class StyleSheets:
     """Pre-built stylesheets for common widget types."""
 

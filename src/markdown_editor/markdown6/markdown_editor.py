@@ -221,7 +221,7 @@ def convert_lists_for_qtextbrowser(html: str) -> str:
 
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
 from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.theme import get_theme, get_theme_from_ctx, StyleSheets
 from markdown_editor.markdown6.settings_dialog import SettingsDialog
 from markdown_editor.markdown6.outline_panel import OutlinePanel
 from markdown_editor.markdown6.references_panel import ReferencesPanel
@@ -3247,8 +3247,7 @@ class MarkdownEditor(QMainWindow):
 
     def _apply_toggle_button_theme(self):
         """Apply theme to the editor/preview toggle buttons."""
-        theme_name = self.ctx.get("view.theme", "light")
-        theme = get_theme(theme_name == "dark")
+        theme = get_theme_from_ctx(self.ctx)
 
         # Left button (editor toggle)
         self.editor_toggle_btn.setStyleSheet(f"""
