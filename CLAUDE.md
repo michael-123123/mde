@@ -99,6 +99,18 @@ Do not skip steps. Do not claim a bug is fixed without completing step 4.
 
 `CHANGELOG.md` is maintained at the repo root. When tagging a new release (`vX.Y.Z`), summarize all commits since the previous tag into a new entry at the top of the changelog. Use the sections `Added`, `Changed`, `Fixed`, `Removed`, `Deprecated` — only include sections that apply. Entries should be user-facing descriptions, not implementation details. When reviewing commits for changelog entries, exclude changes to `CHANGELOG.md` itself from consideration — only look at the non-changelog parts of each diff.
 
+## Merging to Master
+
+Never merge branches into master directly via `git merge`. Always go through a GitHub PR:
+
+1. Merge or rebase from master into the feature branch to ensure it's up to date. Resolve any conflicts.
+2. Push the branch to origin.
+3. Create a PR with `gh pr create`.
+4. Approve the PR with `gh pr review --approve`.
+5. Merge the PR with `gh pr merge --merge --delete-branch`.
+
+The PR must only be approved and merged when the branch has a clean merge/rebase from master. This applies any time you are asked to merge to master/main.
+
 ## Known Technical Debt
 
 - `MarkdownEditor` is ~2800 lines; should be split into TabManager, PanelManager, ActionManager
