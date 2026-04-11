@@ -12,13 +12,13 @@ from markdown_editor.markdown6.project_manager import (
     ProjectExportDialog,
     ProjectConfig,
 )
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 @pytest.fixture
 def panel(qtbot):
     """Create a ProjectPanel instance."""
-    p = ProjectPanel(get_settings())
+    p = ProjectPanel(get_app_context())
     qtbot.addWidget(p)
     return p
 
@@ -276,7 +276,7 @@ class TestProjectExportDialog:
     @pytest.fixture
     def export_dialog(self, qtbot, project_dir):
         """Create a ProjectExportDialog instance."""
-        dialog = ProjectExportDialog(project_dir, get_settings())
+        dialog = ProjectExportDialog(project_dir, get_app_context())
         qtbot.addWidget(dialog)
         return dialog
 
@@ -349,7 +349,7 @@ class TestProjectExportFormats:
     @pytest.fixture
     def export_dialog(self, qtbot, project_dir):
         """Create a ProjectExportDialog instance."""
-        dialog = ProjectExportDialog(project_dir, get_settings())
+        dialog = ProjectExportDialog(project_dir, get_app_context())
         qtbot.addWidget(dialog)
         return dialog
 
@@ -411,7 +411,7 @@ class TestExportErrors:
     @pytest.fixture
     def export_dialog(self, qtbot, project_dir):
         """Create a ProjectExportDialog instance."""
-        dialog = ProjectExportDialog(project_dir, get_settings())
+        dialog = ProjectExportDialog(project_dir, get_app_context())
         qtbot.addWidget(dialog)
         return dialog
 
@@ -483,20 +483,20 @@ class TestTreeStatePersistence:
     def test_save_tree_state_empty(self, panel):
         """save_tree_state with no project is a no-op."""
         panel.save_tree_state()
-        from markdown_editor.markdown6.settings import get_settings
-        assert get_settings().get("project.expanded_dirs", []) == []
+        from markdown_editor.markdown6.app_context import get_app_context
+        assert get_app_context().get("project.expanded_dirs", []) == []
 
     def test_save_and_restore_expanded_dirs(self, qtbot, deep_project):
         """Expand dirs, save, create new panel, verify dirs restored."""
-        from markdown_editor.markdown6.settings import get_settings
-        settings = get_settings()
+        from markdown_editor.markdown6.app_context import get_app_context
+        ctx = get_app_context()
 
         dir_a = deep_project / "dir_a"
         dir_b = dir_a / "dir_b"
         dir_c = deep_project / "dir_c"
 
         # --- Phase 1: expand dirs and save ---
-        panel1 = ProjectPanel(get_settings())
+        panel1 = ProjectPanel(get_app_context())
         qtbot.addWidget(panel1)
         panel1.show()
 
@@ -519,13 +519,13 @@ class TestTreeStatePersistence:
 
         # Save state
         panel1.save_tree_state()
-        saved = settings.get("project.expanded_dirs", [])
+        saved = ctx.get("project.expanded_dirs", [])
         assert str(dir_a) in saved
         assert str(dir_c) in saved
         assert str(dir_b) in saved
 
         # --- Phase 2: new panel, same project — dirs should restore ---
-        panel2 = ProjectPanel(get_settings())
+        panel2 = ProjectPanel(get_app_context())
         qtbot.addWidget(panel2)
         panel2.show()
         panel2.set_project_path(deep_project)
@@ -538,14 +538,14 @@ class TestTreeStatePersistence:
     def test_restore_disabled_by_setting(self, qtbot, deep_project):
         """When restore_tree_state is False, dirs are not expanded."""
         from PySide6.QtWidgets import QApplication
-        from markdown_editor.markdown6.settings import get_settings
-        settings = get_settings()
+        from markdown_editor.markdown6.app_context import get_app_context
+        ctx = get_app_context()
 
         dir_a = deep_project / "dir_a"
-        settings.set("project.expanded_dirs", [str(dir_a)])
-        settings.set("project.restore_tree_state", False)
+        ctx.set("project.expanded_dirs", [str(dir_a)])
+        ctx.set("project.restore_tree_state", False)
 
-        panel = ProjectPanel(get_settings())
+        panel = ProjectPanel(get_app_context())
         qtbot.addWidget(panel)
         panel.show()
 
@@ -563,8 +563,8 @@ class TestTreeStatePersistence:
 
     def test_restore_ignores_dirs_from_different_project(self, qtbot, tmp_path):
         """Saved dirs from a different project root are ignored."""
-        from markdown_editor.markdown6.settings import get_settings
-        settings = get_settings()
+        from markdown_editor.markdown6.app_context import get_app_context
+        ctx = get_app_context()
 
         # project A
         proj_a = tmp_path / "projA"
@@ -580,10 +580,10 @@ class TestTreeStatePersistence:
         (proj_b / "sub" / "y.md").write_text("y")
 
         # Save dirs from project A
-        settings.set("project.expanded_dirs", [str(d)])
+        ctx.set("project.expanded_dirs", [str(d)])
 
         # Open project B — should not try to expand proj_a/sub
-        panel = ProjectPanel(get_settings())
+        panel = ProjectPanel(get_app_context())
         qtbot.addWidget(panel)
         panel.set_project_path(proj_b)
 
@@ -597,20 +597,20 @@ class TestPandocOption:
     @pytest.fixture
     def export_dialog(self, qtbot, project_dir):
         """Create a ProjectExportDialog instance."""
-        dialog = ProjectExportDialog(project_dir, get_settings())
+        dialog = ProjectExportDialog(project_dir, get_app_context())
         qtbot.addWidget(dialog)
         return dialog
 
     def test_pandoc_disabled_when_unavailable(self, qtbot, project_dir):
         """Test pandoc checkbox disabled when pandoc not installed."""
         with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=False):
-            dialog = ProjectExportDialog(project_dir, get_settings())
+            dialog = ProjectExportDialog(project_dir, get_app_context())
             qtbot.addWidget(dialog)
             assert not dialog.use_pandoc.isEnabled()
 
     def test_pandoc_enabled_when_available(self, qtbot, project_dir):
         """Test pandoc checkbox enabled when pandoc is installed."""
         with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=True):
-            dialog = ProjectExportDialog(project_dir, get_settings())
+            dialog = ProjectExportDialog(project_dir, get_app_context())
             qtbot.addWidget(dialog)
             assert dialog.use_pandoc.isEnabled()

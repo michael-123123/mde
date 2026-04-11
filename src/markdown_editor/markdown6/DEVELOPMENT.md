@@ -132,15 +132,15 @@ Backlinks panel showing files that reference current document.
 
 ### Support Classes
 
-#### `Settings` (settings.py:107+)
-Singleton settings manager with JSON persistence.
+#### `AppContext` (app_context.py)
+Application context facade managing settings, shortcuts (via `ShortcutManager`), and session state (via `SessionState`). JSON persistence.
 
 **Signals:**
 - `settings_changed(str, object)` - key, new_value
-- `shortcut_changed(str, str)` - action, new_shortcut
+- `shortcut_changed(str, str)` - action, new_shortcut (delegated from ShortcutManager)
 - `theme_changed(str)` - theme name
 
-**Access:** `from fun.markdown6.settings import get_settings`
+**Access:** `from markdown_editor.markdown6.app_context import get_app_context`
 
 #### `MarkdownHighlighter` (syntax_highlighter.py)
 QSyntaxHighlighter for markdown with dark/light theme support.
@@ -202,7 +202,7 @@ User Ctrl+clicks on link text
 ### Settings Change
 ```
 User changes setting in SettingsDialog
-    → Settings.set(key, value)
+    → AppContext.set(key, value)
     → settings_changed signal
     → All listening widgets receive and update
         → EnhancedEditor._on_setting_changed()
@@ -212,7 +212,7 @@ User changes setting in SettingsDialog
 
 ### Theme Change
 ```
-Settings.set("view.theme", "dark")
+AppContext.set("view.theme", "dark")
     → theme_changed signal
     → MarkdownEditor._on_theme_changed()
         → apply_application_theme(dark_mode)
@@ -232,12 +232,12 @@ from PySide6.QtCore import Signal
 class MyPanel(QWidget):
     item_clicked = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, ctx, parent=None):
         super().__init__(parent)
-        self.settings = get_settings()
+        self.ctx = ctx
         self._init_ui()
         self._apply_theme()
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _on_setting_changed(self, key, value):
         if key == "view.theme":
@@ -261,7 +261,7 @@ self.my_panel.item_clicked.connect(self._on_my_panel_item_clicked)
 
 ### Adding a New Keyboard Shortcut
 
-1. Add default in settings.py DEFAULT_SHORTCUTS:
+1. Add default in shortcut_manager.py DEFAULT_SHORTCUTS:
 ```python
 "my_feature.action": "Ctrl+Shift+M",
 ```
@@ -269,7 +269,7 @@ self.my_panel.item_clicked.connect(self._on_my_panel_item_clicked)
 2. Create action in MarkdownEditor._create_menu_bar():
 ```python
 self.my_action = menu.addAction("My Action")
-self.my_action.setShortcut(self.settings.get_shortcut("my_feature.action"))
+self.my_action.setShortcut(self.ctx.get_shortcut("my_feature.action"))
 self.my_action.triggered.connect(self._my_action_handler)
 ```
 
@@ -278,7 +278,7 @@ self.my_action.triggered.connect(self._my_action_handler)
 commands.append(Command(
     "my_feature.action",
     "My Action Description",
-    self.settings.get_shortcut("my_feature.action"),
+    self.ctx.get_shortcut("my_feature.action"),
     self._my_action_handler,
     "Category"
 ))
@@ -328,7 +328,7 @@ self.md = markdown.Markdown(extensions=[..., MyExtension()])
 
 ### Theme Application
 All widgets that need theming should:
-1. Store settings reference: `self.settings = get_settings()`
+1. Accept `ctx` (AppContext) as constructor parameter
 2. Connect to settings_changed signal
 3. Implement `_apply_theme()` method
 4. Call `_apply_theme()` in `__init__` and when theme changes
@@ -339,7 +339,7 @@ def _on_setting_changed(self, key, value):
         self._apply_theme()
 
 def _apply_theme(self):
-    theme = get_theme(self.settings.get("view.theme") == "dark")
+    theme = get_theme(self.ctx.get("view.theme") == "dark")
     self.setStyleSheet(StyleSheets.dialog(theme) + StyleSheets.button(theme))
 ```
 
@@ -385,7 +385,7 @@ The editor recognizes these link patterns:
 
 2. **No Model layer** - Document state is mixed with UI in DocumentTab
 
-3. **Global settings singleton** - Makes testing difficult; should use dependency injection
+3. **~~Global settings singleton~~** - Resolved: Settings refactored into AppContext with dependency injection
 
 4. **Duplicated theme handling** - Each widget implements its own `_apply_theme()`
 
@@ -407,7 +407,9 @@ The editor recognizes these link patterns:
 |------|-------|---------------|---------|
 | markdown_editor.py | ~2600 | MarkdownEditor, DocumentTab | Main window, tabs |
 | enhanced_editor.py | ~1200 | EnhancedEditor | Text editor widget |
-| settings.py | ~280 | Settings | Settings management |
+| app_context.py | ~340 | AppContext | Settings, shortcuts, session state |
+| shortcut_manager.py | ~130 | ShortcutManager | Keyboard shortcut persistence |
+| session_state.py | ~120 | SessionState | Recent files, project/sidebar state |
 | settings_dialog.py | ~450 | SettingsDialog | Settings UI |
 | project_manager.py | ~500 | ProjectPanel, ProjectExportDialog | Project management |
 | outline_panel.py | ~150 | OutlinePanel | Document outline |

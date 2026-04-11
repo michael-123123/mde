@@ -148,9 +148,9 @@ class ActivityBar(QFrame):
 
     tab_clicked = Signal(int)  # index
 
-    def __init__(self, settings, width: int = 48, parent=None):
+    def __init__(self, ctx, width: int = 48, parent=None):
         super().__init__(parent)
-        self.settings = settings
+        self.ctx = ctx
         self._tabs: list[ActivityTab] = []
         self._active_index = 0
         self._bar_width = width
@@ -164,7 +164,7 @@ class ActivityBar(QFrame):
         self._layout.addStretch()
 
         self._apply_theme()
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def addTab(self, label: str, tooltip: str) -> int:
         """Add a tab to the activity bar.
@@ -183,7 +183,7 @@ class ActivityBar(QFrame):
         tab.clicked.connect(self._on_tab_clicked)
 
         # Apply current theme
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
         tab.setTheme(theme)
 
@@ -220,7 +220,7 @@ class ActivityBar(QFrame):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.setStyleSheet(f"""

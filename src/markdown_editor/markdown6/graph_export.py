@@ -37,7 +37,7 @@ except ImportError:
     QWebEnginePage = None  # type: ignore
 
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-from markdown_editor.markdown6.settings import get_settings, get_project_markdown_files
+from markdown_editor.markdown6.app_context import get_app_context, get_project_markdown_files
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6 import graphviz_service
 
@@ -156,12 +156,12 @@ class GraphExportDialog(QDialog):
 
     file_clicked = Signal(Path)
 
-    def __init__(self, project_path: Path, current_file: Path = None, settings=None, parent=None):
+    def __init__(self, project_path: Path, current_file: Path = None, ctx=None, parent=None):
         super().__init__(parent)
         self.project_path = project_path
-        if settings is None:
-            settings = get_settings()
-        self.settings = settings
+        if ctx is None:
+            ctx = get_app_context()
+        self.ctx = ctx
         self.setWindowTitle("Export Document Graph")
         self.setWindowFlags(
             Qt.WindowType.Window |
@@ -440,7 +440,7 @@ class GraphExportDialog(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
         self.setStyleSheet(
             StyleSheets.dialog(theme) +
@@ -558,7 +558,7 @@ class GraphExportDialog(QDialog):
                 QApplication.processEvents()
 
             dot_source = self._generate_graph(files)
-            dark_mode = self.settings.get("view.theme") == "dark"
+            dark_mode = self.ctx.get("view.theme") == "dark"
             engine = self.engine_combo.currentText()
             svg_content = self._render_to_svg(dot_source, engine, dark_mode)
 
@@ -576,7 +576,7 @@ class GraphExportDialog(QDialog):
     def _show_preview_message(self, message: str):
         """Show a message in the preview area."""
         if HAS_WEBENGINE and isinstance(self.preview_view, QWebEngineView):
-            dark_mode = self.settings.get("view.theme") == "dark"
+            dark_mode = self.ctx.get("view.theme") == "dark"
             bg = "#1e1e1e" if dark_mode else "#ffffff"
             color = "#888"
             html = f'<html><body style="background:{bg};color:{color};display:flex;justify-content:center;align-items:center;height:100vh;margin:0">{message}</body></html>'
@@ -741,7 +741,7 @@ svg {{
                 Path(output_path).write_text(dot_source, encoding="utf-8")
             else:
                 # Render to SVG or PNG
-                dark_mode = self.settings.get("view.theme") == "dark"
+                dark_mode = self.ctx.get("view.theme") == "dark"
                 engine = self.engine_combo.currentText()
 
                 if format_type == "svg":
@@ -976,7 +976,7 @@ svg {{
 
     def _show_preview(self, dot_source: str):
         """Show the graph in a preview window."""
-        dark_mode = self.settings.get("view.theme") == "dark"
+        dark_mode = self.ctx.get("view.theme") == "dark"
         engine = self.engine_combo.currentText()
 
         try:

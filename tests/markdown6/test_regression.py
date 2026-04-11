@@ -314,33 +314,33 @@ class TestSettingsPersistence:
 
     def test_recent_files_handles_deleted_files(self, tmp_path):
         """Test that recent files filters out deleted files."""
-        from markdown_editor.markdown6.settings import Settings
+        from markdown_editor.markdown6.app_context import AppContext
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
-        settings = Settings(config_dir=config_dir)
+        ctx = AppContext(config_dir=config_dir)
 
         # Clear and add a file
-        settings.set("files.recent_files", [], save=False)
+        ctx.set("files.recent_files", [], save=False)
 
         test_file = tmp_path / "exists.md"
         test_file.touch()
-        settings.add_recent_file(test_file)
+        ctx.add_recent_file(test_file)
 
         # File exists, should be returned
-        recent = settings.get_recent_files()
+        recent = ctx.get_recent_files()
         assert len(recent) == 1
 
         # Delete the file
         test_file.unlink()
 
         # Now it should be filtered out
-        recent = settings.get_recent_files()
+        recent = ctx.get_recent_files()
         assert len(recent) == 0
 
     def test_corrupt_settings_file_uses_defaults(self, tmp_path):
         """Test that corrupt settings file falls back to defaults."""
-        from markdown_editor.markdown6.settings import Settings, DEFAULT_SETTINGS
+        from markdown_editor.markdown6.app_context import AppContext, DEFAULT_SETTINGS
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
@@ -349,8 +349,8 @@ class TestSettingsPersistence:
         (config_dir / "settings.json").write_text("{invalid json")
 
         # Should load defaults without crashing
-        settings = Settings(config_dir=config_dir)
-        assert settings.get("editor.font_size") == DEFAULT_SETTINGS["editor.font_size"]
+        ctx = AppContext(config_dir=config_dir)
+        assert ctx.get("editor.font_size") == DEFAULT_SETTINGS["editor.font_size"]
 
 
 class TestPreviewDarkModeBackground:
@@ -367,16 +367,16 @@ class TestPreviewDarkModeBackground:
         """Test that preview has dark background in dark mode."""
         from unittest.mock import MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
-        from markdown_editor.markdown6.settings import get_settings
+        from markdown_editor.markdown6.app_context import get_app_context
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
 
-        settings = get_settings()
-        settings.set("view.theme", "dark", save=False)
+        ctx = get_app_context()
+        ctx.set("view.theme", "dark", save=False)
 
         mock_main_window = MagicMock()
-        mock_main_window.settings = settings
+        mock_main_window.ctx = ctx
         tab = DocumentTab(mock_main_window)
         qtbot.addWidget(tab)
 
@@ -389,16 +389,16 @@ class TestPreviewDarkModeBackground:
         """Test that preview has white background in light mode."""
         from unittest.mock import MagicMock
         from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
-        from markdown_editor.markdown6.settings import get_settings
+        from markdown_editor.markdown6.app_context import get_app_context
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
 
-        settings = get_settings()
-        settings.set("view.theme", "light", save=False)
+        ctx = get_app_context()
+        ctx.set("view.theme", "light", save=False)
 
         mock_main_window = MagicMock()
-        mock_main_window.settings = settings
+        mock_main_window.ctx = ctx
         tab = DocumentTab(mock_main_window)
         qtbot.addWidget(tab)
 
@@ -516,12 +516,12 @@ class TestDarkModeTheming:
         """Test that sidebar applies dark colors in dark mode."""
         from unittest.mock import patch
         from markdown_editor.markdown6.markdown_editor import MarkdownEditor
-        from markdown_editor.markdown6.settings import get_settings
+        from markdown_editor.markdown6.app_context import get_app_context
 
-        settings = get_settings()
-        settings.set("view.theme", "dark", save=False)
+        ctx = get_app_context()
+        ctx.set("view.theme", "dark", save=False)
 
-        with patch("markdown_editor.markdown6.markdown_editor.get_settings", return_value=settings):
+        with patch("markdown_editor.markdown6.markdown_editor.get_app_context", return_value=ctx):
             editor = MarkdownEditor()
             qtbot.addWidget(editor)
 
@@ -560,12 +560,12 @@ class TestDarkModeTheming:
         (project / "test.md").write_text("# Test")
 
         # Mock settings for dark mode
-        mock_settings = MagicMock()
-        mock_settings.get.side_effect = lambda key, default=None: {
+        mock_ctx = MagicMock()
+        mock_ctx.get.side_effect = lambda key, default=None: {
             "view.theme": "dark",
         }.get(key, default)
 
-        with patch("markdown_editor.markdown6.graph_export.get_settings", return_value=mock_settings):
+        with patch("markdown_editor.markdown6.graph_export.get_app_context", return_value=mock_ctx):
             dialog = GraphExportDialog(project)
             qtbot.addWidget(dialog)
 

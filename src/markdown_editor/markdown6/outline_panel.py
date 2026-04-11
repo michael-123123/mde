@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from markdown_editor.markdown6.settings import Settings
+from markdown_editor.markdown6.app_context import AppContext
 
 
 @dataclass
@@ -27,12 +27,12 @@ class OutlinePanel(QWidget):
 
     heading_clicked = Signal(int)  # line number
 
-    def __init__(self, settings, parent: QWidget | None = None):
+    def __init__(self, ctx, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = settings
+        self.ctx = ctx
         self._init_ui()
         self._apply_theme()
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _init_ui(self):
         """Initialize the UI."""
@@ -52,7 +52,7 @@ class OutlinePanel(QWidget):
         """Apply the current theme."""
         from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.setStyleSheet(

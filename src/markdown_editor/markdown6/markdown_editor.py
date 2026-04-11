@@ -220,7 +220,7 @@ def convert_lists_for_qtextbrowser(html: str) -> str:
 
 
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.theme import get_theme, StyleSheets
 from markdown_editor.markdown6.settings_dialog import SettingsDialog
 from markdown_editor.markdown6.outline_panel import OutlinePanel
@@ -649,12 +649,12 @@ class ExternalChangeBar(QWidget):
     reload_requested = Signal()
     dismissed = Signal()
 
-    def __init__(self, settings, parent: QWidget | None = None):
+    def __init__(self, ctx, parent: QWidget | None = None):
         super().__init__(parent)
-        self.settings = settings
+        self.ctx = ctx
         self._init_ui()
         self._apply_theme()
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
         self.hide()
 
     def _init_ui(self):
@@ -696,7 +696,7 @@ class ExternalChangeBar(QWidget):
             self._apply_theme()
 
     def _apply_theme(self):
-        dark = self.settings.get("view.theme", "light") == "dark"
+        dark = self.ctx.get("view.theme", "light") == "dark"
         if dark:
             self.setStyleSheet(
                 "ExternalChangeBar {"
@@ -762,7 +762,7 @@ class DocumentTab(QWidget):
     def __init__(self, parent: "MarkdownEditor"):
         super().__init__()
         self.main_window = parent
-        self.settings = parent.settings
+        self.ctx = parent.ctx
         self.file_path: Path | None = None
         self.unsaved_changes = False
         self._sync_scrolling = True
@@ -790,7 +790,7 @@ class DocumentTab(QWidget):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.setSpacing(0)
 
-        self.editor = EnhancedEditor(settings=self.settings)
+        self.editor = EnhancedEditor(ctx=self.ctx)
         self.editor.setAcceptDrops(True)
         self.editor.setAccessibleName("Markdown Editor")
 
@@ -822,7 +822,7 @@ class DocumentTab(QWidget):
         self.splitter.setSizes([600, 600])
 
         # External change notification bar spans both panes (above splitter)
-        self.external_change_bar = ExternalChangeBar(self.settings, self)
+        self.external_change_bar = ExternalChangeBar(self.ctx, self)
         self.external_change_bar.reload_requested.connect(self.reload_file)
 
         # Find/Replace bar spans both panes (below splitter)
@@ -839,7 +839,7 @@ class DocumentTab(QWidget):
 
     def _apply_preview_style(self):
         """Apply styling to the preview pane."""
-        theme = self.settings.get("view.theme", "light")
+        theme = self.ctx.get("view.theme", "light")
 
         # QWebEngineView - set page background color
         if self._use_webengine:
@@ -873,8 +873,8 @@ class DocumentTab(QWidget):
 
     def _apply_settings(self):
         """Apply current settings."""
-        self.preview.setVisible(self.settings.get("view.show_preview", True))
-        self._sync_scrolling = self.settings.get("view.sync_scrolling", True)
+        self.preview.setVisible(self.ctx.get("view.show_preview", True))
+        self._sync_scrolling = self.ctx.get("view.sync_scrolling", True)
 
     def _init_timer(self):
         """Initialize the render debounce timer."""
@@ -886,7 +886,7 @@ class DocumentTab(QWidget):
         """Connect signals."""
         self.editor.textChanged.connect(self._on_text_changed)
         self.editor.file_externally_modified.connect(self._on_file_externally_modified)
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
         # Sync scrolling
         self.editor.verticalScrollBar().valueChanged.connect(self._on_editor_scroll)
@@ -930,7 +930,7 @@ class DocumentTab(QWidget):
             return
         import html as html_mod
         source = html_mod.unescape(source)
-        dark_mode = self.settings.get("view.theme") == "dark"
+        dark_mode = self.ctx.get("view.theme") == "dark"
 
         # Override cursor app-wide — survives Ctrl keyup and CSS changes
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -1074,11 +1074,11 @@ class DocumentTab(QWidget):
         self.main_window.md._pending_diagrams = []
 
         # Set diagram config before conversion
-        dark_mode = self.settings.get("view.theme") == "dark"
+        dark_mode = self.ctx.get("view.theme") == "dark"
         self.main_window.md.graphviz_dark_mode = dark_mode
         self.main_window.md.graphviz_base_path = str(self.file_path.parent) if self.file_path else None
         self.main_window.md.mermaid_dark_mode = dark_mode
-        self.main_window.md.logseq_mode = self.settings.get("view.logseq_mode", False)
+        self.main_window.md.logseq_mode = self.ctx.get("view.logseq_mode", False)
 
         html_content = self.main_window.md.convert(text)
         pending = self.main_window.md._pending_diagrams
@@ -1218,7 +1218,7 @@ class MarkdownEditor(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.settings = get_settings()
+        self.ctx = get_app_context()
         self._is_fullscreen = False
         self._set_application_icon()
         self._init_markdown()
@@ -1294,23 +1294,23 @@ class MarkdownEditor(QMainWindow):
         self.setCentralWidget(self.main_splitter)
 
         # Sidebar with activity bar and panels
-        self.sidebar = Sidebar(self.settings)
+        self.sidebar = Sidebar(self.ctx)
 
         # Create panels
-        self.project_panel = ProjectPanel(self.settings)
+        self.project_panel = ProjectPanel(self.ctx)
         self.project_panel.file_double_clicked.connect(self.open_file)
         self.project_panel.graph_export_requested.connect(self._show_graph_export)
         self.project_panel.setAccessibleName("Project Files Panel")
 
-        self.outline_panel = OutlinePanel(self.settings)
+        self.outline_panel = OutlinePanel(self.ctx)
         self.outline_panel.heading_clicked.connect(self._go_to_heading)
         self.outline_panel.setAccessibleName("Document Outline Panel")
 
-        self.references_panel = ReferencesPanel(self.settings)
+        self.references_panel = ReferencesPanel(self.ctx)
         self.references_panel.reference_clicked.connect(self._go_to_reference)
         self.references_panel.setAccessibleName("References Panel")
 
-        self.search_panel = SearchPanel(self.settings)
+        self.search_panel = SearchPanel(self.ctx)
         self.search_panel.file_requested.connect(self._on_search_file_requested)
         self.search_panel.setAccessibleName("Search Panel")
 
@@ -1346,7 +1346,7 @@ class MarkdownEditor(QMainWindow):
         self._create_view_toggle_buttons()
 
         # Command palette
-        self.command_palette = CommandPalette(settings=self.settings, parent=self)
+        self.command_palette = CommandPalette(ctx=self.ctx, parent=self)
 
         self._create_menu_bar()
         self._create_status_bar()
@@ -1367,7 +1367,7 @@ class MarkdownEditor(QMainWindow):
         self.open_action.triggered.connect(self.open_file)
 
         self.open_project_action = file_menu.addAction("Open &Project Folder...")
-        self.open_project_action.setShortcut(self.settings.get_shortcut("file.open_project"))
+        self.open_project_action.setShortcut(self.ctx.get_shortcut("file.open_project"))
         self.open_project_action.triggered.connect(self._open_project)
 
         # Recent files submenu
@@ -1583,27 +1583,27 @@ class MarkdownEditor(QMainWindow):
 
         self.toggle_preview_action = view_menu.addAction("Toggle &Preview")
         self.toggle_preview_action.setCheckable(True)
-        self.toggle_preview_action.setChecked(self.settings.get("view.show_preview", True))
+        self.toggle_preview_action.setChecked(self.ctx.get("view.show_preview", True))
         self.toggle_preview_action.triggered.connect(self._toggle_preview)
 
         self.toggle_line_numbers_action = view_menu.addAction("Toggle &Line Numbers")
         self.toggle_line_numbers_action.setCheckable(True)
-        self.toggle_line_numbers_action.setChecked(self.settings.get("editor.show_line_numbers", True))
+        self.toggle_line_numbers_action.setChecked(self.ctx.get("editor.show_line_numbers", True))
         self.toggle_line_numbers_action.triggered.connect(self._toggle_line_numbers)
 
         self.toggle_word_wrap_action = view_menu.addAction("Toggle &Word Wrap")
         self.toggle_word_wrap_action.setCheckable(True)
-        self.toggle_word_wrap_action.setChecked(self.settings.get("editor.word_wrap", True))
+        self.toggle_word_wrap_action.setChecked(self.ctx.get("editor.word_wrap", True))
         self.toggle_word_wrap_action.triggered.connect(self._toggle_word_wrap)
 
         self.toggle_whitespace_action = view_menu.addAction("Toggle Whi&tespace")
         self.toggle_whitespace_action.setCheckable(True)
-        self.toggle_whitespace_action.setChecked(self.settings.get("editor.show_whitespace", False))
+        self.toggle_whitespace_action.setChecked(self.ctx.get("editor.show_whitespace", False))
         self.toggle_whitespace_action.triggered.connect(self._toggle_whitespace)
 
         self.toggle_logseq_action = view_menu.addAction("&Logseq Mode")
         self.toggle_logseq_action.setCheckable(True)
-        self.toggle_logseq_action.setChecked(self.settings.get("view.logseq_mode", False))
+        self.toggle_logseq_action.setChecked(self.ctx.get("view.logseq_mode", False))
         self.toggle_logseq_action.triggered.connect(self._toggle_logseq_mode)
 
         view_menu.addSeparator()
@@ -1704,7 +1704,7 @@ class MarkdownEditor(QMainWindow):
     def _apply_shortcuts(self):
         """Apply shortcuts from settings to actions."""
         for action_id, action in self.action_map.items():
-            shortcut = self.settings.get_shortcut(action_id)
+            shortcut = self.ctx.get_shortcut(action_id)
             if shortcut:
                 action.setShortcut(QKeySequence(shortcut))
 
@@ -1726,26 +1726,26 @@ class MarkdownEditor(QMainWindow):
         """Set up additional keyboard shortcuts."""
         # Tab navigation shortcuts (Alt+1-9)
         for i in range(1, 10):
-            shortcut_key = self.settings.get_shortcut(f"tabs.go_to_{i}")
+            shortcut_key = self.ctx.get_shortcut(f"tabs.go_to_{i}")
             if shortcut_key:
                 shortcut = QShortcut(QKeySequence(shortcut_key), self)
                 shortcut.activated.connect(lambda idx=i - 1: self._go_to_tab(idx))
 
         # Find next/previous
-        find_next_key = self.settings.get_shortcut("find.next")
+        find_next_key = self.ctx.get_shortcut("find.next")
         if find_next_key:
             find_next_shortcut = QShortcut(QKeySequence(find_next_key), self)
             find_next_shortcut.activated.connect(self._find_next)
 
-        find_prev_key = self.settings.get_shortcut("find.previous")
+        find_prev_key = self.ctx.get_shortcut("find.previous")
         if find_prev_key:
             find_prev_shortcut = QShortcut(QKeySequence(find_prev_key), self)
             find_prev_shortcut.activated.connect(self._find_previous)
 
     def _connect_signals(self):
         """Connect settings signals."""
-        self.settings.shortcut_changed.connect(self._on_shortcut_changed)
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.shortcut_changed.connect(self._on_shortcut_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _on_shortcut_changed(self, action: str, shortcut: str):
         """Handle shortcut change."""
@@ -1783,8 +1783,8 @@ class MarkdownEditor(QMainWindow):
 
     def _configure_autosave(self):
         """Start or stop the autosave timer based on settings."""
-        if self.settings.get("editor.auto_save", False):
-            interval_s = self.settings.get("editor.auto_save_interval", 60)
+        if self.ctx.get("editor.auto_save", False):
+            interval_s = self.ctx.get("editor.auto_save_interval", 60)
             self._autosave_timer.start(interval_s * 1000)
         else:
             self._autosave_timer.stop()
@@ -1810,7 +1810,7 @@ class MarkdownEditor(QMainWindow):
         """Update the recent files menu."""
         self.recent_menu.clear()
 
-        recent_files = self.settings.get_recent_files()
+        recent_files = self.ctx.get_recent_files()
 
         if not recent_files:
             action = self.recent_menu.addAction("No Recent Files")
@@ -1827,7 +1827,7 @@ class MarkdownEditor(QMainWindow):
 
     def _clear_recent_files(self):
         """Clear recent files list."""
-        self.settings.clear_recent_files()
+        self.ctx.clear_recent_files()
         self._update_recent_files_menu()
 
     def current_tab(self) -> DocumentTab | None:
@@ -1894,9 +1894,9 @@ class MarkdownEditor(QMainWindow):
             content: The HTML content to wrap.
             for_qtextbrowser: If True, generate simpler HTML for QTextBrowser.
         """
-        theme = self.settings.get("view.theme", "light")
+        theme = self.ctx.get("view.theme", "light")
         dark_mode = theme == "dark"
-        scroll_past_end = self.settings.get("editor.scroll_past_end", True)
+        scroll_past_end = self.ctx.get("editor.scroll_past_end", True)
 
         if dark_mode:
             bg_color = "#1e1e1e"
@@ -1917,25 +1917,25 @@ class MarkdownEditor(QMainWindow):
             pygments_style = "github-dark"
             body_class = "light"
 
-        font_size = self.settings.get("view.preview_font_size", 14)
+        font_size = self.ctx.get("view.preview_font_size", 14)
 
         _DEFAULT_BODY_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
         _DEFAULT_CODE_FONT = '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace'
 
-        body_font_setting = self.settings.get("preview.body_font_family", "")
+        body_font_setting = self.ctx.get("preview.body_font_family", "")
         body_font = f'"{body_font_setting}", sans-serif' if body_font_setting else _DEFAULT_BODY_FONT
 
-        code_font_setting = self.settings.get("preview.code_font_family", "")
+        code_font_setting = self.ctx.get("preview.code_font_family", "")
         code_font = f'"{code_font_setting}", monospace' if code_font_setting else _DEFAULT_CODE_FONT
 
-        heading_font_setting = self.settings.get("preview.heading_font_family", "")
+        heading_font_setting = self.ctx.get("preview.heading_font_family", "")
         heading_font = f'"{heading_font_setting}", sans-serif' if heading_font_setting else ""
-        line_height = self.settings.get("preview.line_height", 1.5)
+        line_height = self.ctx.get("preview.line_height", 1.5)
 
         def _sz(key_prefix):
             """Build a CSS font-size value from a size + unit setting pair."""
-            val = self.settings.get(f"preview.{key_prefix}_size", 1.0)
-            unit = self.settings.get(f"preview.{key_prefix}_size_unit", "em")
+            val = self.ctx.get(f"preview.{key_prefix}_size", 1.0)
+            unit = self.ctx.get(f"preview.{key_prefix}_size_unit", "em")
             return f"{val}{unit}"
 
         h1_size = _sz("h1")
@@ -2391,7 +2391,7 @@ class MarkdownEditor(QMainWindow):
             tab.editor.toggle_comment()
 
     def _show_settings(self):
-        dialog = SettingsDialog(settings=self.settings, parent=self)
+        dialog = SettingsDialog(ctx=self.ctx, parent=self)
         dialog.exec()
 
     # Format menu actions
@@ -2452,19 +2452,19 @@ class MarkdownEditor(QMainWindow):
 
     def _toggle_line_numbers(self):
         value = self.toggle_line_numbers_action.isChecked()
-        self.settings.set("editor.show_line_numbers", value)
+        self.ctx.set("editor.show_line_numbers", value)
 
     def _toggle_word_wrap(self):
         value = self.toggle_word_wrap_action.isChecked()
-        self.settings.set("editor.word_wrap", value)
+        self.ctx.set("editor.word_wrap", value)
 
     def _toggle_whitespace(self):
         value = self.toggle_whitespace_action.isChecked()
-        self.settings.set("editor.show_whitespace", value)
+        self.ctx.set("editor.show_whitespace", value)
 
     def _toggle_logseq_mode(self):
         value = self.toggle_logseq_action.isChecked()
-        self.settings.set("view.logseq_mode", value)
+        self.ctx.set("view.logseq_mode", value)
 
     def _zoom_in(self):
         tab = self.current_tab()
@@ -2494,10 +2494,10 @@ class MarkdownEditor(QMainWindow):
 
     def _toggle_theme(self):
         """Toggle between light and dark theme."""
-        current = self.settings.get("view.theme", "light")
+        current = self.ctx.get("view.theme", "light")
         new_theme = "dark" if current == "light" else "light"
         # Setting the theme triggers _on_setting_changed which calls _apply_full_theme
-        self.settings.set("view.theme", new_theme)
+        self.ctx.set("view.theme", new_theme)
 
     # Tab navigation
     def _next_tab(self):
@@ -2591,7 +2591,7 @@ class MarkdownEditor(QMainWindow):
             tab.render_markdown()
 
             # Add to recent files
-            self.settings.add_recent_file(path)
+            self.ctx.add_recent_file(path)
             self._update_recent_files_menu()
 
             self.status_bar.showMessage(f"Opened: {path}")
@@ -2742,10 +2742,10 @@ class MarkdownEditor(QMainWindow):
             tab = self.tab_widget.widget(i)
             if tab.file_path and tab.file_path.exists():
                 open_files.append(str(tab.file_path.resolve()))
-        self.settings.set("project.open_files", open_files)
-        self.settings.set("project.active_tab", self.tab_widget.currentIndex())
-        self.settings.set("sidebar.collapsed", self.sidebar.isCollapsed())
-        self.settings.set("sidebar.active_panel", self.sidebar.activeIndex())
+        self.ctx.set("project.open_files", open_files)
+        self.ctx.set("project.active_tab", self.tab_widget.currentIndex())
+        self.ctx.set("sidebar.collapsed", self.sidebar.isCollapsed())
+        self.ctx.set("sidebar.active_panel", self.sidebar.activeIndex())
         self.project_panel.save_tree_state()
 
     def _show_about(self):
@@ -2800,7 +2800,7 @@ class MarkdownEditor(QMainWindow):
         if tab and tab.file_path:
             current_file = tab.file_path
 
-        dialog = GraphExportDialog(project_root, current_file, settings=self.settings, parent=self)
+        dialog = GraphExportDialog(project_root, current_file, ctx=self.ctx, parent=self)
 
         # Connect file click signal to open the file
         def open_file_from_graph(file_path: Path):
@@ -2829,29 +2829,29 @@ class MarkdownEditor(QMainWindow):
         commands = []
 
         # File commands
-        commands.append(Command("file.new", "New Tab", self.settings.get_shortcut("file.new"), self.new_tab, "File"))
-        commands.append(Command("file.open", "Open File", self.settings.get_shortcut("file.open"), self.open_file, "File"))
-        commands.append(Command("file.open_project", "Open Project Folder", self.settings.get_shortcut("file.open_project"), self._open_project, "File"))
-        commands.append(Command("file.save", "Save", self.settings.get_shortcut("file.save"), self.save_file, "File"))
-        commands.append(Command("file.save_as", "Save As", self.settings.get_shortcut("file.save_as"), self.save_file_as, "File"))
+        commands.append(Command("file.new", "New Tab", self.ctx.get_shortcut("file.new"), self.new_tab, "File"))
+        commands.append(Command("file.open", "Open File", self.ctx.get_shortcut("file.open"), self.open_file, "File"))
+        commands.append(Command("file.open_project", "Open Project Folder", self.ctx.get_shortcut("file.open_project"), self._open_project, "File"))
+        commands.append(Command("file.save", "Save", self.ctx.get_shortcut("file.save"), self.save_file, "File"))
+        commands.append(Command("file.save_as", "Save As", self.ctx.get_shortcut("file.save_as"), self.save_file_as, "File"))
 
         # Edit commands
-        commands.append(Command("edit.undo", "Undo", self.settings.get_shortcut("edit.undo"), self._undo, "Edit"))
-        commands.append(Command("edit.redo", "Redo", self.settings.get_shortcut("edit.redo"), self._redo, "Edit"))
-        commands.append(Command("edit.find", "Find", self.settings.get_shortcut("edit.find"), self._show_find, "Edit"))
-        commands.append(Command("edit.replace", "Replace", self.settings.get_shortcut("edit.replace"), self._show_replace, "Edit"))
-        commands.append(Command("edit.go_to_line", "Go to Line", self.settings.get_shortcut("edit.go_to_line"), self._go_to_line, "Edit"))
+        commands.append(Command("edit.undo", "Undo", self.ctx.get_shortcut("edit.undo"), self._undo, "Edit"))
+        commands.append(Command("edit.redo", "Redo", self.ctx.get_shortcut("edit.redo"), self._redo, "Edit"))
+        commands.append(Command("edit.find", "Find", self.ctx.get_shortcut("edit.find"), self._show_find, "Edit"))
+        commands.append(Command("edit.replace", "Replace", self.ctx.get_shortcut("edit.replace"), self._show_replace, "Edit"))
+        commands.append(Command("edit.go_to_line", "Go to Line", self.ctx.get_shortcut("edit.go_to_line"), self._go_to_line, "Edit"))
 
         # Format commands
-        commands.append(Command("format.bold", "Bold", self.settings.get_shortcut("markdown.bold"), self._format_bold, "Format"))
-        commands.append(Command("format.italic", "Italic", self.settings.get_shortcut("markdown.italic"), self._format_italic, "Format"))
-        commands.append(Command("format.code", "Code", self.settings.get_shortcut("markdown.code"), self._format_code, "Format"))
-        commands.append(Command("format.link", "Insert Link", self.settings.get_shortcut("markdown.link"), self._format_link, "Format"))
-        commands.append(Command("format.image", "Insert Image", self.settings.get_shortcut("markdown.image"), self._format_image, "Format"))
+        commands.append(Command("format.bold", "Bold", self.ctx.get_shortcut("markdown.bold"), self._format_bold, "Format"))
+        commands.append(Command("format.italic", "Italic", self.ctx.get_shortcut("markdown.italic"), self._format_italic, "Format"))
+        commands.append(Command("format.code", "Code", self.ctx.get_shortcut("markdown.code"), self._format_code, "Format"))
+        commands.append(Command("format.link", "Insert Link", self.ctx.get_shortcut("markdown.link"), self._format_link, "Format"))
+        commands.append(Command("format.image", "Insert Image", self.ctx.get_shortcut("markdown.image"), self._format_image, "Format"))
 
         # Insert commands
-        commands.append(Command("insert.table", "Insert Table", self.settings.get_shortcut("insert.table"), self._insert_table, "Insert"))
-        commands.append(Command("insert.snippet", "Insert Snippet", self.settings.get_shortcut("insert.snippet"), self._show_snippet_popup, "Insert"))
+        commands.append(Command("insert.table", "Insert Table", self.ctx.get_shortcut("insert.table"), self._insert_table, "Insert"))
+        commands.append(Command("insert.snippet", "Insert Snippet", self.ctx.get_shortcut("insert.snippet"), self._show_snippet_popup, "Insert"))
         commands.append(Command("insert.math", "Insert Math Block", "", self._insert_math, "Insert"))
         commands.append(Command("insert.mermaid", "Insert Mermaid Diagram", "", self._insert_mermaid, "Insert"))
         commands.append(Command("insert.callout_note", "Insert Note Callout", "", lambda: self._insert_callout("NOTE"), "Insert"))
@@ -2859,17 +2859,17 @@ class MarkdownEditor(QMainWindow):
         commands.append(Command("insert.callout_tip", "Insert Tip Callout", "", lambda: self._insert_callout("TIP"), "Insert"))
 
         # View commands
-        commands.append(Command("view.toggle_preview", "Toggle Preview", self.settings.get_shortcut("view.toggle_preview"), self._toggle_preview, "View"))
-        commands.append(Command("view.toggle_outline", "Toggle Outline Panel", self.settings.get_shortcut("view.toggle_outline"), self._toggle_outline_panel, "View"))
-        commands.append(Command("view.toggle_project", "Toggle Project Panel", self.settings.get_shortcut("view.toggle_project"), self._toggle_project_panel, "View"))
-        commands.append(Command("view.toggle_references", "Toggle References Panel", self.settings.get_shortcut("view.toggle_references"), self._toggle_references_panel, "View"))
-        commands.append(Command("view.toggle_search", "Toggle Search Panel", self.settings.get_shortcut("view.toggle_search"), self._toggle_search_panel, "View"))
-        commands.append(Command("view.toggle_sidebar", "Toggle Sidebar", self.settings.get_shortcut("view.toggle_sidebar"), self._toggle_sidebar, "View"))
-        commands.append(Command("view.fold_all", "Fold All", self.settings.get_shortcut("view.fold_all"), self._fold_all, "View"))
-        commands.append(Command("view.unfold_all", "Unfold All", self.settings.get_shortcut("view.unfold_all"), self._unfold_all, "View"))
-        commands.append(Command("view.zoom_in", "Zoom In", self.settings.get_shortcut("view.zoom_in"), self._zoom_in, "View"))
-        commands.append(Command("view.zoom_out", "Zoom Out", self.settings.get_shortcut("view.zoom_out"), self._zoom_out, "View"))
-        commands.append(Command("view.zoom_reset", "Reset Zoom", self.settings.get_shortcut("view.zoom_reset"), self._zoom_reset, "View"))
+        commands.append(Command("view.toggle_preview", "Toggle Preview", self.ctx.get_shortcut("view.toggle_preview"), self._toggle_preview, "View"))
+        commands.append(Command("view.toggle_outline", "Toggle Outline Panel", self.ctx.get_shortcut("view.toggle_outline"), self._toggle_outline_panel, "View"))
+        commands.append(Command("view.toggle_project", "Toggle Project Panel", self.ctx.get_shortcut("view.toggle_project"), self._toggle_project_panel, "View"))
+        commands.append(Command("view.toggle_references", "Toggle References Panel", self.ctx.get_shortcut("view.toggle_references"), self._toggle_references_panel, "View"))
+        commands.append(Command("view.toggle_search", "Toggle Search Panel", self.ctx.get_shortcut("view.toggle_search"), self._toggle_search_panel, "View"))
+        commands.append(Command("view.toggle_sidebar", "Toggle Sidebar", self.ctx.get_shortcut("view.toggle_sidebar"), self._toggle_sidebar, "View"))
+        commands.append(Command("view.fold_all", "Fold All", self.ctx.get_shortcut("view.fold_all"), self._fold_all, "View"))
+        commands.append(Command("view.unfold_all", "Unfold All", self.ctx.get_shortcut("view.unfold_all"), self._unfold_all, "View"))
+        commands.append(Command("view.zoom_in", "Zoom In", self.ctx.get_shortcut("view.zoom_in"), self._zoom_in, "View"))
+        commands.append(Command("view.zoom_out", "Zoom Out", self.ctx.get_shortcut("view.zoom_out"), self._zoom_out, "View"))
+        commands.append(Command("view.zoom_reset", "Reset Zoom", self.ctx.get_shortcut("view.zoom_reset"), self._zoom_reset, "View"))
 
         # Settings
         commands.append(Command("settings", "Open Settings", "", self._show_settings, "Settings"))
@@ -2880,26 +2880,26 @@ class MarkdownEditor(QMainWindow):
         commands.append(Command("export.docx", "Export to DOCX", "", self._export_docx, "Export"))
 
         # Tab commands
-        commands.append(Command("tabs.close", "Close Current Tab", self.settings.get_shortcut("file.close_tab"), self._close_current_tab, "Tabs"))
-        commands.append(Command("tabs.next", "Next Tab", self.settings.get_shortcut("tabs.next"), self._next_tab, "Tabs"))
-        commands.append(Command("tabs.previous", "Previous Tab", self.settings.get_shortcut("tabs.previous"), self._prev_tab, "Tabs"))
+        commands.append(Command("tabs.close", "Close Current Tab", self.ctx.get_shortcut("file.close_tab"), self._close_current_tab, "Tabs"))
+        commands.append(Command("tabs.next", "Next Tab", self.ctx.get_shortcut("tabs.next"), self._next_tab, "Tabs"))
+        commands.append(Command("tabs.previous", "Previous Tab", self.ctx.get_shortcut("tabs.previous"), self._prev_tab, "Tabs"))
 
         # Line operations
-        commands.append(Command("edit.duplicate_line", "Duplicate Line", self.settings.get_shortcut("edit.duplicate_line"), self._duplicate_line, "Edit"))
-        commands.append(Command("edit.delete_line", "Delete Line", self.settings.get_shortcut("edit.delete_line"), self._delete_line, "Edit"))
-        commands.append(Command("edit.move_line_up", "Move Line Up", self.settings.get_shortcut("edit.move_line_up"), self._move_line_up, "Edit"))
-        commands.append(Command("edit.move_line_down", "Move Line Down", self.settings.get_shortcut("edit.move_line_down"), self._move_line_down, "Edit"))
-        commands.append(Command("edit.toggle_comment", "Toggle Comment", self.settings.get_shortcut("edit.toggle_comment"), self._toggle_comment, "Edit"))
+        commands.append(Command("edit.duplicate_line", "Duplicate Line", self.ctx.get_shortcut("edit.duplicate_line"), self._duplicate_line, "Edit"))
+        commands.append(Command("edit.delete_line", "Delete Line", self.ctx.get_shortcut("edit.delete_line"), self._delete_line, "Edit"))
+        commands.append(Command("edit.move_line_up", "Move Line Up", self.ctx.get_shortcut("edit.move_line_up"), self._move_line_up, "Edit"))
+        commands.append(Command("edit.move_line_down", "Move Line Down", self.ctx.get_shortcut("edit.move_line_down"), self._move_line_down, "Edit"))
+        commands.append(Command("edit.toggle_comment", "Toggle Comment", self.ctx.get_shortcut("edit.toggle_comment"), self._toggle_comment, "Edit"))
 
         # Theme toggle
         commands.append(Command("view.toggle_theme", "Toggle Light/Dark Theme", "", self._toggle_theme, "View"))
 
         # Fullscreen
-        commands.append(Command("view.fullscreen", "Toggle Fullscreen", self.settings.get_shortcut("view.fullscreen"), self._toggle_fullscreen, "View"))
+        commands.append(Command("view.fullscreen", "Toggle Fullscreen", self.ctx.get_shortcut("view.fullscreen"), self._toggle_fullscreen, "View"))
 
         # More format commands
-        commands.append(Command("format.heading_increase", "Increase Heading Level", self.settings.get_shortcut("markdown.heading_increase"), self._heading_increase, "Format"))
-        commands.append(Command("format.heading_decrease", "Decrease Heading Level", self.settings.get_shortcut("markdown.heading_decrease"), self._heading_decrease, "Format"))
+        commands.append(Command("format.heading_increase", "Increase Heading Level", self.ctx.get_shortcut("markdown.heading_increase"), self._heading_increase, "Format"))
+        commands.append(Command("format.heading_decrease", "Decrease Heading Level", self.ctx.get_shortcut("markdown.heading_decrease"), self._heading_decrease, "Format"))
 
         self.command_palette.set_commands(commands)
 
@@ -3200,7 +3200,7 @@ class MarkdownEditor(QMainWindow):
 
     def _apply_toggle_button_theme(self):
         """Apply theme to the editor/preview toggle buttons."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         # Left button (editor toggle)
@@ -3244,7 +3244,7 @@ class MarkdownEditor(QMainWindow):
         Called at startup and when theme changes to ensure all UI
         elements are properly styled.
         """
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         is_dark = theme_name == "dark"
 
         # Apply app-level theme (menus, tabs, etc.)
@@ -3275,7 +3275,7 @@ class MarkdownEditor(QMainWindow):
         # Editor toggle button
         self.editor_toggle_btn = QToolButton()
         self.editor_toggle_btn.setCheckable(True)
-        self.editor_toggle_btn.setChecked(self.settings.get("view.show_editor", True))
+        self.editor_toggle_btn.setChecked(self.ctx.get("view.show_editor", True))
         self.editor_toggle_btn.setToolTip("Show/Hide Editor")
         self.editor_toggle_btn.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
@@ -3286,7 +3286,7 @@ class MarkdownEditor(QMainWindow):
         # Preview toggle button
         self.preview_toggle_btn = QToolButton()
         self.preview_toggle_btn.setCheckable(True)
-        self.preview_toggle_btn.setChecked(self.settings.get("view.show_preview", True))
+        self.preview_toggle_btn.setChecked(self.ctx.get("view.show_preview", True))
         self.preview_toggle_btn.setToolTip("Show/Hide Preview")
         self.preview_toggle_btn.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogContentsView)
@@ -3335,8 +3335,8 @@ class MarkdownEditor(QMainWindow):
         preview_visible = self.preview_toggle_btn.isChecked()
 
         # Persist state for next startup
-        self.settings.set("view.show_editor", editor_visible)
-        self.settings.set("view.show_preview", preview_visible)
+        self.ctx.set("view.show_editor", editor_visible)
+        self.ctx.set("view.show_preview", preview_visible)
 
         # Save preview scroll ratio in JS before resizing (reflow changes positions).
         # This JS executes in the renderer before the resize event arrives.
@@ -3427,7 +3427,7 @@ class MarkdownEditor(QMainWindow):
 
     def _restore_last_project(self):
         """Restore the last opened project on startup."""
-        last_path = self.settings.get("project.last_path")
+        last_path = self.ctx.get("project.last_path")
         if last_path:
             path = Path(last_path)
             if path.exists() and path.is_dir():
@@ -3443,7 +3443,7 @@ class MarkdownEditor(QMainWindow):
         Called externally (from cmd_gui) only when no explicit files were
         provided on the command line and the project matches last_path.
         """
-        open_files = self.settings.get("project.open_files", [])
+        open_files = self.ctx.get("project.open_files", [])
         if not open_files:
             return
 
@@ -3467,15 +3467,15 @@ class MarkdownEditor(QMainWindow):
                     break
 
             # Restore active tab
-            active = self.settings.get("project.active_tab", 0)
+            active = self.ctx.get("project.active_tab", 0)
             if 0 <= active < self.tab_widget.count():
                 self.tab_widget.setCurrentIndex(active)
 
         # Restore sidebar state
-        active_panel = self.settings.get("sidebar.active_panel", 0)
+        active_panel = self.ctx.get("sidebar.active_panel", 0)
         if 0 <= active_panel < self.sidebar.stack.count():
             self.sidebar.setActivePanel(active_panel)
-        if self.settings.get("sidebar.collapsed", False):
+        if self.ctx.get("sidebar.collapsed", False):
             self.sidebar.setCollapsed(True, animated=False)
 
     def _update_wiki_links(self):
@@ -3570,7 +3570,7 @@ class MarkdownEditor(QMainWindow):
         if not tab:
             return
 
-        dialog = TableEditorDialog(settings=self.settings, parent=self)
+        dialog = TableEditorDialog(ctx=self.ctx, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             markdown_table = dialog.get_markdown()
             if markdown_table:
@@ -3586,7 +3586,7 @@ class MarkdownEditor(QMainWindow):
         manager = get_snippet_manager()
         snippets = manager.get_all_snippets()
 
-        popup = SnippetPopup(snippets, settings=self.settings, parent=self)
+        popup = SnippetPopup(snippets, ctx=self.ctx, parent=self)
         if popup.exec() == QDialog.DialogCode.Accepted and popup.selected_snippet:
             content, placeholder_start, placeholder_end = manager.expand_snippet(popup.selected_snippet)
             cursor = tab.editor.textCursor()
@@ -3633,9 +3633,9 @@ def main():
     app.setApplicationName("Markdown Editor")
 
     # Apply saved theme at startup
-    from markdown_editor.markdown6.settings import get_settings
-    settings = get_settings()
-    apply_application_theme(settings.get("view.theme", "light") == "dark")
+    from markdown_editor.markdown6.app_context import get_app_context
+    ctx = get_app_context()
+    apply_application_theme(ctx.get("view.theme", "light") == "dark")
 
     editor = MarkdownEditor()
     editor.show()

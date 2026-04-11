@@ -2,7 +2,7 @@
 
 import pytest
 
-from markdown_editor.markdown6.settings import get_settings, DEFAULT_SETTINGS
+from markdown_editor.markdown6.app_context import get_app_context, DEFAULT_SETTINGS
 
 
 class TestTypographyDefaults:
@@ -11,13 +11,13 @@ class TestTypographyDefaults:
 
     def test_font_families_default_to_empty(self):
         """Empty string means 'use the built-in CSS font stack'."""
-        s = get_settings()
+        s = get_app_context()
         assert s.get("preview.body_font_family") == ""
         assert s.get("preview.code_font_family") == ""
         assert s.get("preview.heading_font_family") == ""
 
     def test_heading_sizes_match_hardcoded(self):
-        s = get_settings()
+        s = get_app_context()
         assert s.get("preview.h1_size") == 2.0
         assert s.get("preview.h1_size_unit") == "em"
         assert s.get("preview.h2_size") == 1.5
@@ -26,12 +26,12 @@ class TestTypographyDefaults:
         assert s.get("preview.h3_size_unit") == "em"
 
     def test_code_size_matches_hardcoded(self):
-        s = get_settings()
+        s = get_app_context()
         assert s.get("preview.code_size") == 85
         assert s.get("preview.code_size_unit") == "%"
 
     def test_line_height_default(self):
-        assert get_settings().get("preview.line_height") == 1.5
+        assert get_app_context().get("preview.line_height") == 1.5
 
 
 class TestTypographyInHtml:
@@ -58,51 +58,51 @@ class TestTypographyInHtml:
 
     def test_custom_body_font_produces_css_with_fallback(self, main_window):
         """Setting a body font should produce '"FontName", sans-serif'."""
-        get_settings().set("preview.body_font_family", "Georgia")
+        get_app_context().set("preview.body_font_family", "Georgia")
         html = main_window.get_html_template("<p>test</p>")
         assert '"Georgia", sans-serif' in html
         # The old hardcoded stack should NOT appear
         assert "-apple-system" not in html
 
     def test_custom_code_font_produces_css_with_fallback(self, main_window):
-        get_settings().set("preview.code_font_family", "Fira Code")
+        get_app_context().set("preview.code_font_family", "Fira Code")
         html = main_window.get_html_template("<p>test</p>")
         assert '"Fira Code", monospace' in html
         assert "SFMono-Regular" not in html
 
     def test_custom_heading_font_injected(self, main_window):
-        get_settings().set("preview.heading_font_family", "Impact")
+        get_app_context().set("preview.heading_font_family", "Impact")
         html = main_window.get_html_template("<p>test</p>")
         assert '"Impact", sans-serif' in html
 
     def test_empty_heading_font_no_font_family_in_headings(self, main_window):
         """When heading font is empty, heading CSS should not have
         a separate font-family declaration."""
-        get_settings().set("preview.heading_font_family", "")
+        get_app_context().set("preview.heading_font_family", "")
         html = main_window.get_html_template("<p>test</p>")
         # Find the h1 rule and check it doesn't have font-family
         h1_section = html.split("h1 {")[1].split("}")[0]
         assert "font-family" not in h1_section
 
     def test_heading_size_px_unit(self, main_window):
-        get_settings().set("preview.h1_size", 32)
-        get_settings().set("preview.h1_size_unit", "px")
+        get_app_context().set("preview.h1_size", 32)
+        get_app_context().set("preview.h1_size_unit", "px")
         html = main_window.get_html_template("<p>test</p>")
         assert "font-size: 32px" in html
 
     def test_code_size_px_unit(self, main_window):
-        get_settings().set("preview.code_size", 14)
-        get_settings().set("preview.code_size_unit", "px")
+        get_app_context().set("preview.code_size", 14)
+        get_app_context().set("preview.code_size_unit", "px")
         html = main_window.get_html_template("<p>test</p>")
         assert "font-size: 14px" in html
 
     def test_line_height_injected(self, main_window):
-        get_settings().set("preview.line_height", 2.0)
+        get_app_context().set("preview.line_height", 2.0)
         html = main_window.get_html_template("<p>test</p>")
         assert "line-height: 2.0" in html
 
     def test_qtextbrowser_uses_settings_too(self, main_window):
-        get_settings().set("preview.body_font_family", "Courier")
+        get_app_context().set("preview.body_font_family", "Courier")
         html = main_window.get_html_template("<p>test</p>", for_qtextbrowser=True)
         assert '"Courier", sans-serif' in html
 

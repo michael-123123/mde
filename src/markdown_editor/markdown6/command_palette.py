@@ -23,8 +23,8 @@ class Command:
 class CommandPalette(SearchablePopup):
     """A searchable command palette dialog."""
 
-    def __init__(self, settings=None, parent: QWidget | None = None):
-        super().__init__(settings=settings, parent=parent)
+    def __init__(self, ctx=None, parent: QWidget | None = None):
+        super().__init__(ctx=ctx, parent=parent)
         self.commands: list[Command] = []
         self.filtered_commands: list[Command] = []
         self._init_ui()
@@ -45,7 +45,7 @@ class CommandPalette(SearchablePopup):
         self.list_widget.setFont(mono_font)
 
         # Listen for theme changes
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""

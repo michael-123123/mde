@@ -22,12 +22,12 @@ from markdown_editor.markdown6.theme import get_theme, StyleSheets
 class TableEditorDialog(QDialog):
     """A dialog for creating and editing markdown tables visually."""
 
-    def __init__(self, settings=None, parent: QWidget | None = None, initial_markdown: str = ""):
+    def __init__(self, ctx=None, parent: QWidget | None = None, initial_markdown: str = ""):
         super().__init__(parent)
-        if settings is None:
-            from markdown_editor.markdown6.settings import get_settings
-            settings = get_settings()
-        self.settings = settings
+        if ctx is None:
+            from markdown_editor.markdown6.app_context import get_app_context
+            ctx = get_app_context()
+        self.ctx = ctx
         self.initial_markdown = initial_markdown
         self._init_ui()
         self._apply_theme()
@@ -113,7 +113,7 @@ class TableEditorDialog(QDialog):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.setStyleSheet(

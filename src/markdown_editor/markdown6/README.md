@@ -240,7 +240,9 @@ src/fun/markdown6/
 ├── enhanced_editor.py    # Text editor widget
 ├── syntax_highlighter.py # Markdown highlighting
 ├── theme.py              # Color themes and stylesheets
-├── settings.py           # Settings management
+├── app_context.py        # Settings, shortcuts, session state
+├── shortcut_manager.py   # Keyboard shortcut persistence
+├── session_state.py      # Session state persistence
 ├── settings_dialog.py    # Settings UI
 ├── export_service.py     # PDF/DOCX/HTML export
 ├── tool_paths.py         # External tool path resolution

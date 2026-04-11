@@ -1,4 +1,4 @@
-"""Settings management for the Markdown editor."""
+"""Application context — settings, shortcuts, and session state."""
 
 import json
 from pathlib import Path
@@ -103,7 +103,7 @@ def get_project_markdown_files(
         Sorted list of Path objects for .md/.markdown files.
     """
     if show_hidden is None:
-        show_hidden = get_settings().get("files.show_hidden", False)
+        show_hidden = get_app_context().get("files.show_hidden", False)
 
     if max_depth is not None:
         return sorted(_scan_limited_depth(project_path, max_depth, show_hidden))
@@ -148,18 +148,18 @@ def _default_config_dir() -> Path:
     return Path(base) / "markdown-editor"
 
 
-class Settings(QObject):
-    """Application settings manager with persistence."""
+class AppContext(QObject):
+    """Application context: settings, shortcuts, and session state."""
 
     settings_changed = Signal(str, object)  # key, new_value
     theme_changed = Signal(str)  # theme name
 
     def __init__(self, config_dir: Path | None = None, ephemeral: bool = False):
-        """Initialize settings.
+        """Initialize the application context.
 
         Args:
-            config_dir: Directory to store settings. Platform-appropriate default.
-            ephemeral: If True, use default settings in memory only - don't load or save.
+            config_dir: Directory to store config files. Platform-appropriate default.
+            ephemeral: If True, use defaults in memory only - don't load or save.
         """
         super().__init__()
         self._ephemeral = ephemeral
@@ -311,30 +311,30 @@ class Settings(QObject):
         self._session_state.clear_recent_files()
 
 
-# Global settings instance
-_settings: Settings | None = None
+# Global instance
+_app_context: AppContext | None = None
 
 
-def init_settings(config_dir: Path | None = None, ephemeral: bool = False) -> Settings:
-    """Initialize the global settings instance.
+def init_app_context(config_dir: Path | None = None, ephemeral: bool = False) -> AppContext:
+    """Initialize the global AppContext instance.
 
-    Call this before get_settings() to customize settings behavior.
+    Call this before get_app_context() to customize behavior.
 
     Args:
         config_dir: Directory to store settings. Defaults to ~/.config/markdown-editor
         ephemeral: If True, use default settings in memory only - don't load or save.
 
     Returns:
-        The initialized Settings instance.
+        The initialized AppContext instance.
     """
-    global _settings
-    _settings = Settings(config_dir=config_dir, ephemeral=ephemeral)
-    return _settings
+    global _app_context
+    _app_context = AppContext(config_dir=config_dir, ephemeral=ephemeral)
+    return _app_context
 
 
-def get_settings() -> Settings:
-    """Get the global settings instance."""
-    global _settings
-    if _settings is None:
-        _settings = Settings()
-    return _settings
+def get_app_context() -> AppContext:
+    """Get the global AppContext instance."""
+    global _app_context
+    if _app_context is None:
+        _app_context = AppContext()
+    return _app_context

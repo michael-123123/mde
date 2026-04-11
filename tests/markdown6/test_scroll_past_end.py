@@ -4,19 +4,19 @@ import pytest
 
 from PySide6.QtWidgets import QApplication
 
-from markdown_editor.markdown6.settings import get_settings
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 class TestScrollPastEndSetting:
     """Test the scroll_past_end setting default and persistence."""
 
     def test_default_on(self):
-        assert get_settings().get("editor.scroll_past_end") is True
+        assert get_app_context().get("editor.scroll_past_end") is True
 
     def test_toggle_off(self):
-        settings = get_settings()
-        settings.set("editor.scroll_past_end", False)
-        assert settings.get("editor.scroll_past_end") is False
+        ctx = get_app_context()
+        ctx.set("editor.scroll_past_end", False)
+        assert ctx.get("editor.scroll_past_end") is False
 
 
 class TestScrollPastEndEditor:
@@ -81,15 +81,15 @@ class TestScrollPastEndEditor:
 
     def test_disabled_uses_normal_scroll(self, editor):
         """With scroll-past-end off, centerOnScroll should be False."""
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         assert editor.centerOnScroll() is False
 
     def test_toggle_on_off(self, editor):
         """Toggling the setting should change centerOnScroll."""
         assert editor.centerOnScroll() is True
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         assert editor.centerOnScroll() is False
-        get_settings().set("editor.scroll_past_end", True)
+        get_app_context().set("editor.scroll_past_end", True)
         assert editor.centerOnScroll() is True
 
     def test_short_document_no_crash(self, qtbot):
@@ -123,7 +123,7 @@ class TestScrollPastEndPreview:
         assert "height: 80vh" in html
 
     def test_webengine_html_no_spacer_when_disabled(self, main_window):
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         html = main_window.get_html_template("<p>test</p>")
         assert "height: 80vh" not in html
 
@@ -132,7 +132,7 @@ class TestScrollPastEndPreview:
         assert "height: 80vh" in html
 
     def test_qtextbrowser_html_no_spacer_when_disabled(self, main_window):
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         html = main_window.get_html_template("<p>test</p>", for_qtextbrowser=True)
         assert "height: 80vh" not in html
 
@@ -158,7 +158,7 @@ class TestScrollPastEndSync:
 
     def test_both_sides_disabled_together(self, main_window):
         """Disabling removes scroll-past-end from both sides."""
-        get_settings().set("editor.scroll_past_end", False)
+        get_app_context().set("editor.scroll_past_end", False)
         tab = main_window.current_tab()
         assert tab.editor.centerOnScroll() is False
         html = main_window.get_html_template("<p>x</p>")

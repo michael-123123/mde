@@ -35,9 +35,9 @@ class Sidebar(QWidget):
     # Emitted when sidebar width changes (for parent splitter updates)
     width_changed = Signal(int)
 
-    def __init__(self, settings, parent=None):
+    def __init__(self, ctx, parent=None):
         super().__init__(parent)
-        self.settings = settings
+        self.ctx = ctx
 
         self._collapsed = False
         self._active_index = 0
@@ -48,7 +48,7 @@ class Sidebar(QWidget):
 
         self._init_ui()
         self._apply_theme()
-        self.settings.settings_changed.connect(self._on_setting_changed)
+        self.ctx.settings_changed.connect(self._on_setting_changed)
 
     def _init_ui(self):
         """Initialize the UI."""
@@ -57,7 +57,7 @@ class Sidebar(QWidget):
         layout.setSpacing(0)
 
         # Activity bar (always visible)
-        self.activity_bar = ActivityBar(self.settings, width=48, parent=self)
+        self.activity_bar = ActivityBar(self.ctx, width=48, parent=self)
         self.activity_bar.tab_clicked.connect(self._on_tab_clicked)
         layout.addWidget(self.activity_bar)
 
@@ -245,7 +245,7 @@ class Sidebar(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        theme_name = self.settings.get("view.theme", "light")
+        theme_name = self.ctx.get("view.theme", "light")
         theme = get_theme(theme_name == "dark")
 
         self.tool_window.setStyleSheet(f"""
