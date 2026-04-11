@@ -329,3 +329,51 @@ class TestMermaidAndGraphvizTogether:
         result = md.convert(source)
         assert '<div class="mermaid">' in result
         assert "graphviz-pending" in result
+
+
+class TestNestedCodeBlocksNotRendered:
+    """Diagram blocks nested inside outer fenced code blocks must NOT be
+    rendered as diagrams — they should be treated as literal code text."""
+
+    def _make_md(self):
+        from markdown.extensions.fenced_code import FencedCodeExtension
+        return markdown.Markdown(extensions=[
+            FencedCodeExtension(),
+            MermaidExtension(),
+            GraphvizExtension(),
+        ])
+
+    @patch("markdown_editor.markdown6.mermaid_service.has_mermaid", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.is_cached", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.render_mermaid", return_value=("<svg>ok</svg>", None))
+    def test_mermaid_inside_quad_backtick_not_rendered(self, mock_render, mock_cached, mock_has):
+        """A ```mermaid block inside a ```` block should not be rendered."""
+        md = self._make_md()
+        source = "````markdown\n```mermaid\ngraph LR\n    A --> B\n```\n````\n"
+        result = md.convert(source)
+        assert "mermaid-diagram" not in result
+        assert "```mermaid" in result or "graph LR" in result
+        mock_render.assert_not_called()
+
+    @patch("markdown_editor.markdown6.graphviz_service.has_graphviz", return_value=True)
+    @patch("markdown_editor.markdown6.graphviz_service.is_cached", return_value=True)
+    @patch("markdown_editor.markdown6.graphviz_service.render_dot", return_value=("<svg>ok</svg>", None))
+    def test_graphviz_inside_quad_backtick_not_rendered(self, mock_render, mock_cached, mock_has):
+        """A ```dot block inside a ```` block should not be rendered."""
+        md = self._make_md()
+        source = "````markdown\n```dot\ndigraph { A -> B }\n```\n````\n"
+        result = md.convert(source)
+        assert "graphviz-diagram" not in result
+        assert "```dot" in result or "digraph" in result
+        mock_render.assert_not_called()
+
+    @patch("markdown_editor.markdown6.mermaid_service.has_mermaid", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.is_cached", return_value=True)
+    @patch("markdown_editor.markdown6.mermaid_service.render_mermaid", return_value=("<svg>ok</svg>", None))
+    def test_real_mermaid_still_renders(self, mock_render, mock_cached, mock_has):
+        """A normal (non-nested) ```mermaid block should still render."""
+        md = self._make_md()
+        source = "```mermaid\ngraph TD\n    A --> B\n```\n"
+        result = md.convert(source)
+        assert "mermaid-diagram" in result
+        mock_render.assert_called_once()

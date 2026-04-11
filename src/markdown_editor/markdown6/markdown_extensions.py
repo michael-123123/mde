@@ -348,6 +348,36 @@ class MathExtension(Extension):
         )
 
 
+_OUTER_FENCE_RE = re.compile(
+    r'^(`{4,}|~{4,}).*\n(.*?)^\1\s*$',
+    re.MULTILINE | re.DOTALL
+)
+
+
+def _sub_preserving_outer_fences(pattern, repl, text):
+    """Run a regex substitution while protecting content inside outer
+    fenced code blocks (4+ backticks or tildes) from being matched.
+
+    Outer fences are temporarily replaced with placeholders, the diagram
+    regex runs on the remaining text, then the placeholders are restored.
+    """
+    placeholders = {}
+    counter = 0
+
+    def mask(m):
+        nonlocal counter
+        key = f"\x00FENCE{counter}\x00"
+        counter += 1
+        placeholders[key] = m.group(0)
+        return key
+
+    masked = _OUTER_FENCE_RE.sub(mask, text)
+    result = pattern.sub(repl, masked)
+    for key, original in placeholders.items():
+        result = result.replace(key, original)
+    return result
+
+
 class MermaidPreprocessor(Preprocessor):
     """Preprocessor to convert mermaid code blocks.
 
@@ -407,7 +437,7 @@ class MermaidPreprocessor(Preprocessor):
                 f'</div></div>'
             )
 
-        text = self.MERMAID_PATTERN.sub(replace_mermaid, text)
+        text = _sub_preserving_outer_fences(self.MERMAID_PATTERN, replace_mermaid, text)
         return text.split('\n')
 
 
@@ -690,7 +720,7 @@ class GraphvizPreprocessor(Preprocessor):
                 f'</div></div>'
             )
 
-        text = self.GRAPHVIZ_PATTERN.sub(replace_graphviz, text)
+        text = _sub_preserving_outer_fences(self.GRAPHVIZ_PATTERN, replace_graphviz, text)
         return text.split('\n')
 
 
