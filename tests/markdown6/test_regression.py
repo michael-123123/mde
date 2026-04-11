@@ -702,6 +702,39 @@ class TestMathRendering:
         qtbot.waitUntil(katex_loaded, timeout=8000)
 
 
+class TestPreviewWheelScrollSync:
+    """Regression test: wheel-scrolling the preview should scroll the editor.
+
+    Bug: Scrolling the preview pane did not move the editor — only
+    editor→preview sync existed. Fix: an event filter on WebEngine's
+    internal rendering widget forwards wheel events to the editor.
+    The editor's valueChanged then syncs the preview via scrollToSourceLine.
+    """
+
+    def test_wheel_filter_installed(self, qtbot):
+        """The wheel event filter should be installed on the preview."""
+        from markdown_editor.markdown6.markdown_editor import DocumentTab, HAS_WEBENGINE
+        from markdown_editor.markdown6.app_context import get_app_context
+
+        if not HAS_WEBENGINE:
+            pytest.skip("WebEngine not available")
+
+        ctx = get_app_context()
+        main = FakeMainWindow(ctx)
+        tab = DocumentTab(main)
+        qtbot.addWidget(tab)
+
+        # Trigger a render so loadFinished fires and filter gets installed
+        tab.editor.setPlainText("test content\n" * 50)
+        tab._preview_needs_full_reload = True
+        tab.render_markdown()
+        qtbot.wait(500)
+
+        assert tab._wheel_filter_installed, (
+            "Wheel event filter should be installed after first page load"
+        )
+
+
 class TestSettingsChangeDirtyFlag:
     """Regression test: changing a setting should not mark the document dirty.
 

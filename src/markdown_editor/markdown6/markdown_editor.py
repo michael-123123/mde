@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
-from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import Qt, QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QFont, QIcon, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
 from PySide6.QtWidgets import (
     QApplication,
@@ -754,6 +754,27 @@ if HAS_WEBENGINE:
             return True
 
 
+class _PreviewWheelFilter(QObject):
+    """Event filter that forwards wheel events from WebEngine's internal
+    rendering widget to the editor, so scrolling the preview scrolls the
+    editor (which then syncs the preview via scrollToSourceLine).
+    """
+
+    def __init__(self, tab: "DocumentTab"):
+        super().__init__(tab)
+        self._tab = tab
+
+    def eventFilter(self, obj, event):
+        if (
+            event.type() == event.Type.Wheel
+            and self._tab._sync_scrolling
+            and self._tab.editor.isVisible()
+        ):
+            QApplication.sendEvent(self._tab.editor.viewport(), event)
+            return True
+        return False
+
+
 class DocumentTab(QWidget):
     """A single document tab with editor and preview panes."""
 
@@ -893,8 +914,17 @@ class DocumentTab(QWidget):
         self.editor.file_externally_modified.connect(self._on_file_externally_modified)
         self.ctx.settings_changed.connect(self._on_setting_changed)
 
-        # Sync scrolling
+        # Sync scrolling — editor is the source of truth.
+        # For WebEngine, wheel events on the preview's internal rendering
+        # widget are forwarded to the editor so scrolling either pane
+        # keeps them in sync.
         self.editor.verticalScrollBar().valueChanged.connect(self._on_editor_scroll)
+        if self._use_webengine:
+            self._wheel_filter = _PreviewWheelFilter(self)
+            self._wheel_filter_installed = False
+            self._custom_page.loadFinished.connect(self._install_wheel_filter)
+        else:
+            self.preview.viewport().installEventFilter(_PreviewWheelFilter(self))
 
     def _on_link_clicked(self, url: QUrl):
         """Handle link clicks in the preview, forwarding to the main window."""
@@ -1029,6 +1059,15 @@ class DocumentTab(QWidget):
             self.preview.page().runJavaScript(
                 f"document.body.classList.toggle('zoomed', {zoomed});"
             )
+
+    def _install_wheel_filter(self):
+        """Install the wheel event filter on WebEngine's internal widget."""
+        if self._wheel_filter_installed:
+            return
+        children = self.preview.findChildren(QWidget)
+        for child in children:
+            child.installEventFilter(self._wheel_filter)
+        self._wheel_filter_installed = bool(children)
 
     def _on_text_changed(self):
         """Handle text changes in the editor."""
