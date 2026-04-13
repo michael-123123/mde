@@ -1,6 +1,7 @@
 """GitHub-style callout/admonition blocks."""
 
 import re
+
 from markdown import Extension
 from markdown.preprocessors import Preprocessor
 

@@ -1,17 +1,11 @@
 """Base class for searchable popup dialogs."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QWidget,
-)
+from PySide6.QtWidgets import (QDialog, QLineEdit, QListWidget,
+                               QListWidgetItem, QVBoxLayout, QWidget)
 
 from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
+from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 
 
 class SearchablePopup(QDialog):

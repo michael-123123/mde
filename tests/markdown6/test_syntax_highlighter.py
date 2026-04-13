@@ -1,7 +1,7 @@
 """Tests for the syntax highlighter module."""
 
 import pytest
-from PySide6.QtGui import QTextDocument, QFont, QColor
+from PySide6.QtGui import QFont, QTextDocument
 from PySide6.QtWidgets import QPlainTextEdit
 
 from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter

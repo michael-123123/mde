@@ -17,7 +17,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import TextIO
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -281,7 +280,8 @@ def read_stdin() -> str:
 
 def get_project_files(project_path: Path) -> list[Path]:
     """Get all markdown files in a project."""
-    from markdown_editor.markdown6.app_context import get_project_markdown_files
+    from markdown_editor.markdown6.app_context import \
+        get_project_markdown_files
     return get_project_markdown_files(project_path)
 
 
@@ -1175,8 +1175,10 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     # Import Qt and editor
     from PySide6.QtWidgets import QApplication
-    from markdown_editor.markdown6.markdown_editor import MarkdownEditor, apply_application_theme
+
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.markdown_editor import (
+        MarkdownEditor, apply_application_theme)
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")

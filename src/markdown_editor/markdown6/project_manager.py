@@ -1,43 +1,24 @@
 """Project folder management for the Markdown editor."""
 
-import json
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from pathlib import Path
 
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
 
-from PySide6.QtCore import Qt, Signal, QDir
-from PySide6.QtGui import QStandardItemModel, QStandardItem
-from PySide6.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTreeView,
-    QFileSystemModel,
-    QPushButton,
-    QToolButton,
-    QLabel,
-    QMenu,
-    QInputDialog,
-    QMessageBox,
-    QFileDialog,
-    QDialog,
-    QDialogButtonBox,
-    QCheckBox,
-    QGroupBox,
-    QLineEdit,
-    QComboBox,
-    QProgressDialog,
-)
+from PySide6.QtCore import QDir, Qt, Signal
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+                               QDialogButtonBox, QFileDialog, QFileSystemModel,
+                               QGroupBox, QHBoxLayout, QInputDialog, QLabel,
+                               QLineEdit, QMenu, QMessageBox, QProgressDialog,
+                               QPushButton, QToolButton, QTreeView,
+                               QVBoxLayout, QWidget)
 
-from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-from markdown_editor.markdown6.app_context import get_project_markdown_files
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 from markdown_editor.markdown6 import export_service
+from markdown_editor.markdown6.app_context import get_project_markdown_files
+from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
+from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 
 
 @dataclass

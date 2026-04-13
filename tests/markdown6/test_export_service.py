@@ -1,18 +1,15 @@
 """Tests for the export service module."""
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from markdown_editor.markdown6.export_service import (
-    has_pandoc,
-    markdown_to_html,
-    export_html,
-    export_pdf,
-    export_docx,
-    ExportError,
-    _add_formatted_text,
-)
+import pytest
+
+from markdown_editor.markdown6.export_service import (ExportError,
+                                                      _add_formatted_text,
+                                                      export_docx, export_html,
+                                                      export_pdf, has_pandoc,
+                                                      markdown_to_html)
 
 
 class TestHasPandoc:
@@ -141,6 +138,7 @@ class TestExportPdf:
             with patch("markdown_editor.markdown6.export_service.has_pandoc", return_value=False):
                 # Import inside to get the patched version
                 from markdown_editor.markdown6 import export_service as es
+
                 # Re-patch the weasyprint import inside the function
                 with patch.object(es, "_export_pdf_weasyprint") as mock_export:
                     es.export_pdf("# Test", output_path)
@@ -206,7 +204,8 @@ class TestExportPandoc:
 
     def test_pandoc_docx_error_handling(self, tmp_path):
         """Test that pandoc DOCX errors are raised as ExportError."""
-        from markdown_editor.markdown6.export_service import _export_docx_pandoc
+        from markdown_editor.markdown6.export_service import \
+            _export_docx_pandoc
 
         output_path = tmp_path / "output.docx"
         mock_result = MagicMock()
@@ -247,7 +246,8 @@ class TestExportPythonDocx:
 
     def test_docx_python_missing_dependency(self, tmp_path):
         """Test that missing python-docx raises ExportError."""
-        from markdown_editor.markdown6.export_service import _export_docx_python
+        from markdown_editor.markdown6.export_service import \
+            _export_docx_python
 
         output_path = tmp_path / "output.docx"
 
@@ -273,6 +273,7 @@ class TestExportWeasyprint:
             with patch.dict("sys.modules", {"weasyprint": None}):
                 # Re-import the function to get fresh import attempt
                 import importlib
+
                 import markdown_editor.markdown6.export_service as es
                 importlib.reload(es)
 
@@ -287,6 +288,7 @@ class TestExportWeasyprint:
                 sys.modules["weasyprint"] = weasyprint_backup
             # Reload module to restore normal state
             import importlib
+
             import markdown_editor.markdown6.export_service as es
             importlib.reload(es)
 

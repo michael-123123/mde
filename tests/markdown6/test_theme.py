@@ -1,15 +1,8 @@
 """Tests for the theme module."""
 
-import pytest
 
-from markdown_editor.markdown6.theme import (
-    ThemeColors,
-    DARK_THEME,
-    LIGHT_THEME,
-    get_theme,
-    StyleSheets,
-    apply_theme,
-)
+from markdown_editor.markdown6.theme import (DARK_THEME, LIGHT_THEME,
+                                             StyleSheets, apply_theme, get_theme)
 
 
 class TestThemeColors:

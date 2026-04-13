@@ -1,14 +1,12 @@
 """Tests for the snippets module."""
 
-import pytest
 from datetime import datetime
 
-from markdown_editor.markdown6.snippets import (
-    Snippet,
-    SnippetManager,
-    DEFAULT_SNIPPETS,
-    get_snippet_manager,
-)
+import pytest
+
+from markdown_editor.markdown6.snippets import (DEFAULT_SNIPPETS, Snippet,
+                                                SnippetManager,
+                                                get_snippet_manager)
 
 
 @pytest.fixture

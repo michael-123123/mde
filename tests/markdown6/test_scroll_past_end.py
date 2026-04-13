@@ -1,7 +1,6 @@
 """Tests for scroll-past-end feature."""
 
 import pytest
-
 from PySide6.QtWidgets import QApplication
 
 from markdown_editor.markdown6.app_context import get_app_context

@@ -10,9 +10,8 @@ import re
 from pathlib import Path
 
 from markdown import Extension
-from markdown.preprocessors import Preprocessor
 from markdown.postprocessors import Postprocessor
-
+from markdown.preprocessors import Preprocessor
 
 # ── Shared helper ──────────────────────────────────────────────────
 
@@ -69,6 +68,7 @@ class MermaidPreprocessor(Preprocessor):
 
     def run(self, lines):
         import html as html_mod
+
         from markdown_editor.markdown6 import mermaid_service
 
         dark_mode = getattr(self.md, 'mermaid_dark_mode', False)
@@ -159,6 +159,7 @@ class GraphvizPreprocessor(Preprocessor):
 
     def run(self, lines):
         import html as html_mod
+
         from markdown_editor.markdown6 import graphviz_service
 
         dark_mode = getattr(self.md, 'graphviz_dark_mode', False)

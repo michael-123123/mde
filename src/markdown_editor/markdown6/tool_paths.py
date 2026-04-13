@@ -6,8 +6,8 @@ Uses configured paths from settings, falling back to system PATH lookup.
 import shutil
 from pathlib import Path
 
-from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
 

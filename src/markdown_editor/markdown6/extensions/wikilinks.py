@@ -1,6 +1,7 @@
 """Wiki-style [[link]] inline processing."""
 
 import xml.etree.ElementTree as etree
+
 from markdown import Extension
 from markdown.inlinepatterns import InlineProcessor
 

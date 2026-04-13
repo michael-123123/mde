@@ -1,9 +1,10 @@
 """Source line markers for editor-preview scroll synchronization."""
 
 import re
+
 from markdown import Extension
-from markdown.preprocessors import Preprocessor
 from markdown.postprocessors import Postprocessor
+from markdown.preprocessors import Preprocessor
 
 
 class SourceLinePreprocessor(Preprocessor):

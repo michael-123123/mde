@@ -1,17 +1,13 @@
 """Tests for the enhanced editor module."""
 
-import pytest
-from pathlib import Path
 
-from PySide6.QtCore import Qt
+import pytest
 from PySide6.QtGui import QTextCursor
 
-from markdown_editor.markdown6.enhanced_editor import (
-    EnhancedEditor,
-    FoldingRegion,
-    LineNumberArea,
-    WikiLinkCompleter,
-)
+from markdown_editor.markdown6.enhanced_editor import (EnhancedEditor,
+                                                       FoldingRegion,
+                                                       LineNumberArea,
+                                                       WikiLinkCompleter)
 
 
 @pytest.fixture

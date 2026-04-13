@@ -1,18 +1,14 @@
 """Tests for the project manager module."""
 
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from PySide6.QtCore import Qt
+import pytest
 from PySide6.QtWidgets import QMessageBox
 
-from markdown_editor.markdown6.project_manager import (
-    ProjectPanel,
-    ProjectExportDialog,
-    ProjectConfig,
-)
 from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.project_manager import (ProjectConfig,
+                                                       ProjectExportDialog,
+                                                       ProjectPanel)
 
 
 @pytest.fixture
@@ -538,6 +534,7 @@ class TestTreeStatePersistence:
     def test_restore_disabled_by_setting(self, qtbot, deep_project):
         """When restore_tree_state is False, dirs are not expanded."""
         from PySide6.QtWidgets import QApplication
+
         from markdown_editor.markdown6.app_context import get_app_context
         ctx = get_app_context()
 

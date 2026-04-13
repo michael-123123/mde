@@ -4,12 +4,9 @@ Tests the autosave logic directly without creating a full MarkdownEditor,
 which is slow due to WebEngine, sidebar, and markdown extension init.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QWidget
 
 from markdown_editor.markdown6.app_context import get_app_context
 
@@ -49,7 +46,6 @@ class TestAutosaveLogic:
         tab = FakeTab(file_path=test_file, unsaved_changes=True, text="modified")
 
         # Import and call the save logic directly
-        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
 
         # Call the static-like logic: iterate tabs, write if dirty+has path
         _auto_save_tabs(FakeTabWidget([tab]))

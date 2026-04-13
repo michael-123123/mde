@@ -1,9 +1,10 @@
 """LaTeX math block and inline math support."""
 
 import re
+
 from markdown import Extension
-from markdown.preprocessors import Preprocessor
 from markdown.postprocessors import Postprocessor
+from markdown.preprocessors import Preprocessor
 
 
 class MathPreprocessor(Preprocessor):

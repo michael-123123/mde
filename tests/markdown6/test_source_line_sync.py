@@ -3,17 +3,11 @@
 import markdown
 import pytest
 
-from markdown_editor.markdown6.markdown_extensions import (
-    BreaklessListExtension,
-    CalloutExtension,
-    MathExtension,
-    SourceLineExtension,
-    SourceLinePreprocessor,
-    SourceLinePostprocessor,
-    TaskListExtension,
-)
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
-
+from markdown_editor.markdown6.markdown_extensions import (
+    BreaklessListExtension, CalloutExtension, MathExtension,
+    SourceLineExtension, SourceLinePostprocessor, SourceLinePreprocessor,
+    TaskListExtension)
 
 # ---------------------------------------------------------------------------
 # Preprocessor tests

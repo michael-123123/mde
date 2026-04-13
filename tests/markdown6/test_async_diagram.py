@@ -36,7 +36,9 @@ class TestAsyncDiagramUnit:
     def test_uncached_diagram_emits_placeholder(self, mock_cached, mock_has):
         """Uncached mermaid block should produce a placeholder div."""
         import markdown
-        from markdown_editor.markdown6.markdown_extensions import MermaidExtension
+
+        from markdown_editor.markdown6.markdown_extensions import \
+            MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
         md._pending_diagrams = []
@@ -56,7 +58,9 @@ class TestAsyncDiagramUnit:
     def test_cached_diagram_inlined_immediately(self, mock_render, mock_cached, mock_has):
         """Cached mermaid block should be inlined, not deferred."""
         import markdown
-        from markdown_editor.markdown6.markdown_extensions import MermaidExtension
+
+        from markdown_editor.markdown6.markdown_extensions import \
+            MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
         md._pending_diagrams = []

@@ -1,13 +1,12 @@
 """Tests for the AppContext module."""
 
 import json
+
 import pytest
-from pathlib import Path
-from markdown_editor.markdown6.app_context import (
-    AppContext,
-    DEFAULT_SETTINGS,
-)
-from markdown_editor.markdown6.app_context import DEFAULT_SHORTCUTS
+
+from markdown_editor.markdown6.app_context import (DEFAULT_SETTINGS,
+                                                   DEFAULT_SHORTCUTS,
+                                                   AppContext)
 
 
 @pytest.fixture
@@ -295,8 +294,9 @@ class TestEphemeralAppContext:
 
     def test_init_app_context_ephemeral(self, tmp_path):
         """Test init_app_context with ephemeral flag."""
-        from markdown_editor.markdown6.app_context import init_app_context, get_app_context
         import markdown_editor.markdown6.app_context as ctx_module
+        from markdown_editor.markdown6.app_context import (get_app_context,
+                                                           init_app_context)
 
         # Reset global context
         ctx_module._app_context = None

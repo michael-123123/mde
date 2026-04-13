@@ -1,15 +1,11 @@
 """Tests for the hidden files setting and filtering."""
 
-from pathlib import Path
 
 import pytest
 
-from markdown_editor.markdown6.app_context import (
-    get_app_context,
-    is_hidden_path,
-    get_project_markdown_files,
-)
-
+from markdown_editor.markdown6.app_context import (get_app_context,
+                                                   get_project_markdown_files,
+                                                   is_hidden_path)
 
 # --- is_hidden_path ---
 

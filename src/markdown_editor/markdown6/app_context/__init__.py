@@ -7,13 +7,9 @@ from PySide6.QtCore import QObject, QStandardPaths
 
 from markdown_editor.markdown6.app_context.session_state import SessionState
 from markdown_editor.markdown6.app_context.settings_manager import (
-    DEFAULT_SETTINGS,
-    SettingsManager,
-)
+    DEFAULT_SETTINGS, SettingsManager)
 from markdown_editor.markdown6.app_context.shortcut_manager import (
-    DEFAULT_SHORTCUTS,
-    ShortcutManager,
-)
+    DEFAULT_SHORTCUTS, ShortcutManager)
 
 # Re-export subsystem classes so callers can import from app_context directly
 __all__ = [

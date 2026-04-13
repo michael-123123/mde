@@ -1,33 +1,17 @@
 """Tests for the markdown editor CLI."""
 
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from markdown_editor.markdown6.markdown_editor_cli import (
-    create_parser,
-    main,
-    cmd_export,
-    cmd_stats,
-    cmd_validate,
-    cmd_graph,
-    cmd_install_desktop,
-    cmd_uninstall_desktop,
-    read_stdin,
-    get_project_files,
-    _install_desktop_linux,
-    _uninstall_desktop_linux,
-    _install_desktop_windows,
-    _uninstall_desktop_windows,
-    _install_desktop_macos,
-    _uninstall_desktop_macos,
-    _create_windows_shortcut,
-    _icons_dir,
-    _MACOS_APP_DIR,
-    _MACOS_APP_NAME,
-    _MACOS_INFO_PLIST,
-)
+    _MACOS_APP_NAME, _create_windows_shortcut, _icons_dir, _install_desktop_linux,
+    _install_desktop_macos, _install_desktop_windows, _uninstall_desktop_linux,
+    _uninstall_desktop_macos, _uninstall_desktop_windows, cmd_export,
+    cmd_graph, cmd_install_desktop, cmd_stats, cmd_uninstall_desktop,
+    cmd_validate, create_parser, get_project_files, main)
 
 
 class TestCreateParser:

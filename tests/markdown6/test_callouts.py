@@ -1,10 +1,9 @@
 """Tests for callout extensions (GitHub-style and admonition-style)."""
 
 import markdown
-from markdown_editor.markdown6.extensions.callouts import (
-    CalloutExtension,
-    get_callout_css,
-)
+
+from markdown_editor.markdown6.extensions.callouts import (CalloutExtension,
+                                                           get_callout_css)
 
 
 def _convert(text):

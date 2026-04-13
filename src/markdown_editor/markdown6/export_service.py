@@ -3,7 +3,6 @@
 Supports PDF, DOCX, and HTML export with pandoc (if available) or Python fallbacks.
 """
 
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -107,8 +106,8 @@ def export_docx(
 
 def _export_pdf_pandoc(content: str, output_path: str | Path) -> None:
     """Export to PDF using pandoc."""
-    from markdown_editor.markdown6.tool_paths import get_pandoc_path
     from markdown_editor.markdown6.temp_files import create_temp_file
+    from markdown_editor.markdown6.tool_paths import get_pandoc_path
 
     temp_path = create_temp_file(suffix=".md", content=content)
 
@@ -139,8 +138,8 @@ def _export_pdf_weasyprint(content: str, output_path: str | Path, title: str) ->
 
 def _export_docx_pandoc(content: str, output_path: str | Path) -> None:
     """Export to DOCX using pandoc."""
-    from markdown_editor.markdown6.tool_paths import get_pandoc_path
     from markdown_editor.markdown6.temp_files import create_temp_file
+    from markdown_editor.markdown6.tool_paths import get_pandoc_path
 
     temp_path = create_temp_file(suffix=".md", content=content)
 
@@ -158,8 +157,8 @@ def _export_docx_python(content: str, output_path: str | Path, title: str) -> No
     """Export to DOCX using python-docx."""
     try:
         from docx import Document
-        from docx.shared import Pt, Inches
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Inches, Pt
     except ImportError:
         raise ExportError(
             "DOCX export requires either pandoc or python-docx.\n"

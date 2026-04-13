@@ -4,15 +4,12 @@ Verifies that fenced code blocks with mermaid/dot/graphviz language tags
 are converted to the appropriate HTML elements for rendering.
 """
 
+from unittest.mock import patch
+
 import markdown
-from unittest.mock import patch, MagicMock
 
 from markdown_editor.markdown6.markdown_extensions import (
-    MermaidExtension,
-    MermaidPreprocessor,
-    GraphvizExtension,
-    GraphvizPreprocessor,
-)
+    GraphvizExtension, MermaidExtension)
 
 
 class TestMermaidServerSideRendering:
@@ -207,7 +204,8 @@ class TestMermaidService:
 
     @patch("markdown_editor.markdown6.tool_paths.get_mmdc_path", return_value=None)
     def test_render_without_mmdc(self, mock_path):
-        from markdown_editor.markdown6.mermaid_service import render_mermaid, clear_cache
+        from markdown_editor.markdown6.mermaid_service import (clear_cache,
+                                                               render_mermaid)
         clear_cache()
         svg, error = render_mermaid("graph TD\n    A --> B")
         assert error is not None
@@ -217,7 +215,8 @@ class TestMermaidService:
     @patch("markdown_editor.markdown6.mermaid_service._render_mermaid_impl")
     def test_caching(self, mock_impl):
         """Second call with same source should use cache."""
-        from markdown_editor.markdown6.mermaid_service import render_mermaid, clear_cache
+        from markdown_editor.markdown6.mermaid_service import (clear_cache,
+                                                               render_mermaid)
         clear_cache()
         mock_impl.return_value = ("<svg>cached</svg>", None)
         result1 = render_mermaid("graph TD\n    A --> B")

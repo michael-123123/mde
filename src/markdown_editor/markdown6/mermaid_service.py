@@ -7,7 +7,6 @@ Falls back to client-side mermaid.js if mmdc is not available.
 import hashlib
 import html
 import subprocess
-from pathlib import Path
 
 from markdown_editor.markdown6.logger import getLogger
 
@@ -129,6 +128,7 @@ def _make_svg_responsive(svg: str) -> str:
     max-width:100% on the container prevents horizontal overflow.
     """
     import re
+
     # Extract viewBox dimensions
     vb_match = re.search(r'viewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"', svg)
     if vb_match:

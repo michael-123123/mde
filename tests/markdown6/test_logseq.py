@@ -1,6 +1,7 @@
 """Tests for Logseq preview mode preprocessing."""
 
 import markdown
+
 from markdown_editor.markdown6.markdown_extensions import LogseqExtension
 
 

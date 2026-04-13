@@ -4,11 +4,9 @@ Verifies that zoom scales BOTH text and SVG diagrams (mermaid, graphviz)
 by comparing pixel counts at different zoom levels.
 """
 
-import re
-import pytest
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+import pytest
 from PySide6.QtGui import QImage
 
 try:

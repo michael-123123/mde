@@ -1,6 +1,7 @@
 """Logseq syntax preprocessing for clean preview rendering."""
 
 import re
+
 from markdown import Extension
 from markdown.preprocessors import Preprocessor
 
