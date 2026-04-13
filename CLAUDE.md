@@ -21,9 +21,7 @@ mde                    # short alias
 mde /path/to/file.md   # open a file
 
 # Run all markdown6 tests
-pytest tests/markdown6/
-# pytest-xdist is installed — on first test run, check if it's available
-# (python -c "import xdist"), and if so use -n4 for all subsequent runs.
+pytest tests/markdown6/ -p no:xdist
 
 # Run a single test file
 pytest tests/markdown6/test_export_service.py
