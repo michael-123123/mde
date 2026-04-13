@@ -44,6 +44,11 @@ class ThemeColors:
     # Links
     link: str
 
+    # Editor content area (intentionally different from UI chrome)
+    editor_text: str = ""
+    editor_bg: str = ""
+    editor_selection_bg: str = ""
+
 
 # Dark theme colors
 DARK_THEME = ThemeColors(
@@ -66,6 +71,9 @@ DARK_THEME = ThemeColors(
     info="#58a6ff",
     code_bg="#2d2d2d",
     link="#4ec9b0",
+    editor_text="#d4d4d4",
+    editor_bg="#1e1e1e",
+    editor_selection_bg="#264f78",
 )
 
 # Light theme colors
@@ -89,6 +97,9 @@ LIGHT_THEME = ThemeColors(
     info="#0969da",
     code_bg="#f6f8fa",
     link="#0366d6",
+    editor_text="#24292e",
+    editor_bg="#ffffff",
+    editor_selection_bg="#b3d7ff",
 )
 
 
@@ -591,6 +602,151 @@ class StyleSheets:
             QListWidget::item:hover {{
                 background-color: {theme.bg_tertiary};
             }}
+        """
+
+
+    @staticmethod
+    def editor(theme: ThemeColors) -> str:
+        """Stylesheet for the main text editor (QPlainTextEdit)."""
+        return f"""
+            QPlainTextEdit {{
+                background-color: {theme.editor_bg};
+                color: {theme.editor_text};
+                selection-background-color: {theme.editor_selection_bg};
+            }}
+        """
+
+    @staticmethod
+    def text_browser(theme: ThemeColors) -> str:
+        """Stylesheet for the preview pane (QTextBrowser fallback)."""
+        return f"""
+            QTextBrowser {{
+                background-color: {theme.editor_bg};
+                color: {theme.editor_text};
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                font-size: 14px;
+            }}
+        """
+
+    @staticmethod
+    def activity_bar(theme: ThemeColors) -> str:
+        """Stylesheet for the activity bar."""
+        return f"""
+            #ActivityBar {{
+                background-color: {theme.bg_secondary};
+                border-right: 1px solid {theme.border};
+            }}
+        """
+
+    @staticmethod
+    def tool_window(theme: ThemeColors) -> str:
+        """Stylesheet for the sidebar tool window."""
+        return f"""
+            #ToolWindow {{
+                background-color: {theme.bg_secondary};
+                border-right: 1px solid {theme.border};
+            }}
+            #ToolWindowHeader {{
+                background-color: {theme.bg_tertiary};
+                border-bottom: 1px solid {theme.border};
+            }}
+            #ToolWindowHeader QLabel {{
+                color: {theme.text_primary};
+            }}
+        """
+
+    @staticmethod
+    def external_change_bar(theme: ThemeColors) -> str:
+        """Stylesheet for the external file change notification bar."""
+        dark = theme.bg_primary == "#1e1e1e"
+        if dark:
+            return (
+                "ExternalChangeBar {"
+                "  background-color: #3b3000;"
+                "  border-bottom: 1px solid #665500;"
+                "}"
+                "ExternalChangeBar QLabel { color: #e0c040; }"
+                "ExternalChangeBar QPushButton {"
+                "  background-color: #4a4a00; color: #e0c040;"
+                "  border: 1px solid #665500; border-radius: 3px;"
+                "  padding: 2px 8px;"
+                "}"
+                "ExternalChangeBar QPushButton:hover {"
+                "  background-color: #5a5a00;"
+                "}"
+            )
+        return (
+            "ExternalChangeBar {"
+            "  background-color: #fff8c5;"
+            "  border-bottom: 1px solid #d4a72c;"
+            "}"
+            "ExternalChangeBar QLabel { color: #6a5300; }"
+            "ExternalChangeBar QPushButton {"
+            "  background-color: #f0e8a0; color: #6a5300;"
+            "  border: 1px solid #d4a72c; border-radius: 3px;"
+            "  padding: 2px 8px;"
+            "}"
+            "ExternalChangeBar QPushButton:hover {"
+            "  background-color: #e8d880;"
+            "}"
+        )
+
+    @staticmethod
+    def toggle_button_left(theme: ThemeColors) -> str:
+        """Stylesheet for the left toggle button (editor)."""
+        return f"""
+            QToolButton {{
+                border: 1px solid {theme.border};
+                border-right: none;
+                border-top-left-radius: 3px;
+                border-bottom-left-radius: 3px;
+                padding: 4px 8px;
+                background-color: {theme.bg_secondary};
+            }}
+            QToolButton:checked {{
+                background-color: {theme.bg_tertiary};
+            }}
+            QToolButton:hover {{
+                background-color: {theme.bg_input};
+            }}
+        """
+
+    @staticmethod
+    def toggle_button_right(theme: ThemeColors) -> str:
+        """Stylesheet for the right toggle button (preview)."""
+        return f"""
+            QToolButton {{
+                border: 1px solid {theme.border};
+                border-top-right-radius: 3px;
+                border-bottom-right-radius: 3px;
+                padding: 4px 8px;
+                background-color: {theme.bg_secondary};
+            }}
+            QToolButton:checked {{
+                background-color: {theme.bg_tertiary};
+            }}
+            QToolButton:hover {{
+                background-color: {theme.bg_input};
+            }}
+        """
+
+    @staticmethod
+    def tooltip(theme: ThemeColors) -> str:
+        """Stylesheet for tooltips."""
+        return f"""
+            QToolTip {{
+                color: {theme.text_primary};
+                background-color: {theme.bg_tertiary};
+                border: 1px solid {theme.border};
+            }}
+        """
+
+    @staticmethod
+    def muted_label(theme: ThemeColors) -> str:
+        """Stylesheet for muted/description labels."""
+        return f"""
+            color: {theme.text_muted}; font-size: 11px;
         """
 
 

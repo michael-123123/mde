@@ -20,7 +20,7 @@ from PySide6.QtGui import QFont
 
 from markdown_editor.markdown6.activity_bar import ActivityBar
 
-from markdown_editor.markdown6.theme import get_theme_from_ctx
+from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 
 
 class Sidebar(QWidget):
@@ -247,19 +247,7 @@ class Sidebar(QWidget):
         """Apply the current theme."""
         theme = get_theme_from_ctx(self.ctx)
 
-        self.tool_window.setStyleSheet(f"""
-            #ToolWindow {{
-                background-color: {theme.bg_secondary};
-                border-right: 1px solid {theme.border};
-            }}
-            #ToolWindowHeader {{
-                background-color: {theme.bg_tertiary};
-                border-bottom: 1px solid {theme.border};
-            }}
-            #ToolWindowHeader QLabel {{
-                color: {theme.text_primary};
-            }}
-        """)
+        self.tool_window.setStyleSheet(StyleSheets.tool_window(theme))
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting changes."""

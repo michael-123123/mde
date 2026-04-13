@@ -55,7 +55,7 @@ class ReferencesPanel(QWidget):
         header_layout.setContentsMargins(8, 4, 8, 4)
 
         self.status_label = QLabel("No file open")
-        self.status_label.setStyleSheet("color: gray; font-size: 11px;")
+        self.status_label.setObjectName("MutedLabel")
         header_layout.addWidget(self.status_label, 1)
 
         self.refresh_btn = QPushButton("↻")
@@ -257,12 +257,8 @@ class ReferencesPanel(QWidget):
         self.setStyleSheet(
             StyleSheets.panel(theme) +
             StyleSheets.tree_widget(theme) +
-            StyleSheets.flat_button(theme)
-        )
-
-        # Update status label color based on theme
-        self.status_label.setStyleSheet(
-            f"color: {theme.text_muted}; font-size: 11px; background-color: transparent;"
+            StyleSheets.flat_button(theme) +
+            f"#MutedLabel {{ {StyleSheets.muted_label(theme)} background-color: transparent; }}"
         )
 
     def _on_setting_changed(self, key: str, value):

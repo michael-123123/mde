@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 
 
 class FindReplaceBar(QWidget):

@@ -75,7 +75,8 @@ class SettingsDialog(QDialog):
             StyleSheets.check_box(theme) +
             StyleSheets.list_widget(theme) +
             StyleSheets.table_widget(theme) +
-            StyleSheets.scroll_area(theme)
+            StyleSheets.scroll_area(theme) +
+            f"#MutedLabel {{ {StyleSheets.muted_label(theme)} }}"
         )
 
     def _init_ui(self):
@@ -463,7 +464,7 @@ class SettingsDialog(QDialog):
         pandoc_layout.addRow("Path:", self._create_tool_row("Pandoc:", self.pandoc_path, "pandoc"))
         pandoc_desc = QLabel("Used for high-quality PDF and DOCX export. Install: apt install pandoc texlive-xetex")
         pandoc_desc.setWordWrap(True)
-        pandoc_desc.setStyleSheet("color: gray; font-size: 11px;")
+        pandoc_desc.setObjectName("MutedLabel")
         pandoc_layout.addRow("", pandoc_desc)
         layout.addWidget(pandoc_group)
 
@@ -474,7 +475,7 @@ class SettingsDialog(QDialog):
         dot_layout.addRow("Path:", self._create_tool_row("Graphviz:", self.dot_path, "dot"))
         dot_desc = QLabel("Renders ```dot and ```graphviz code blocks as SVG diagrams. Install: apt install graphviz")
         dot_desc.setWordWrap(True)
-        dot_desc.setStyleSheet("color: gray; font-size: 11px;")
+        dot_desc.setObjectName("MutedLabel")
         dot_layout.addRow("", dot_desc)
         layout.addWidget(dot_group)
 
@@ -485,7 +486,7 @@ class SettingsDialog(QDialog):
         mmdc_layout.addRow("Path:", self._create_tool_row("Mermaid:", self.mmdc_path, "mmdc"))
         mmdc_desc = QLabel("Renders ```mermaid code blocks as SVG diagrams. Install: npm install -g @mermaid-js/mermaid-cli")
         mmdc_desc.setWordWrap(True)
-        mmdc_desc.setStyleSheet("color: gray; font-size: 11px;")
+        mmdc_desc.setObjectName("MutedLabel")
         mmdc_layout.addRow("", mmdc_desc)
         layout.addWidget(mmdc_group)
 

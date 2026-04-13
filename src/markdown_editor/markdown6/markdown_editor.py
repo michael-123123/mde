@@ -172,13 +172,7 @@ def apply_application_theme(dark_mode: bool):
         StyleSheets.tab_widget(theme) +
         StyleSheets.status_bar(theme) +
         StyleSheets.splitter(theme) +
-        f"""
-            QToolTip {{
-                color: {theme.text_primary};
-                background-color: {theme.bg_tertiary};
-                border: 1px solid {theme.border};
-            }}
-        """
+        StyleSheets.tooltip(theme)
     )
 
 
@@ -310,39 +304,8 @@ class ExternalChangeBar(QWidget):
             self._apply_theme()
 
     def _apply_theme(self):
-        dark = self.ctx.get("view.theme", "light") == "dark"
-        if dark:
-            self.setStyleSheet(
-                "ExternalChangeBar {"
-                "  background-color: #3b3000;"
-                "  border-bottom: 1px solid #665500;"
-                "}"
-                "ExternalChangeBar QLabel { color: #e0c040; }"
-                "ExternalChangeBar QPushButton {"
-                "  background-color: #4a4a00; color: #e0c040;"
-                "  border: 1px solid #665500; border-radius: 3px;"
-                "  padding: 2px 8px;"
-                "}"
-                "ExternalChangeBar QPushButton:hover {"
-                "  background-color: #5a5a00;"
-                "}"
-            )
-        else:
-            self.setStyleSheet(
-                "ExternalChangeBar {"
-                "  background-color: #fff8c5;"
-                "  border-bottom: 1px solid #d4a72c;"
-                "}"
-                "ExternalChangeBar QLabel { color: #6a5300; }"
-                "ExternalChangeBar QPushButton {"
-                "  background-color: #f0e8a0; color: #6a5300;"
-                "  border: 1px solid #d4a72c; border-radius: 3px;"
-                "  padding: 2px 8px;"
-                "}"
-                "ExternalChangeBar QPushButton:hover {"
-                "  background-color: #e8d880;"
-                "}"
-            )
+        theme = get_theme_from_ctx(self.ctx)
+        self.setStyleSheet(StyleSheets.external_change_bar(theme))
 
 
 # Custom WebEnginePage to intercept link clicks
@@ -494,25 +457,8 @@ class DocumentTab(QWidget):
             return
 
         # QTextBrowser widget styling
-        if theme == "dark":
-            self.preview.setStyleSheet("""
-                QTextBrowser {
-                    background-color: #1e1e1e;
-                    color: #d4d4d4;
-                    padding: 20px;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-                    font-size: 14px;
-                }
-            """)
-        else:
-            self.preview.setStyleSheet("""
-                QTextBrowser {
-                    background-color: #ffffff;
-                    padding: 20px;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-                    font-size: 14px;
-                }
-            """)
+        colors = get_theme(theme == "dark")
+        self.preview.setStyleSheet(StyleSheets.text_browser(colors))
 
     def _apply_settings(self):
         """Apply current settings."""
@@ -2561,41 +2507,8 @@ class MarkdownEditor(QMainWindow):
     def _apply_toggle_button_theme(self):
         """Apply theme to the editor/preview toggle buttons."""
         theme = get_theme_from_ctx(self.ctx)
-
-        # Left button (editor toggle)
-        self.editor_toggle_btn.setStyleSheet(f"""
-            QToolButton {{
-                border: 1px solid {theme.border};
-                border-right: none;
-                border-top-left-radius: 3px;
-                border-bottom-left-radius: 3px;
-                padding: 4px 8px;
-                background-color: {theme.bg_secondary};
-            }}
-            QToolButton:checked {{
-                background-color: {theme.bg_tertiary};
-            }}
-            QToolButton:hover {{
-                background-color: {theme.bg_input};
-            }}
-        """)
-
-        # Right button (preview toggle)
-        self.preview_toggle_btn.setStyleSheet(f"""
-            QToolButton {{
-                border: 1px solid {theme.border};
-                border-top-right-radius: 3px;
-                border-bottom-right-radius: 3px;
-                padding: 4px 8px;
-                background-color: {theme.bg_secondary};
-            }}
-            QToolButton:checked {{
-                background-color: {theme.bg_tertiary};
-            }}
-            QToolButton:hover {{
-                background-color: {theme.bg_input};
-            }}
-        """)
+        self.editor_toggle_btn.setStyleSheet(StyleSheets.toggle_button_left(theme))
+        self.preview_toggle_btn.setStyleSheet(StyleSheets.toggle_button_right(theme))
 
     def _apply_full_theme(self):
         """Apply complete theme to app and all widgets.

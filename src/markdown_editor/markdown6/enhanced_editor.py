@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
 
 from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
+from markdown_editor.markdown6.theme import get_theme, StyleSheets
 
 
 class FoldingRegion:
@@ -280,22 +281,8 @@ class EnhancedEditor(QPlainTextEdit):
         theme = self.ctx.get("view.theme", "light")
         dark = theme == "dark"
 
-        if dark:
-            self.setStyleSheet("""
-                QPlainTextEdit {
-                    background-color: #1e1e1e;
-                    color: #d4d4d4;
-                    selection-background-color: #264f78;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QPlainTextEdit {
-                    background-color: #ffffff;
-                    color: #24292e;
-                    selection-background-color: #b3d7ff;
-                }
-            """)
+        colors = get_theme(dark)
+        self.setStyleSheet(StyleSheets.editor(colors))
 
         self.highlighter.set_dark_mode(dark)
 
