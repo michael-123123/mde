@@ -32,6 +32,8 @@ pytest tests/markdown6/test_export_service.py::TestMarkdownToHtml::test_basic_co
 
 No linter, formatter, or CI pipeline is configured.
 
+**pytest rules:** Never use `-q` (quiet mode). Don't truncate output (no `| tail`, `| head`, etc.) unless you have a specific reason to.
+
 ## Architecture
 
 Widget-based architecture using Qt signal/slot for inter-component communication. No formal MVC — UI and logic are mixed in widget classes.
