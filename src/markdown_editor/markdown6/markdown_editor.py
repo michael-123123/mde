@@ -929,6 +929,7 @@ class MarkdownEditor(QMainWindow):
                 CodeHiliteExtension(css_class="highlight", guess_lang=True),
                 TableExtension(),
                 TocExtension(),
+                'admonition',
                 CalloutExtension(),
                 WikiLinkExtension(),
                 MathExtension(),

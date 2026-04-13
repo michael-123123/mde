@@ -110,10 +110,66 @@ class CalloutExtension(Extension):
         )
 
 
-def get_callout_css(dark_mode: bool = False) -> str:
-    """Get CSS for callout styling."""
+def _admonition_css(dark_mode: bool = False) -> str:
+    """CSS for Python-Markdown !!! admonition syntax."""
+    # Map admonition types to the same palette as GitHub-style callouts.
+    # Types not in this map inherit the default (note) style.
     if dark_mode:
         return """
+        .admonition {
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+            border-left: 4px solid #0969da;
+            background: #193c47;
+        }
+        .admonition-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #58a6ff;
+        }
+        .admonition.note, .admonition.info { background: #193c47; border-color: #0969da; }
+        .admonition.note .admonition-title, .admonition.info .admonition-title { color: #58a6ff; }
+        .admonition.tip, .admonition.success, .admonition.example { background: #1b4721; border-color: #1a7f37; }
+        .admonition.tip .admonition-title, .admonition.success .admonition-title, .admonition.example .admonition-title { color: #3fb950; }
+        .admonition.important, .admonition.abstract, .admonition.question { background: #341c4f; border-color: #8250df; }
+        .admonition.important .admonition-title, .admonition.abstract .admonition-title, .admonition.question .admonition-title { color: #a371f7; }
+        .admonition.warning, .admonition.quote { background: #4d3800; border-color: #9a6700; }
+        .admonition.warning .admonition-title, .admonition.quote .admonition-title { color: #d29922; }
+        .admonition.caution, .admonition.danger, .admonition.failure, .admonition.bug { background: #5a1d23; border-color: #cf222e; }
+        .admonition.caution .admonition-title, .admonition.danger .admonition-title, .admonition.failure .admonition-title, .admonition.bug .admonition-title { color: #f85149; }
+        """
+    else:
+        return """
+        .admonition {
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+            border-left: 4px solid #0969da;
+            background: #ddf4ff;
+        }
+        .admonition-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #0969da;
+        }
+        .admonition.note, .admonition.info { background: #ddf4ff; border-color: #0969da; }
+        .admonition.note .admonition-title, .admonition.info .admonition-title { color: #0969da; }
+        .admonition.tip, .admonition.success, .admonition.example { background: #dafbe1; border-color: #1a7f37; }
+        .admonition.tip .admonition-title, .admonition.success .admonition-title, .admonition.example .admonition-title { color: #1a7f37; }
+        .admonition.important, .admonition.abstract, .admonition.question { background: #fbefff; border-color: #8250df; }
+        .admonition.important .admonition-title, .admonition.abstract .admonition-title, .admonition.question .admonition-title { color: #8250df; }
+        .admonition.warning, .admonition.quote { background: #fff8c5; border-color: #9a6700; }
+        .admonition.warning .admonition-title, .admonition.quote .admonition-title { color: #9a6700; }
+        .admonition.caution, .admonition.danger, .admonition.failure, .admonition.bug { background: #ffebe9; border-color: #cf222e; }
+        .admonition.caution .admonition-title, .admonition.danger .admonition-title, .admonition.failure .admonition-title, .admonition.bug .admonition-title { color: #cf222e; }
+        """
+
+
+def get_callout_css(dark_mode: bool = False) -> str:
+    """Get CSS for callout styling (GitHub-style and admonition-style)."""
+    if dark_mode:
+        callout = """
         .callout {
             padding: 16px;
             margin: 16px 0;
@@ -139,7 +195,7 @@ def get_callout_css(dark_mode: bool = False) -> str:
         .callout-caution .callout-title { color: #f85149; }
         """
     else:
-        return """
+        callout = """
         .callout {
             padding: 16px;
             margin: 16px 0;
@@ -164,3 +220,4 @@ def get_callout_css(dark_mode: bool = False) -> str:
         .callout-caution { background: #ffebe9; border-color: #cf222e; }
         .callout-caution .callout-title { color: #cf222e; }
         """
+    return callout + _admonition_css(dark_mode)
