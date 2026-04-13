@@ -21,7 +21,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSizePolicy, QTextBrowser
 
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
-from markdown_editor.markdown6.markdown_editor import FindReplaceBar
+from markdown_editor.markdown6.find_replace_bar import FindReplaceBar
 
 
 # ---------------------------------------------------------------------------
