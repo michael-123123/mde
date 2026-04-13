@@ -7,11 +7,11 @@ Provides VSCode/PyCharm-style activity bar with:
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPainter, QFontMetrics, QColor, QFont
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QFrame
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QWidget
 
-
-from markdown_editor.markdown6.theme import get_theme_from_ctx, ThemeColors, StyleSheets
+from markdown_editor.markdown6.theme import (StyleSheets, ThemeColors,
+                                             get_theme_from_ctx)
 
 
 class ActivityTab(QWidget):

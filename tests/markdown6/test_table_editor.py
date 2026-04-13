@@ -1,10 +1,10 @@
 """Tests for the table editor module."""
 
 import pytest
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidgetItem
 
-from markdown_editor.markdown6.table_editor import TableEditorDialog, create_table_from_size
+from markdown_editor.markdown6.components.table_editor import (
+    TableEditorDialog, create_table_from_size)
 
 
 @pytest.fixture

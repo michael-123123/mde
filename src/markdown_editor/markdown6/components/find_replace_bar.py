@@ -4,19 +4,10 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor, QTextDocument
-from PySide6.QtWidgets import (
-    QCheckBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import (QCheckBox, QHBoxLayout, QLabel, QLineEdit,
+                               QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 
 
 class FindReplaceBar(QWidget):

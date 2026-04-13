@@ -6,21 +6,13 @@ Provides VSCode/PyCharm-style sidebar with:
 - Click active tab to collapse, click other tab to switch/expand
 """
 
-from PySide6.QtCore import Qt, Signal, QVariantAnimation, QEasingCurve
-from PySide6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QStackedWidget,
-    QFrame,
-    QLabel,
-    QSizePolicy,
-)
+from PySide6.QtCore import QEasingCurve, QVariantAnimation, Signal
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QSizePolicy,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
-from markdown_editor.markdown6.activity_bar import ActivityBar
-
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
+from markdown_editor.markdown6.components.activity_bar import ActivityBar
+from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 
 
 class Sidebar(QWidget):

@@ -4,14 +4,9 @@ import re
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
-    QTreeWidget,
-    QTreeWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import (QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+                               QWidget)
 
-from markdown_editor.markdown6.app_context import AppContext
 
 
 @dataclass
@@ -50,7 +45,8 @@ class OutlinePanel(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
+        from markdown_editor.markdown6.theme import (StyleSheets,
+                                                     get_theme_from_ctx)
 
         theme = get_theme_from_ctx(self.ctx)
 

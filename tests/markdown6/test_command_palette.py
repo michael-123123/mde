@@ -2,7 +2,8 @@
 
 import pytest
 
-from markdown_editor.markdown6.command_palette import Command, CommandPalette
+from markdown_editor.markdown6.components.command_palette import (
+    Command, CommandPalette)
 
 
 @pytest.fixture

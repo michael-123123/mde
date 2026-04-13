@@ -14,15 +14,15 @@ Covers:
 - Generation counter discards stale WebEngine callbacks
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSizePolicy, QTextBrowser
 
+from markdown_editor.markdown6.components.find_replace_bar import \
+    FindReplaceBar
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
-from markdown_editor.markdown6.find_replace_bar import FindReplaceBar
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -2,8 +2,8 @@
 
 import pytest
 
-from markdown_editor.markdown6.markdown_editor import ExternalChangeBar
 from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.markdown_editor import ExternalChangeBar
 
 
 @pytest.fixture

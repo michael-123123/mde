@@ -1,14 +1,10 @@
 """Tests for the graph export module."""
 
-import pytest
-import re
 from pathlib import Path
 
-from markdown_editor.markdown6.graph_export import (
-    WIKI_LINK_PATTERN,
-    MD_LINK_PATTERN,
-    VerticalTab,
-)
+
+from markdown_editor.markdown6.components.graph_export import (
+    MD_LINK_PATTERN, WIKI_LINK_PATTERN, VerticalTab)
 
 
 class TestLinkPatterns:

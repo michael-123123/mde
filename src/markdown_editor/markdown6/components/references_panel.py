@@ -5,15 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QPushButton,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QVBoxLayout,
-    QWidget,
-    QLabel,
-)
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QTreeWidget,
+                               QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from markdown_editor.markdown6.app_context import get_project_markdown_files
 
@@ -250,7 +243,8 @@ class ReferencesPanel(QWidget):
 
     def _apply_theme(self):
         """Apply the current theme."""
-        from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
+        from markdown_editor.markdown6.theme import (StyleSheets,
+                                                     get_theme_from_ctx)
 
         theme = get_theme_from_ctx(self.ctx)
 

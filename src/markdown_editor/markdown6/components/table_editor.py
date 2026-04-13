@@ -1,22 +1,11 @@
 """Visual table editor for creating and editing markdown tables."""
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QPushButton,
-    QSpinBox,
-    QLabel,
-    QComboBox,
-    QDialogButtonBox,
-    QWidget,
-    QHeaderView,
-)
+from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
+                               QHBoxLayout, QHeaderView, QLabel, QPushButton,
+                               QSpinBox, QTableWidget, QTableWidgetItem,
+                               QVBoxLayout, QWidget)
 
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
+from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 
 
 class TableEditorDialog(QDialog):

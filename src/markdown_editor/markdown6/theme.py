@@ -1,9 +1,7 @@
 """Centralized theme system for the Markdown editor."""
 
 from dataclasses import dataclass
-from typing import ClassVar
 
-from PySide6.QtGui import QColor
 
 
 @dataclass

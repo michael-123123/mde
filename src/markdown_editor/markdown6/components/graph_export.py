@@ -6,41 +6,27 @@ Generates a Graphviz graph from document links in a project.
 import re
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QRadioButton,
-    QSizePolicy,
-    QSplitter,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+                               QDialogButtonBox, QFileDialog, QGroupBox,
+                               QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+                               QPushButton, QRadioButton, QSizePolicy,
+                               QSplitter, QVBoxLayout, QWidget)
 
 try:
-    from PySide6.QtWebEngineWidgets import QWebEngineView
     from PySide6.QtWebEngineCore import QWebEnginePage
+    from PySide6.QtWebEngineWidgets import QWebEngineView
     HAS_WEBENGINE = True
 except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
 
-from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-from markdown_editor.markdown6.app_context import get_app_context, get_project_markdown_files
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
 from markdown_editor.markdown6 import graphviz_service
-
+from markdown_editor.markdown6.app_context import (get_app_context,
+                                                   get_project_markdown_files)
+from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
+from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 
 # Link detection patterns
 WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')

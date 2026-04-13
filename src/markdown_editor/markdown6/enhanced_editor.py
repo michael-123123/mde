@@ -2,42 +2,24 @@
 
 import re
 import uuid
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
 
-from PySide6.QtCore import Qt, QRect, QSize, QTimer, Signal, QFileSystemWatcher, QMimeData, QPoint
-from PySide6.QtGui import (
-    QColor,
-    QCursor,
-    QFont,
-    QFontMetrics,
-    QImage,
-    QKeySequence,
-    QPainter,
-    QTextCursor,
-    QTextFormat,
-    QTextOption,
-    QTextBlock,
-    QPolygon,
-)
-from PySide6.QtWidgets import (
-    QApplication,
-    QCompleter,
-    QFileDialog,
-    QListWidget,
-    QListWidgetItem,
-    QPlainTextEdit,
-    QTextEdit,
-    QWidget,
-)
+from PySide6.QtCore import (QFileSystemWatcher, QMimeData, QPoint, QRect,
+                            QSize, Qt, QTimer, Signal)
+from PySide6.QtGui import (QColor, QCursor, QFont, QImage,
+                           QPainter, QPolygon, QTextCursor, QTextFormat, QTextOption)
+from PySide6.QtWidgets import (QApplication, QFileDialog,
+                               QListWidget, QPlainTextEdit,
+                               QTextEdit, QWidget)
 
 from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
-from markdown_editor.markdown6.theme import get_theme, StyleSheets
+from markdown_editor.markdown6.theme import StyleSheets, get_theme
 
 
 class FoldingRegion:

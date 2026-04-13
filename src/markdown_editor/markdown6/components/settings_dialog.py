@@ -2,39 +2,19 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
-from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QFormLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QHeaderView,
-    QKeySequenceEdit,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QSizePolicy,
-    QDoubleSpinBox,
-    QFontComboBox,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
+                               QDoubleSpinBox, QFileDialog, QFontComboBox,
+                               QFormLayout, QGroupBox, QHBoxLayout,
+                               QHeaderView, QKeySequenceEdit, QLabel,
+                               QLineEdit, QListWidget, QListWidgetItem,
+                               QMessageBox, QPushButton, QScrollArea,
+                               QSizePolicy, QSpinBox, QSplitter,
+                               QStackedWidget, QTableWidget, QTableWidgetItem,
+                               QVBoxLayout, QWidget)
 
-from markdown_editor.markdown6.app_context import get_app_context, DEFAULT_SETTINGS
-from markdown_editor.markdown6.app_context import DEFAULT_SHORTCUTS
-from markdown_editor.markdown6.theme import get_theme_from_ctx, StyleSheets
+from markdown_editor.markdown6.app_context import (DEFAULT_SHORTCUTS,
+                                                   get_app_context)
+from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 
 
 class SettingsDialog(QDialog):

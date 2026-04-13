@@ -1,41 +1,24 @@
 """A feature-rich Qt6 Markdown editor with split-screen editing and preview."""
 
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from concurrent.futures import ThreadPoolExecutor
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
-from PySide6.QtCore import Qt, QObject, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QIcon, QKeySequence, QTextCursor, QTextDocument, QShortcut, QAction, QPalette, QColor
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QHBoxLayout,
-    QInputDialog,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QMenu,
-    QMessageBox,
-    QPushButton,
-    QSizePolicy,
-    QSplitter,
-    QStyle,
-    QTabWidget,
-    QTextBrowser,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import (QColor, QDesktopServices, QIcon,
+                           QKeySequence, QPalette, QShortcut, QTextCursor)
+from PySide6.QtWidgets import (QApplication, QDialog,
+                               QFileDialog, QHBoxLayout,
+                               QInputDialog, QLabel, QMainWindow,
+                               QMenu, QMessageBox, QSplitter, QStyle, QTabWidget, QTextBrowser,
+                               QToolButton, QVBoxLayout, QWidget)
 
 try:
-    from PySide6.QtWebEngineWidgets import QWebEngineView
     from PySide6.QtWebEngineCore import QWebEnginePage
+    from PySide6.QtWebEngineWidgets import QWebEngineView
     HAS_WEBENGINE = True
 except ImportError:
     HAS_WEBENGINE = False
@@ -86,7 +69,9 @@ def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | No
     """Render diagram source to an SVG temp file. Returns the file path or None."""
     import json
     import subprocess
-    from markdown_editor.markdown6.temp_files import create_temp_file, create_temp_dir
+
+    from markdown_editor.markdown6.temp_files import (create_temp_dir,
+                                                      create_temp_file)
 
     if kind == 'mermaid':
         from markdown_editor.markdown6.tool_paths import get_mmdc_path
@@ -211,102 +196,35 @@ def convert_lists_for_qtextbrowser(html: str) -> str:
     return html
 
 
-from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
-from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.theme import get_theme, get_theme_from_ctx, StyleSheets
-from markdown_editor.markdown6.settings_dialog import SettingsDialog
-from markdown_editor.markdown6.outline_panel import OutlinePanel
-from markdown_editor.markdown6.references_panel import ReferencesPanel
-from markdown_editor.markdown6.command_palette import CommandPalette, Command
-from markdown_editor.markdown6.table_editor import TableEditorDialog
-from markdown_editor.markdown6.snippets import get_snippet_manager, SnippetPopup
-from markdown_editor.markdown6.project_manager import ProjectPanel
-from markdown_editor.markdown6.sidebar import Sidebar
-from markdown_editor.markdown6.search_panel import SearchPanel
-from markdown_editor.markdown6.markdown_extensions import (
-    BreaklessListExtension,
-    CalloutExtension,
-    LogseqExtension,
-    WikiLinkExtension,
-    MathExtension,
-    MermaidExtension,
-    GraphvizExtension,
-    TaskListExtension,
-    SourceLineExtension,
-    get_callout_css,
-    get_math_js,
-    get_mermaid_js,
-    get_mermaid_css,
-    get_tasklist_css,
-)
 from markdown_editor.markdown6 import graphviz_service
-from markdown_editor.markdown6 import mermaid_service
-from markdown_editor.markdown6.graph_export import GraphExportDialog
+from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.components.command_palette import (
+    Command, CommandPalette)
+from markdown_editor.markdown6.components.external_change_bar import \
+    ExternalChangeBar
+from markdown_editor.markdown6.components.find_replace_bar import \
+    FindReplaceBar  # noqa: E302
+from markdown_editor.markdown6.components.graph_export import GraphExportDialog
+from markdown_editor.markdown6.components.outline_panel import OutlinePanel
+from markdown_editor.markdown6.components.references_panel import \
+    ReferencesPanel
+from markdown_editor.markdown6.components.search_panel import SearchPanel
+from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
+from markdown_editor.markdown6.components.sidebar import Sidebar
+from markdown_editor.markdown6.components.table_editor import TableEditorDialog
+from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+from markdown_editor.markdown6.markdown_extensions import (
+    BreaklessListExtension, CalloutExtension, GraphvizExtension,
+    LogseqExtension, MathExtension, MermaidExtension, SourceLineExtension,
+    TaskListExtension, WikiLinkExtension, get_callout_css, get_math_js,
+    get_mermaid_css, get_mermaid_js, get_tasklist_css)
+from markdown_editor.markdown6.project_manager import ProjectPanel
+from markdown_editor.markdown6.snippets import (SnippetPopup,
+                                                get_snippet_manager)
 from markdown_editor.markdown6.templates.preview import (
-    PREVIEW_TEMPLATE_SIMPLE,
-    PREVIEW_TEMPLATE_FULL,
-)
-
-
-from markdown_editor.markdown6.find_replace_bar import FindReplaceBar  # noqa: E302
-
-
-class ExternalChangeBar(QWidget):
-    """Non-modal notification bar shown when a file is modified externally."""
-
-    reload_requested = Signal()
-    dismissed = Signal()
-
-    def __init__(self, ctx, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.ctx = ctx
-        self._init_ui()
-        self._apply_theme()
-        self.ctx.settings_changed.connect(self._on_setting_changed)
-        self.hide()
-
-    def _init_ui(self):
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 8, 4)
-        layout.setSpacing(4)
-
-        self.message_label = QLabel()
-        self.message_label.setTextFormat(Qt.TextFormat.PlainText)
-        layout.addWidget(self.message_label, 1)
-
-        self.reload_btn = QPushButton("Reload")
-        self.reload_btn.clicked.connect(self._on_reload)
-        layout.addWidget(self.reload_btn)
-
-        self.dismiss_btn = QPushButton("Dismiss")
-        self.dismiss_btn.clicked.connect(self._on_dismiss)
-        layout.addWidget(self.dismiss_btn)
-
-    def show_change(self, filename: str):
-        """Show the bar for the given file. Coalesces repeated calls."""
-        self.message_label.setText(
-            f"\u26a0  {filename} has been modified externally."
-        )
-        if not self.isVisible():
-            self.show()
-
-    def _on_reload(self):
-        self.hide()
-        self.reload_requested.emit()
-
-    def _on_dismiss(self):
-        self.hide()
-        self.dismissed.emit()
-
-    def _on_setting_changed(self, key: str, value):
-        if key == "view.theme":
-            self._apply_theme()
-
-    def _apply_theme(self):
-        theme = get_theme_from_ctx(self.ctx)
-        self.setStyleSheet(StyleSheets.external_change_bar(theme))
-
+    PREVIEW_TEMPLATE_FULL, PREVIEW_TEMPLATE_SIMPLE)
+from markdown_editor.markdown6.theme import (StyleSheets, get_theme,
+                                             get_theme_from_ctx)
 
 # Custom WebEnginePage to intercept link clicks
 if HAS_WEBENGINE:
@@ -495,7 +413,7 @@ class DocumentTab(QWidget):
 
     def _on_open_image(self, url: QUrl):
         """Handle Ctrl+click on images/diagrams in the preview."""
-        from urllib.parse import unquote, parse_qs
+        from urllib.parse import parse_qs, unquote
 
         host = url.host()
         if host == 'diagram':
