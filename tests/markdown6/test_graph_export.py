@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-
 from markdown_editor.markdown6.components.graph_export import (
     MD_LINK_PATTERN, WIKI_LINK_PATTERN, VerticalTab)
 

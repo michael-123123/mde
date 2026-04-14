@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 
-
 @dataclass
 class ThemeColors:
     """Color definitions for a theme."""

@@ -11,11 +11,10 @@ logger = getLogger(__name__)
 
 from PySide6.QtCore import (QFileSystemWatcher, QMimeData, QPoint, QRect,
                             QSize, Qt, QTimer, Signal)
-from PySide6.QtGui import (QColor, QCursor, QFont, QImage,
-                           QPainter, QPolygon, QTextCursor, QTextFormat, QTextOption)
-from PySide6.QtWidgets import (QApplication, QFileDialog,
-                               QListWidget, QPlainTextEdit,
-                               QTextEdit, QWidget)
+from PySide6.QtGui import (QColor, QCursor, QFont, QImage, QPainter, QPolygon,
+                           QTextCursor, QTextFormat, QTextOption)
+from PySide6.QtWidgets import (QApplication, QFileDialog, QListWidget,
+                               QPlainTextEdit, QTextEdit, QWidget)
 
 from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter

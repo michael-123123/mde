@@ -2,7 +2,7 @@
 
 import pytest
 
-from markdown_editor.markdown6.app_context import (get_app_context)
+from markdown_editor.markdown6.app_context import get_app_context
 
 
 class _Ctx:

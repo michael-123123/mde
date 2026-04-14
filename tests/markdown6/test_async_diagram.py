@@ -74,7 +74,8 @@ class TestAsyncDiagramUnit:
 
     def test_render_diagram_function(self):
         """The _render_diagram function should call the right service."""
-        from markdown_editor.markdown6.markdown_editor import _render_diagram
+        from markdown_editor.markdown6.components.document_tab import \
+            _render_diagram
 
         with patch("markdown_editor.markdown6.mermaid_service.render_mermaid",
                     return_value=("<svg>m</svg>", None)):

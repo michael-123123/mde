@@ -157,7 +157,7 @@ def _export_docx_python(content: str, output_path: str | Path, title: str) -> No
     """Export to DOCX using python-docx."""
     try:
         from docx import Document
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: F401
         from docx.shared import Inches, Pt
     except ImportError:
         raise ExportError(

@@ -1030,7 +1030,7 @@ _COMPLETABLE_COMMANDS = ["mde", "markdown-editor"]
 def cmd_install_autocomplete(args: argparse.Namespace) -> int:
     """Register argcomplete shell completion for mde and markdown-editor."""
     try:
-        import argcomplete
+        import argcomplete  # noqa: F401
     except ImportError:
         print("argcomplete is not installed. Run: pip install argcomplete", file=sys.stderr)
         return 1

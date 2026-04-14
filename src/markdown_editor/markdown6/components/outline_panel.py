@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (QTreeWidget, QTreeWidgetItem, QVBoxLayout,
                                QWidget)
 
 
-
 @dataclass
 class Heading:
     """Represents a heading in the document."""

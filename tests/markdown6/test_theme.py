@@ -2,7 +2,8 @@
 
 
 from markdown_editor.markdown6.theme import (DARK_THEME, LIGHT_THEME,
-                                             StyleSheets, apply_theme, get_theme)
+                                             StyleSheets, apply_theme,
+                                             get_theme)
 
 
 class TestThemeColors:

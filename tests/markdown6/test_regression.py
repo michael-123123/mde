@@ -408,8 +408,8 @@ class TestPreviewDarkModeBackground:
         from PySide6.QtWidgets import QApplication
 
         from markdown_editor.markdown6.app_context import get_app_context
-        from markdown_editor.markdown6.markdown_editor import (HAS_WEBENGINE,
-                                                               DocumentTab)
+        from markdown_editor.markdown6.components.document_tab import (
+            HAS_WEBENGINE, DocumentTab)
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -430,8 +430,8 @@ class TestPreviewDarkModeBackground:
         from PySide6.QtWidgets import QApplication
 
         from markdown_editor.markdown6.app_context import get_app_context
-        from markdown_editor.markdown6.markdown_editor import (HAS_WEBENGINE,
-                                                               DocumentTab)
+        from markdown_editor.markdown6.components.document_tab import (
+            HAS_WEBENGINE, DocumentTab)
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -699,9 +699,9 @@ class TestMathRendering:
         from PySide6.QtWidgets import QApplication
 
         from markdown_editor.markdown6.app_context import get_app_context
+        from markdown_editor.markdown6.components.document_tab import (
+            HAS_WEBENGINE, DocumentTab)
         from markdown_editor.markdown6.extensions.math import get_math_js
-        from markdown_editor.markdown6.markdown_editor import (HAS_WEBENGINE,
-                                                               DocumentTab)
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -751,8 +751,8 @@ class TestPreviewWheelScrollSync:
     def test_wheel_filter_installed(self, qtbot):
         """The wheel event filter should be installed on the preview."""
         from markdown_editor.markdown6.app_context import get_app_context
-        from markdown_editor.markdown6.markdown_editor import (HAS_WEBENGINE,
-                                                               DocumentTab)
+        from markdown_editor.markdown6.components.document_tab import (
+            HAS_WEBENGINE, DocumentTab)
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
