@@ -806,24 +806,15 @@ class MarkdownEditor(QMainWindow):
         dark_mode = theme == "dark"
         scroll_past_end = self.ctx.get("editor.scroll_past_end", True)
 
-        if dark_mode:
-            bg_color = "#1e1e1e"
-            text_color = "#d4d4d4"
-            heading_border = "#333"
-            code_bg = "#2d2d2d"
-            blockquote_color = "#888"
-            link_color = "#4ec9b0"
-            pygments_style = "monokai"
-            body_class = "dark"
-        else:
-            bg_color = "#ffffff"
-            text_color = "#24292e"
-            heading_border = "#eaecef"
-            code_bg = "#f6f8fa"
-            blockquote_color = "#6a737d"
-            link_color = "#0366d6"
-            pygments_style = "github-dark"
-            body_class = "light"
+        colors = get_theme(dark_mode)
+        bg_color = colors.editor_bg
+        text_color = colors.editor_text
+        heading_border = colors.preview_heading_border
+        code_bg = colors.code_bg
+        blockquote_color = colors.preview_blockquote
+        link_color = colors.link
+        pygments_style = "monokai" if dark_mode else "github-dark"
+        body_class = "dark" if dark_mode else "light"
 
         font_size = self.ctx.get("view.preview_font_size", 14)
 

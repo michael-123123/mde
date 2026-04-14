@@ -46,6 +46,10 @@ class ThemeColors:
     editor_bg: str = ""
     editor_selection_bg: str = ""
 
+    # Preview pane (GitHub-flavored markdown styling)
+    preview_blockquote: str = ""
+    preview_heading_border: str = ""
+
 
 # Dark theme colors
 DARK_THEME = ThemeColors(
@@ -71,6 +75,8 @@ DARK_THEME = ThemeColors(
     editor_text="#d4d4d4",
     editor_bg="#1e1e1e",
     editor_selection_bg="#264f78",
+    preview_blockquote="#888888",
+    preview_heading_border="#333333",
 )
 
 # Light theme colors
@@ -97,6 +103,8 @@ LIGHT_THEME = ThemeColors(
     editor_text="#24292e",
     editor_bg="#ffffff",
     editor_selection_bg="#b3d7ff",
+    preview_blockquote="#6a737d",
+    preview_heading_border="#eaecef",
 )
 
 

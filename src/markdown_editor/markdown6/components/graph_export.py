@@ -26,7 +26,7 @@ from markdown_editor.markdown6 import graphviz_service
 from markdown_editor.markdown6.app_context import (get_app_context,
                                                    get_project_markdown_files)
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
+from markdown_editor.markdown6.theme import StyleSheets, get_theme, get_theme_from_ctx
 
 # Link detection patterns
 WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
@@ -562,8 +562,9 @@ class GraphExportDialog(QDialog):
         """Show a message in the preview area."""
         if HAS_WEBENGINE and isinstance(self.preview_view, QWebEngineView):
             dark_mode = self.ctx.get("view.theme") == "dark"
-            bg = "#1e1e1e" if dark_mode else "#ffffff"
-            color = "#888"
+            colors = get_theme(dark_mode)
+            bg = colors.editor_bg
+            color = colors.preview_blockquote
             html = f'<html><body style="background:{bg};color:{color};display:flex;justify-content:center;align-items:center;height:100vh;margin:0">{message}</body></html>'
             self.preview_view.setHtml(html)
         else:
@@ -571,7 +572,7 @@ class GraphExportDialog(QDialog):
 
     def _create_preview_html(self, svg_content: str, dark_mode: bool) -> str:
         """Create HTML for the preview with clickable nodes, zoom and pan."""
-        bg_color = "#1e1e1e" if dark_mode else "#ffffff"
+        bg_color = get_theme(dark_mode).editor_bg
 
         return f"""<!DOCTYPE html>
 <html><head><style>
@@ -1058,8 +1059,9 @@ class GraphPreviewDialog(QDialog):
 
     def _create_interactive_html(self) -> str:
         """Create HTML with interactive SVG."""
-        bg_color = "#1e1e1e" if self.dark_mode else "#ffffff"
-        text_color = "#d4d4d4" if self.dark_mode else "#333333"
+        _colors = get_theme(self.dark_mode)
+        bg_color = _colors.editor_bg
+        text_color = "#d4d4d4" if self.dark_mode else "#333333"  # mixed: editor_text dark, text_primary light
 
         return f"""<!DOCTYPE html>
 <html>

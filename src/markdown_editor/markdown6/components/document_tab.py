@@ -264,17 +264,15 @@ class DocumentTab(QWidget):
         """Apply styling to the preview pane."""
         theme = self.ctx.get("view.theme", "light")
 
+        colors = get_theme(theme == "dark")
+
         # QWebEngineView - set page background color
         if self._use_webengine:
             from PySide6.QtGui import QColor
-            if theme == "dark":
-                self.preview.page().setBackgroundColor(QColor("#1e1e1e"))
-            else:
-                self.preview.page().setBackgroundColor(QColor("#ffffff"))
+            self.preview.page().setBackgroundColor(QColor(colors.editor_bg))
             return
 
         # QTextBrowser widget styling
-        colors = get_theme(theme == "dark")
         self.preview.setStyleSheet(StyleSheets.text_browser(colors))
 
     def _apply_settings(self):
