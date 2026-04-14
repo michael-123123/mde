@@ -17,11 +17,15 @@ from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import (QColor, QDesktopServices, QIcon, QKeySequence,
                            QPalette, QShortcut, QTextCursor)
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QHBoxLayout,
-                               QInputDialog, QLabel, QMainWindow, QMenu,
-                               QMessageBox, QSplitter, QStyle, QTabWidget,
-                               QToolButton, QWidget)
+                               QInputDialog, QLabel, QMainWindow, QMessageBox,
+                               QSplitter, QStyle, QTabWidget, QToolButton,
+                               QWidget)
 
 from markdown_editor.markdown6 import export_service
+from markdown_editor.markdown6.actions import (_action_attr, _shortcut_id,
+                                               apply_shortcuts,
+                                               build_command_palette,
+                                               build_menu_bar)
 
 # Cache HtmlFormatter instances to avoid recreation on every render
 _html_formatter_cache: dict[str, HtmlFormatter] = {}
@@ -94,8 +98,7 @@ def apply_application_theme(dark_mode: bool):
 
 from markdown_editor.markdown6 import graphviz_service
 from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.components.command_palette import (
-    Command, CommandPalette)
+from markdown_editor.markdown6.components.command_palette import CommandPalette
 from markdown_editor.markdown6.components.document_tab import DocumentTab
 from markdown_editor.markdown6.components.graph_export import GraphExportDialog
 from markdown_editor.markdown6.components.outline_panel import OutlinePanel
@@ -262,359 +265,12 @@ class MarkdownEditor(QMainWindow):
         self._init_debounce_timers()
 
     def _create_menu_bar(self):
-        """Create the application menu bar."""
-        menubar = self.menuBar()
-
-        # File menu
-        file_menu = menubar.addMenu("&File")
-
-        self.new_action = file_menu.addAction("&New Tab")
-        self.new_action.triggered.connect(self.new_tab)
-
-        self.open_action = file_menu.addAction("&Open...")
-        self.open_action.triggered.connect(self.open_file)
-
-        self.open_project_action = file_menu.addAction("Open &Project Folder...")
-        self.open_project_action.setShortcut(self.ctx.get_shortcut("file.open_project"))
-        self.open_project_action.triggered.connect(self._open_project)
-
-        # Recent files submenu
-        self.recent_menu = QMenu("Open &Recent", self)
-        file_menu.addMenu(self.recent_menu)
-
-        file_menu.addSeparator()
-
-        self.save_action = file_menu.addAction("&Save")
-        self.save_action.triggered.connect(self.save_file)
-
-        self.save_as_action = file_menu.addAction("Save &As...")
-        self.save_as_action.triggered.connect(self.save_file_as)
-
-        file_menu.addSeparator()
-
-        # Export submenu
-        export_menu = QMenu("&Export", self)
-        file_menu.addMenu(export_menu)
-
-        self.export_html_action = export_menu.addAction("Export to &HTML...")
-        self.export_html_action.triggered.connect(self._export_html)
-
-        self.export_pdf_action = export_menu.addAction("Export to &PDF...")
-        self.export_pdf_action.triggered.connect(self._export_pdf)
-
-        self.export_docx_action = export_menu.addAction("Export to &DOCX...")
-        self.export_docx_action.triggered.connect(self._export_docx)
-
-        file_menu.addSeparator()
-
-        self.close_tab_action = file_menu.addAction("&Close Tab")
-        self.close_tab_action.triggered.connect(self._close_current_tab)
-
-        file_menu.addSeparator()
-
-        self.quit_action = file_menu.addAction("&Quit")
-        self.quit_action.triggered.connect(self.close)
-
-        # Edit menu
-        edit_menu = menubar.addMenu("&Edit")
-
-        self.undo_action = edit_menu.addAction("&Undo")
-        self.undo_action.triggered.connect(self._undo)
-
-        self.redo_action = edit_menu.addAction("&Redo")
-        self.redo_action.triggered.connect(self._redo)
-
-        edit_menu.addSeparator()
-
-        self.cut_action = edit_menu.addAction("Cu&t")
-        self.cut_action.triggered.connect(self._cut)
-
-        self.copy_action = edit_menu.addAction("&Copy")
-        self.copy_action.triggered.connect(self._copy)
-
-        self.paste_action = edit_menu.addAction("&Paste")
-        self.paste_action.triggered.connect(self._paste)
-
-        self.select_all_action = edit_menu.addAction("Select &All")
-        self.select_all_action.triggered.connect(self._select_all)
-
-        edit_menu.addSeparator()
-
-        self.find_action = edit_menu.addAction("&Find...")
-        self.find_action.triggered.connect(self._show_find)
-
-        self.replace_action = edit_menu.addAction("&Replace...")
-        self.replace_action.triggered.connect(self._show_replace)
-
-        self.go_to_line_action = edit_menu.addAction("&Go to Line...")
-        self.go_to_line_action.triggered.connect(self._go_to_line)
-
-        edit_menu.addSeparator()
-
-        self.duplicate_line_action = edit_menu.addAction("&Duplicate Line")
-        self.duplicate_line_action.triggered.connect(self._duplicate_line)
-
-        self.delete_line_action = edit_menu.addAction("De&lete Line")
-        self.delete_line_action.triggered.connect(self._delete_line)
-
-        self.move_line_up_action = edit_menu.addAction("Move Line &Up")
-        self.move_line_up_action.triggered.connect(self._move_line_up)
-
-        self.move_line_down_action = edit_menu.addAction("Move Line &Down")
-        self.move_line_down_action.triggered.connect(self._move_line_down)
-
-        edit_menu.addSeparator()
-
-        self.toggle_comment_action = edit_menu.addAction("Toggle &Comment")
-        self.toggle_comment_action.triggered.connect(self._toggle_comment)
-
-        edit_menu.addSeparator()
-
-        self.settings_action = edit_menu.addAction("Se&ttings...")
-        self.settings_action.triggered.connect(self._show_settings)
-
-        # Format menu (Markdown)
-        format_menu = menubar.addMenu("F&ormat")
-
-        self.bold_action = format_menu.addAction("&Bold")
-        self.bold_action.triggered.connect(self._format_bold)
-
-        self.italic_action = format_menu.addAction("&Italic")
-        self.italic_action.triggered.connect(self._format_italic)
-
-        self.code_action = format_menu.addAction("&Code")
-        self.code_action.triggered.connect(self._format_code)
-
-        format_menu.addSeparator()
-
-        self.link_action = format_menu.addAction("Insert &Link")
-        self.link_action.triggered.connect(self._format_link)
-
-        self.image_action = format_menu.addAction("Insert &Image")
-        self.image_action.triggered.connect(self._format_image)
-
-        format_menu.addSeparator()
-
-        self.heading_increase_action = format_menu.addAction("Increase &Heading Level")
-        self.heading_increase_action.triggered.connect(self._heading_increase)
-
-        self.heading_decrease_action = format_menu.addAction("&Decrease Heading Level")
-        self.heading_decrease_action.triggered.connect(self._heading_decrease)
-
-        format_menu.addSeparator()
-
-        # Insert submenu
-        insert_menu = QMenu("&Insert", self)
-        format_menu.addMenu(insert_menu)
-
-        self.insert_table_action = insert_menu.addAction("&Table...")
-        self.insert_table_action.triggered.connect(self._insert_table)
-
-        self.insert_snippet_action = insert_menu.addAction("&Snippet...")
-        self.insert_snippet_action.triggered.connect(self._show_snippet_popup)
-
-        insert_menu.addSeparator()
-
-        self.insert_math_action = insert_menu.addAction("&Math Block")
-        self.insert_math_action.triggered.connect(self._insert_math)
-
-        self.insert_mermaid_action = insert_menu.addAction("M&ermaid Diagram")
-        self.insert_mermaid_action.triggered.connect(self._insert_mermaid)
-
-        insert_menu.addSeparator()
-
-        self.insert_callout_note_action = insert_menu.addAction("Callout: &Note")
-        self.insert_callout_note_action.triggered.connect(lambda: self._insert_callout("NOTE"))
-
-        self.insert_callout_warning_action = insert_menu.addAction("Callout: &Warning")
-        self.insert_callout_warning_action.triggered.connect(lambda: self._insert_callout("WARNING"))
-
-        self.insert_callout_tip_action = insert_menu.addAction("Callout: &Tip")
-        self.insert_callout_tip_action.triggered.connect(lambda: self._insert_callout("TIP"))
-
-        # View menu
-        view_menu = menubar.addMenu("&View")
-
-        # Command palette
-        self.command_palette_action = view_menu.addAction("&Command Palette...")
-        self.command_palette_action.triggered.connect(self._show_command_palette)
-
-        view_menu.addSeparator()
-
-        # Panels submenu
-        panels_menu = QMenu("&Panels", self)
-        view_menu.addMenu(panels_menu)
-
-        self.toggle_outline_action = panels_menu.addAction("Toggle &Outline")
-        self.toggle_outline_action.setCheckable(True)
-        self.toggle_outline_action.setChecked(False)
-        self.toggle_outline_action.triggered.connect(self._toggle_outline_panel)
-
-        self.toggle_project_action = panels_menu.addAction("Toggle &Project Panel")
-        self.toggle_project_action.setCheckable(True)
-        self.toggle_project_action.setChecked(False)
-        self.toggle_project_action.triggered.connect(self._toggle_project_panel)
-
-        self.toggle_references_action = panels_menu.addAction("Toggle &References Panel")
-        self.toggle_references_action.setCheckable(True)
-        self.toggle_references_action.setChecked(False)
-        self.toggle_references_action.triggered.connect(self._toggle_references_panel)
-
-        self.toggle_search_action = panels_menu.addAction("Toggle &Search Panel")
-        self.toggle_search_action.setCheckable(True)
-        self.toggle_search_action.setChecked(False)
-        self.toggle_search_action.triggered.connect(self._toggle_search_panel)
-
-        panels_menu.addSeparator()
-
-        self.toggle_sidebar_action = panels_menu.addAction("Toggle Si&debar")
-        self.toggle_sidebar_action.triggered.connect(self._toggle_sidebar)
-
-        view_menu.addSeparator()
-
-        # Folding submenu
-        folding_menu = QMenu("&Folding", self)
-        view_menu.addMenu(folding_menu)
-
-        self.fold_all_action = folding_menu.addAction("Fold &All")
-        self.fold_all_action.triggered.connect(self._fold_all)
-
-        self.unfold_all_action = folding_menu.addAction("&Unfold All")
-        self.unfold_all_action.triggered.connect(self._unfold_all)
-
-        view_menu.addSeparator()
-
-        self.refresh_action = view_menu.addAction("&Refresh Preview")
-        self.refresh_action.triggered.connect(self._refresh_preview)
-
-        view_menu.addSeparator()
-
-        self.toggle_preview_action = view_menu.addAction("Toggle &Preview")
-        self.toggle_preview_action.setCheckable(True)
-        self.toggle_preview_action.setChecked(self.ctx.get("view.show_preview", True))
-        self.toggle_preview_action.triggered.connect(self._toggle_preview)
-
-        self.toggle_line_numbers_action = view_menu.addAction("Toggle &Line Numbers")
-        self.toggle_line_numbers_action.setCheckable(True)
-        self.toggle_line_numbers_action.setChecked(self.ctx.get("editor.show_line_numbers", True))
-        self.toggle_line_numbers_action.triggered.connect(self._toggle_line_numbers)
-
-        self.toggle_word_wrap_action = view_menu.addAction("Toggle &Word Wrap")
-        self.toggle_word_wrap_action.setCheckable(True)
-        self.toggle_word_wrap_action.setChecked(self.ctx.get("editor.word_wrap", True))
-        self.toggle_word_wrap_action.triggered.connect(self._toggle_word_wrap)
-
-        self.toggle_whitespace_action = view_menu.addAction("Toggle Whi&tespace")
-        self.toggle_whitespace_action.setCheckable(True)
-        self.toggle_whitespace_action.setChecked(self.ctx.get("editor.show_whitespace", False))
-        self.toggle_whitespace_action.triggered.connect(self._toggle_whitespace)
-
-        self.toggle_logseq_action = view_menu.addAction("&Logseq Mode")
-        self.toggle_logseq_action.setCheckable(True)
-        self.toggle_logseq_action.setChecked(self.ctx.get("view.logseq_mode", False))
-        self.toggle_logseq_action.triggered.connect(self._toggle_logseq_mode)
-
-        view_menu.addSeparator()
-
-        self.zoom_in_action = view_menu.addAction("Zoom &In")
-        self.zoom_in_action.triggered.connect(self._zoom_in)
-
-        self.zoom_out_action = view_menu.addAction("Zoom &Out")
-        self.zoom_out_action.triggered.connect(self._zoom_out)
-
-        self.zoom_reset_action = view_menu.addAction("&Reset Zoom")
-        self.zoom_reset_action.triggered.connect(self._zoom_reset)
-
-        view_menu.addSeparator()
-
-        self.fullscreen_action = view_menu.addAction("&Fullscreen")
-        self.fullscreen_action.setCheckable(True)
-        self.fullscreen_action.triggered.connect(self._toggle_fullscreen)
-
-        view_menu.addSeparator()
-
-        self.next_tab_action = view_menu.addAction("&Next Tab")
-        self.next_tab_action.triggered.connect(self._next_tab)
-
-        self.prev_tab_action = view_menu.addAction("&Previous Tab")
-        self.prev_tab_action.triggered.connect(self._prev_tab)
-
-        # Tools menu
-        tools_menu = menubar.addMenu("&Tools")
-
-        self.export_graph_action = tools_menu.addAction("Export Document &Graph...")
-        self.export_graph_action.triggered.connect(self._show_graph_export)
-
-        # Help menu
-        help_menu = menubar.addMenu("&Help")
-
-        about_action = help_menu.addAction("&About")
-        about_action.triggered.connect(self._show_about)
+        """Create the application menu bar from the declarative action registry."""
+        self._action_defs = build_menu_bar(self)
 
     def _init_actions(self):
-        """Set shortcuts for actions based on settings."""
-        action_map = {
-            "file.new": self.new_action,
-            "file.open": self.open_action,
-            "file.open_project": self.open_project_action,
-            "file.save": self.save_action,
-            "file.save_as": self.save_as_action,
-            "file.close_tab": self.close_tab_action,
-            "file.quit": self.quit_action,
-            "edit.undo": self.undo_action,
-            "edit.redo": self.redo_action,
-            "edit.cut": self.cut_action,
-            "edit.copy": self.copy_action,
-            "edit.paste": self.paste_action,
-            "edit.select_all": self.select_all_action,
-            "edit.find": self.find_action,
-            "edit.replace": self.replace_action,
-            "edit.go_to_line": self.go_to_line_action,
-            "edit.duplicate_line": self.duplicate_line_action,
-            "edit.delete_line": self.delete_line_action,
-            "edit.move_line_up": self.move_line_up_action,
-            "edit.move_line_down": self.move_line_down_action,
-            "edit.toggle_comment": self.toggle_comment_action,
-            "markdown.bold": self.bold_action,
-            "markdown.italic": self.italic_action,
-            "markdown.code": self.code_action,
-            "markdown.link": self.link_action,
-            "markdown.image": self.image_action,
-            "markdown.heading_increase": self.heading_increase_action,
-            "markdown.heading_decrease": self.heading_decrease_action,
-            "view.refresh_preview": self.refresh_action,
-            "view.toggle_preview": self.toggle_preview_action,
-            "view.toggle_line_numbers": self.toggle_line_numbers_action,
-            "view.toggle_word_wrap": self.toggle_word_wrap_action,
-            "view.toggle_whitespace": self.toggle_whitespace_action,
-            "view.toggle_logseq_mode": self.toggle_logseq_action,
-            "view.zoom_in": self.zoom_in_action,
-            "view.zoom_out": self.zoom_out_action,
-            "view.zoom_reset": self.zoom_reset_action,
-            "view.fullscreen": self.fullscreen_action,
-            "view.command_palette": self.command_palette_action,
-            "view.toggle_outline": self.toggle_outline_action,
-            "view.toggle_project": self.toggle_project_action,
-            "view.toggle_references": self.toggle_references_action,
-            "view.toggle_search": self.toggle_search_action,
-            "view.toggle_sidebar": self.toggle_sidebar_action,
-            "view.fold_all": self.fold_all_action,
-            "view.unfold_all": self.unfold_all_action,
-            "insert.snippet": self.insert_snippet_action,
-            "insert.table": self.insert_table_action,
-            "tabs.next": self.next_tab_action,
-            "tabs.previous": self.prev_tab_action,
-        }
-
-        self.action_map = action_map
-        self._apply_shortcuts()
-
-    def _apply_shortcuts(self):
-        """Apply shortcuts from settings to actions."""
-        for action_id, action in self.action_map.items():
-            shortcut = self.ctx.get_shortcut(action_id)
-            if shortcut:
-                action.setShortcut(QKeySequence(shortcut))
+        """Apply shortcuts from the action registry."""
+        apply_shortcuts(self, self._action_defs)
 
     def _create_status_bar(self):
         """Create the status bar."""
@@ -655,10 +311,14 @@ class MarkdownEditor(QMainWindow):
         self.ctx.shortcut_changed.connect(self._on_shortcut_changed)
         self.ctx.settings_changed.connect(self._on_setting_changed)
 
-    def _on_shortcut_changed(self, action: str, shortcut: str):
+    def _on_shortcut_changed(self, action_id: str, shortcut: str):
         """Handle shortcut change."""
-        if action in self.action_map:
-            self.action_map[action].setShortcut(QKeySequence(shortcut))
+        for aid, adef in self._action_defs.items():
+            if _shortcut_id(adef) == action_id:
+                qaction = getattr(self, _action_attr(adef), None)
+                if qaction:
+                    qaction.setShortcut(QKeySequence(shortcut))
+                break
 
     def _on_setting_changed(self, key: str, value):
         """Handle setting change."""
@@ -1421,82 +1081,8 @@ class MarkdownEditor(QMainWindow):
             self._outline_update_timer.start(500)
 
     def _init_command_palette(self):
-        """Initialize the command palette with available commands."""
-        commands = []
-
-        # File commands
-        commands.append(Command("file.new", "New Tab", self.ctx.get_shortcut("file.new"), self.new_tab, "File"))
-        commands.append(Command("file.open", "Open File", self.ctx.get_shortcut("file.open"), self.open_file, "File"))
-        commands.append(Command("file.open_project", "Open Project Folder", self.ctx.get_shortcut("file.open_project"), self._open_project, "File"))
-        commands.append(Command("file.save", "Save", self.ctx.get_shortcut("file.save"), self.save_file, "File"))
-        commands.append(Command("file.save_as", "Save As", self.ctx.get_shortcut("file.save_as"), self.save_file_as, "File"))
-
-        # Edit commands
-        commands.append(Command("edit.undo", "Undo", self.ctx.get_shortcut("edit.undo"), self._undo, "Edit"))
-        commands.append(Command("edit.redo", "Redo", self.ctx.get_shortcut("edit.redo"), self._redo, "Edit"))
-        commands.append(Command("edit.find", "Find", self.ctx.get_shortcut("edit.find"), self._show_find, "Edit"))
-        commands.append(Command("edit.replace", "Replace", self.ctx.get_shortcut("edit.replace"), self._show_replace, "Edit"))
-        commands.append(Command("edit.go_to_line", "Go to Line", self.ctx.get_shortcut("edit.go_to_line"), self._go_to_line, "Edit"))
-
-        # Format commands
-        commands.append(Command("format.bold", "Bold", self.ctx.get_shortcut("markdown.bold"), self._format_bold, "Format"))
-        commands.append(Command("format.italic", "Italic", self.ctx.get_shortcut("markdown.italic"), self._format_italic, "Format"))
-        commands.append(Command("format.code", "Code", self.ctx.get_shortcut("markdown.code"), self._format_code, "Format"))
-        commands.append(Command("format.link", "Insert Link", self.ctx.get_shortcut("markdown.link"), self._format_link, "Format"))
-        commands.append(Command("format.image", "Insert Image", self.ctx.get_shortcut("markdown.image"), self._format_image, "Format"))
-
-        # Insert commands
-        commands.append(Command("insert.table", "Insert Table", self.ctx.get_shortcut("insert.table"), self._insert_table, "Insert"))
-        commands.append(Command("insert.snippet", "Insert Snippet", self.ctx.get_shortcut("insert.snippet"), self._show_snippet_popup, "Insert"))
-        commands.append(Command("insert.math", "Insert Math Block", "", self._insert_math, "Insert"))
-        commands.append(Command("insert.mermaid", "Insert Mermaid Diagram", "", self._insert_mermaid, "Insert"))
-        commands.append(Command("insert.callout_note", "Insert Note Callout", "", lambda: self._insert_callout("NOTE"), "Insert"))
-        commands.append(Command("insert.callout_warning", "Insert Warning Callout", "", lambda: self._insert_callout("WARNING"), "Insert"))
-        commands.append(Command("insert.callout_tip", "Insert Tip Callout", "", lambda: self._insert_callout("TIP"), "Insert"))
-
-        # View commands
-        commands.append(Command("view.toggle_preview", "Toggle Preview", self.ctx.get_shortcut("view.toggle_preview"), self._toggle_preview, "View"))
-        commands.append(Command("view.toggle_outline", "Toggle Outline Panel", self.ctx.get_shortcut("view.toggle_outline"), self._toggle_outline_panel, "View"))
-        commands.append(Command("view.toggle_project", "Toggle Project Panel", self.ctx.get_shortcut("view.toggle_project"), self._toggle_project_panel, "View"))
-        commands.append(Command("view.toggle_references", "Toggle References Panel", self.ctx.get_shortcut("view.toggle_references"), self._toggle_references_panel, "View"))
-        commands.append(Command("view.toggle_search", "Toggle Search Panel", self.ctx.get_shortcut("view.toggle_search"), self._toggle_search_panel, "View"))
-        commands.append(Command("view.toggle_sidebar", "Toggle Sidebar", self.ctx.get_shortcut("view.toggle_sidebar"), self._toggle_sidebar, "View"))
-        commands.append(Command("view.fold_all", "Fold All", self.ctx.get_shortcut("view.fold_all"), self._fold_all, "View"))
-        commands.append(Command("view.unfold_all", "Unfold All", self.ctx.get_shortcut("view.unfold_all"), self._unfold_all, "View"))
-        commands.append(Command("view.zoom_in", "Zoom In", self.ctx.get_shortcut("view.zoom_in"), self._zoom_in, "View"))
-        commands.append(Command("view.zoom_out", "Zoom Out", self.ctx.get_shortcut("view.zoom_out"), self._zoom_out, "View"))
-        commands.append(Command("view.zoom_reset", "Reset Zoom", self.ctx.get_shortcut("view.zoom_reset"), self._zoom_reset, "View"))
-
-        # Settings
-        commands.append(Command("settings", "Open Settings", "", self._show_settings, "Settings"))
-
-        # Export commands
-        commands.append(Command("export.html", "Export to HTML", "", self._export_html, "Export"))
-        commands.append(Command("export.pdf", "Export to PDF", "", self._export_pdf, "Export"))
-        commands.append(Command("export.docx", "Export to DOCX", "", self._export_docx, "Export"))
-
-        # Tab commands
-        commands.append(Command("tabs.close", "Close Current Tab", self.ctx.get_shortcut("file.close_tab"), self._close_current_tab, "Tabs"))
-        commands.append(Command("tabs.next", "Next Tab", self.ctx.get_shortcut("tabs.next"), self._next_tab, "Tabs"))
-        commands.append(Command("tabs.previous", "Previous Tab", self.ctx.get_shortcut("tabs.previous"), self._prev_tab, "Tabs"))
-
-        # Line operations
-        commands.append(Command("edit.duplicate_line", "Duplicate Line", self.ctx.get_shortcut("edit.duplicate_line"), self._duplicate_line, "Edit"))
-        commands.append(Command("edit.delete_line", "Delete Line", self.ctx.get_shortcut("edit.delete_line"), self._delete_line, "Edit"))
-        commands.append(Command("edit.move_line_up", "Move Line Up", self.ctx.get_shortcut("edit.move_line_up"), self._move_line_up, "Edit"))
-        commands.append(Command("edit.move_line_down", "Move Line Down", self.ctx.get_shortcut("edit.move_line_down"), self._move_line_down, "Edit"))
-        commands.append(Command("edit.toggle_comment", "Toggle Comment", self.ctx.get_shortcut("edit.toggle_comment"), self._toggle_comment, "Edit"))
-
-        # Theme toggle
-        commands.append(Command("view.toggle_theme", "Toggle Light/Dark Theme", "", self._toggle_theme, "View"))
-
-        # Fullscreen
-        commands.append(Command("view.fullscreen", "Toggle Fullscreen", self.ctx.get_shortcut("view.fullscreen"), self._toggle_fullscreen, "View"))
-
-        # More format commands
-        commands.append(Command("format.heading_increase", "Increase Heading Level", self.ctx.get_shortcut("markdown.heading_increase"), self._heading_increase, "Format"))
-        commands.append(Command("format.heading_decrease", "Decrease Heading Level", self.ctx.get_shortcut("markdown.heading_decrease"), self._heading_decrease, "Format"))
-
+        """Initialize the command palette from the action registry."""
+        commands = build_command_palette(self, self._action_defs)
         self.command_palette.set_commands(commands)
 
     def _show_command_palette(self):

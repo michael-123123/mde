@@ -4,12 +4,40 @@ import json
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QKeySequence
 
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
 
 
+# Entries using QKeySequence.StandardKey for platform-aware defaults.
+# Resolved lazily in _resolve_defaults() since QApplication must exist first.
+_STANDARD_KEY_DEFAULTS: dict[str, QKeySequence.StandardKey] = {
+    "file.new": QKeySequence.StandardKey.New,
+    "file.open": QKeySequence.StandardKey.Open,
+    "file.save": QKeySequence.StandardKey.Save,
+    "file.save_as": QKeySequence.StandardKey.SaveAs,
+    "file.close_tab": QKeySequence.StandardKey.Close,
+    "file.quit": QKeySequence.StandardKey.Quit,
+    "edit.undo": QKeySequence.StandardKey.Undo,
+    "edit.redo": QKeySequence.StandardKey.Redo,
+    "edit.cut": QKeySequence.StandardKey.Cut,
+    "edit.copy": QKeySequence.StandardKey.Copy,
+    "edit.paste": QKeySequence.StandardKey.Paste,
+    "edit.select_all": QKeySequence.StandardKey.SelectAll,
+    "edit.find": QKeySequence.StandardKey.Find,
+    "markdown.bold": QKeySequence.StandardKey.Bold,
+    "markdown.italic": QKeySequence.StandardKey.Italic,
+    "view.fullscreen": QKeySequence.StandardKey.FullScreen,
+    "view.zoom_in": QKeySequence.StandardKey.ZoomIn,
+    "view.zoom_out": QKeySequence.StandardKey.ZoomOut,
+    "tabs.next": QKeySequence.StandardKey.NextChild,
+    "tabs.previous": QKeySequence.StandardKey.PreviousChild,
+}
+
+# Fallback strings used when QApplication isn't available yet (e.g. tests)
+# and as the base dict that StandardKey entries override.
 DEFAULT_SHORTCUTS = {
     # File operations
     "file.new": "Ctrl+N",
@@ -83,6 +111,29 @@ DEFAULT_SHORTCUTS = {
     "find.previous": "Shift+F3",
 }
 
+_defaults_resolved = False
+
+
+def _resolve_defaults():
+    """Override DEFAULT_SHORTCUTS entries with platform-aware StandardKey values.
+
+    Called once when ShortcutManager is first instantiated (QApplication exists
+    by then). Entries that resolve to empty are left at their fallback string.
+    No-op if QApplication doesn't exist yet (e.g. ephemeral test mode).
+    """
+    global _defaults_resolved
+    if _defaults_resolved:
+        return
+    _defaults_resolved = True
+    from PySide6.QtWidgets import QApplication
+    if QApplication.instance() is None:
+        logger.warning("QApplication not available; using fallback shortcut strings")
+        return
+    for action_id, std_key in _STANDARD_KEY_DEFAULTS.items():
+        seq = QKeySequence(std_key)
+        if not seq.isEmpty():
+            DEFAULT_SHORTCUTS[action_id] = seq.toString()
+
 
 class ShortcutManager(QObject):
     """Manages keyboard shortcuts with persistence."""
@@ -91,6 +142,7 @@ class ShortcutManager(QObject):
 
     def __init__(self, shortcuts_file: Path | None = None, ephemeral: bool = False):
         super().__init__()
+        _resolve_defaults()
         self._ephemeral = ephemeral
         self._shortcuts_file = shortcuts_file
         self._shortcuts: dict[str, str] = DEFAULT_SHORTCUTS.copy()
