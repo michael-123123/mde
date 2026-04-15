@@ -407,6 +407,32 @@ class DocumentTab(QWidget):
             self._preview_needs_full_reload = True
             self.render_markdown()
 
+    def preview_has_focus(self) -> bool:
+        """Return True if the preview pane (or a child of it) has keyboard focus."""
+        app = QApplication.instance()
+        focus = app.focusWidget() if app else None
+        if focus is None:
+            return False
+        return focus is self.preview or self.preview.isAncestorOf(focus)
+
+    def preview_copy(self):
+        """Copy selected text from the preview pane."""
+        if self._use_webengine:
+            self.preview.page().triggerAction(
+                QWebEnginePage.WebAction.Copy
+            )
+        else:
+            self.preview.copy()
+
+    def preview_select_all(self):
+        """Select all text in the preview pane."""
+        if self._use_webengine:
+            self.preview.page().triggerAction(
+                QWebEnginePage.WebAction.SelectAll
+            )
+        else:
+            self.preview.selectAll()
+
     def preview_zoom_in(self):
         """Zoom in the preview pane (text + images + diagrams)."""
         if self._preview_zoom_factor < 5.0:

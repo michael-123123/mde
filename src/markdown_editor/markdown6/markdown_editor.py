@@ -571,7 +571,10 @@ class MarkdownEditor(QMainWindow):
     def _copy(self):
         tab = self.current_tab()
         if tab:
-            tab.editor.copy()
+            if tab.preview_has_focus():
+                tab.preview_copy()
+            else:
+                tab.editor.copy()
 
     def _paste(self):
         tab = self.current_tab()
@@ -581,7 +584,10 @@ class MarkdownEditor(QMainWindow):
     def _select_all(self):
         tab = self.current_tab()
         if tab:
-            tab.editor.selectAll()
+            if tab.preview_has_focus():
+                tab.preview_select_all()
+            else:
+                tab.editor.selectAll()
 
     def _show_find(self):
         tab = self.current_tab()
