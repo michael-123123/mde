@@ -3,6 +3,34 @@
 All notable changes to markdown-editor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.11] - 2026-04-15
+
+### Added
+- Data-driven action registry with platform-aware shortcut defaults
+- Copy and select-all support in the preview pane (Ctrl+C / Ctrl+A)
+
+### Changed
+- Extracted DocumentTab into `components/document_tab.py`
+- Extracted preview HTML templates into `templates/preview.py`
+- Moved editor UI components (table editor, graph export, find/replace) into `components/` package
+- Moved inline CSS from widget classes into centralized StyleSheets methods
+- Added `preview_blockquote` and `preview_heading_border` to ThemeColors
+
+### Fixed
+- Ctrl+C and Ctrl+A always targeting the editor even when the preview pane had focus
+
+## [0.1.10] - 2026-04-12
+
+### Added
+- Admonition-style callout support (`!!!` syntax)
+- `get_theme_from_ctx()` helper to eliminate theme boilerplate
+- Atomic writes for config persistence
+
+### Changed
+- Extracted FindReplaceBar into its own module
+- Moved ThreadPoolExecutor from module scope to MarkdownEditor instance
+- Parented all QTimers to their owning widget to prevent leak warnings
+
 ## [0.1.9] - 2026-04-11
 
 ### Added
