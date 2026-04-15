@@ -4,7 +4,35 @@ This module ensures all tests use ephemeral app context to avoid
 reading from or writing to the user's actual settings.
 """
 
+import os
+from pathlib import Path
+
 import pytest
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_stale_xvfb_sockets():
+    """Remove orphaned X11 sockets left by crashed Xvfb instances.
+
+    When test runs are killed hard (SIGKILL, hang + Ctrl+C), Xvfb's
+    atexit handler never fires and its Unix socket stays in /tmp/.X11-unix/.
+    These accumulate and eventually exhaust all display numbers, preventing
+    Xvfb (and pytest-xvfb) from starting.
+    """
+    x11_dir = Path("/tmp/.X11-unix")
+    if not x11_dir.exists():
+        return
+    my_uid = os.getuid()
+    display = os.environ.get("DISPLAY", "").lstrip(":")
+    for sock in x11_dir.iterdir():
+        # Never touch the real display or sockets owned by other users
+        if sock.name == f"X{display}":
+            continue
+        try:
+            if sock.stat().st_uid == my_uid:
+                sock.unlink()
+        except OSError:
+            pass
 
 
 @pytest.fixture(autouse=True)

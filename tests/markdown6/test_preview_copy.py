@@ -62,9 +62,15 @@ class TestPreviewHasFocus:
     @pytest.mark.skipif(not HAS_WEBENGINE, reason="QWebEngineView not available")
     def test_focus_on_webengine_preview_returns_true(self, qtbot):
         tab = _make_tab(qtbot)
+        # WebEngine needs content loaded before it can accept focus
+        tab.preview.setHtml("<html><body><p>test</p></body></html>")
+        with qtbot.waitSignal(tab.preview.loadFinished, timeout=5000):
+            pass
+        # In headless (Xvfb) the window must be activated for focus to work
+        tab.activateWindow()
+        tab.raise_()
         tab.preview.setFocus()
-        QApplication.processEvents()
-        assert tab.preview_has_focus()
+        qtbot.waitUntil(tab.preview_has_focus, timeout=2000)
 
     @pytest.mark.skipif(HAS_WEBENGINE, reason="Only for QTextBrowser fallback")
     def test_focus_on_textbrowser_preview_returns_true(self, qtbot):
