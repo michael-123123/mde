@@ -66,6 +66,17 @@ class TestTemplateMarkers:
         html = _render("")
         assert "_mdeCopyInit" in html
 
+    def test_button_icon_is_inline_svg_not_emoji(self):
+        """Regression: the button icon must be inline SVG, not a color-emoji
+        codepoint. Color emoji can trigger the renderer to resolve a web
+        font, producing SSL handshakes on every re-render."""
+        html = _render("")
+        # Clipboard emoji (U+1F4CB) must not appear anywhere in the emitted page.
+        assert "\U0001f4cb" not in html
+        # The SVG icon marker (Feather-style copy icon uses a rect) must be present.
+        assert "<svg" in html
+        assert 'viewBox="0 0 24 24"' in html
+
 
 @pytest.mark.skipif(not HAS_WEBENGINE, reason="QWebEngineView not available")
 class TestCopyButtonInjection:
