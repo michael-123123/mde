@@ -66,9 +66,16 @@ Below the rule.
 - Reference-style link: see [the spec][md-spec]
 - Wiki link (bare): [[another-note]]
 - Wiki link (with display text): [[another-note|a human-friendly label]]
-- Image: ![Placeholder](https://via.placeholder.com/120x40.png "alt text")
+- Image (remote URL): ![Placeholder](https://via.placeholder.com/120x40.png "alt text")
 
 [md-spec]: https://daringfireball.net/projects/markdown/
+
+### Local image files
+
+These exercise the preview's local-file image rendering — a raster format (PNG) and a vector format (SVG), resolved relative to the markdown file.
+
+![A red square](./square.png "square.png — raster/PNG")
+![A blue circle](./circle.svg "circle.svg — vector/SVG")
 
 ## Code
 
