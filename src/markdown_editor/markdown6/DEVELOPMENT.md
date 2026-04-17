@@ -7,71 +7,80 @@ This document provides technical documentation for developers continuing work on
 The application follows a loosely coupled widget-based architecture using Qt's signal/slot mechanism for communication. There is no formal MVC separation - UI and logic are mixed within widget classes.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      MarkdownEditor (QMainWindow)                │
-│  - Main window, menus, toolbar, status bar                       │
-│  - Tab management, file operations                               │
-│  - Coordinates all panels and editor tabs                        │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌─────────────────────────────────────────┐  │
-│  │  Side Panel  │  │              Tab Widget                  │  │
-│  │  (QToolBox)  │  │  ┌─────────────────────────────────────┐│  │
-│  │              │  │  │         DocumentTab (per file)      ││  │
-│  │ ┌──────────┐ │  │  │  ┌─────────────┬─────────────────┐  ││  │
-│  │ │ Project  │ │  │  │  │ Enhanced    │   Preview       │  ││  │
-│  │ │  Panel   │ │  │  │  │ Editor      │   (WebEngine    │  ││  │
-│  │ └──────────┘ │  │  │  │             │    or TextBrowser│  ││  │
-│  │ ┌──────────┐ │  │  │  │ - Syntax HL │                 │  ││  │
-│  │ │ Outline  │ │  │  │  │ - Folding   │                 │  ││  │
-│  │ │  Panel   │ │  │  │  │ - Line nums │                 │  ││  │
-│  │ └──────────┘ │  │  │  └─────────────┴─────────────────┘  ││  │
-│  │ ┌──────────┐ │  │  └─────────────────────────────────────┘│  │
-│  │ │References│ │  └─────────────────────────────────────────┘  │
-│  │ │  Panel   │ │                                               │
-│  │ └──────────┘ │                                               │
-│  └──────────────┘                                               │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                      MarkdownEditor (QMainWindow)                      │
+│  - Main window, menus (built from actions.py), toolbar, status bar     │
+│  - Tab widget, file operations, export dispatch                        │
+│  - Theme propagation via AppContext signals                            │
+├───────────┬────────────┬────────────────────────────────────────────┤
+│ Activity  │  Sidebar   │              Tab Widget                       │
+│  Bar      │  (tool     │  ┌─────────────────────────────────────────┐ │
+│ (vertical │   window,  │  │       DocumentTab (components/)          │ │
+│  emoji    │   collap-  │  │  ┌──────────────┬────────────────────┐  │ │
+│  tabs;    │   sible)   │  │  │ Enhanced-    │   Preview pane     │  │ │
+│  compo-   │            │  │  │  Editor      │   (QWebEngineView  │  │ │
+│  nents/   │  Stacked:  │  │  │              │    or QTextBrowser)│  │ │
+│  activity │  Project / │  │  │ Syntax HL    │                    │  │ │
+│  _bar.py) │  Outline / │  │  │ Folding      │   source-line sync │  │ │
+│           │  Search /  │  │  │ Line nums    │                    │  │ │
+│           │  Refs      │  │  └──────────────┴────────────────────┘  │ │
+│           │            │  │  FindReplaceBar  +  ExternalChangeBar     │ │
+│           │            │  └─────────────────────────────────────────┘ │
+└───────────┴────────────┴────────────────────────────────────────────┘
+
+       AppContext (app_context/)                      actions.py
+  ┌──────────────────────────────┐               ┌────────────────────┐
+  │ SettingsManager              │               │ MENU_STRUCTURE     │
+  │ ShortcutManager              │◀──shortcuts──▶│ ActionDef list →   │
+  │ SessionState                 │               │   menus, shortcuts,│
+  │ signals: settings_changed,   │               │   palette (built   │
+  │   shortcut_changed,          │               │   by helpers)      │
+  │   theme_changed              │               └────────────────────┘
+  └──────────────────────────────┘
 ```
 
 ## Key Classes
 
 ### Core Classes
 
-#### `MarkdownEditor` (markdown_editor.py:640+)
+#### `MarkdownEditor` (`markdown_editor.py`)
 The main window class. Responsibilities:
-- Window layout, menus, toolbar, status bar
+- Window layout, menus (built from `actions.MENU_STRUCTURE` via `build_menu_bar()`), toolbar, status bar
 - Tab widget management (create, close, switch tabs)
 - File operations (open, save, save as, recent files)
 - Export operations (delegates to `export_service`)
-- Command palette integration
-- Keyboard shortcut management
+- Command palette integration (built via `build_command_palette()`)
+- Keyboard shortcut management (applied via `apply_shortcuts()`)
 - Theme application coordination
 
 **Key methods:**
-- `open_file(path)` - Opens file, checks for duplicates, creates tab
-- `save_file()` / `save_file_as()` - Save operations
-- `new_tab()` - Creates empty DocumentTab
-- `update_window_title()` - Updates title with project-relative path
-- `_handle_link_click(url)` - Handles preview link clicks
-- `_handle_editor_link_click(path)` - Handles Ctrl+click on editor links
+- `open_file(path)` — opens file, checks for duplicates, creates tab
+- `save_file()` / `save_file_as()` — save operations
+- `new_tab()` — creates empty `DocumentTab`
+- `update_window_title()` — updates title with project-relative path
+- `_handle_link_click(url)` — handles preview link clicks
+- `_handle_editor_link_click(path)` — handles Ctrl+click on editor links
 
-#### `DocumentTab` (markdown_editor.py:426-638)
+#### `DocumentTab` (`components/document_tab.py`)
 A container widget for a single document. Contains:
-- `EnhancedEditor` - The text editor
-- Preview pane (QWebEngineView or QTextBrowser fallback)
-- Find/Replace bar
+- `EnhancedEditor` — the text editor
+- Preview pane (`QWebEngineView` or `QTextBrowser` fallback)
+- `FindReplaceBar`
+- `ExternalChangeBar` (non-modal reload notification)
 - Splitter between editor and preview
 
 **Key attributes:**
-- `file_path: Path | None` - Current file path
-- `unsaved_changes: bool` - Dirty state
-- `editor: EnhancedEditor` - The text editor widget
+- `file_path: Path | None` — current file path
+- `unsaved_changes: bool` — dirty state
+- `editor: EnhancedEditor` — the text editor widget
 
 **Signals:**
-- `link_clicked(QUrl)` - Emitted when preview link is clicked
+- `file_changed(path)`
+- `modified_changed(bool)`
+- `title_changed(title)`
 
-#### `EnhancedEditor` (enhanced_editor.py:127+)
-The main text editor widget (QPlainTextEdit subclass). Responsibilities:
+#### `EnhancedEditor` (`enhanced_editor.py`)
+The main text editor widget (`QPlainTextEdit` subclass). Responsibilities:
 - Syntax highlighting (via MarkdownHighlighter)
 - Line number area
 - Code folding
@@ -98,7 +107,7 @@ The main text editor widget (QPlainTextEdit subclass). Responsibilities:
 
 ### Panel Classes
 
-#### `ProjectPanel` (project_manager.py:47+)
+#### `ProjectPanel` (`project_manager.py`)
 File tree panel for project folder management.
 
 **Signals:**
@@ -109,7 +118,7 @@ File tree panel for project folder management.
 - `open_project(path)` - Opens folder as project
 - `_show_export_dialog()` - Opens ProjectExportDialog
 
-#### `OutlinePanel` (outline_panel.py:24+)
+#### `OutlinePanel` (`components/outline_panel.py`)
 Document structure panel showing headings.
 
 **Signals:**
@@ -119,8 +128,8 @@ Document structure panel showing headings.
 - `update_outline(text)` - Parses markdown and updates tree
 - `_parse_headings(text)` - Extracts heading structure
 
-#### `ReferencesPanel` (references_panel.py:29+)
-Backlinks panel showing files that reference current document.
+#### `ReferencesPanel` (`components/references_panel.py`)
+Backlinks panel showing files that reference the current document.
 
 **Signals:**
 - `file_clicked(str)` - File path clicked
@@ -132,15 +141,36 @@ Backlinks panel showing files that reference current document.
 
 ### Support Classes
 
-#### `AppContext` (app_context.py)
-Application context facade managing settings, shortcuts (via `ShortcutManager`), and session state (via `SessionState`). JSON persistence.
+#### `AppContext` (`app_context/`)
+Package containing the application-context facade. Owns `SettingsManager`, `ShortcutManager`, `SessionState`. JSON persistence to `~/.config/markdown-editor/` via `temp_files.atomic_write()`.
 
 **Signals:**
-- `settings_changed(str, object)` - key, new_value
-- `shortcut_changed(str, str)` - action, new_shortcut (delegated from ShortcutManager)
-- `theme_changed(str)` - theme name
+- `settings_changed(str, object)` — key, new_value
+- `shortcut_changed(str, str)` — action, new_shortcut (delegated from `ShortcutManager`)
+- `theme_changed(str)` — theme name
 
 **Access:** `from markdown_editor.markdown6.app_context import get_app_context`
+
+#### `SearchPanel` (`components/search_panel.py`)
+Project-wide regex search with results tree and jump-to-match.
+
+#### `CommandPalette` (`components/command_palette.py`)
+Ctrl+Shift+P command access. Commands are built from `actions.py` via `build_command_palette()`.
+
+#### `Sidebar` / `ActivityBar` (`components/sidebar.py`, `components/activity_bar.py`)
+VSCode-style split: `ActivityBar` exposes vertical emoji-tabs that toggle a collapsible `Sidebar` tool-window containing the panels above.
+
+#### `GraphExportDialog` (`components/graph_export.py`)
+Document wiki-link graph visualization + export (SVG/PNG/PDF) with selectable layout engine.
+
+#### `SettingsDialog` (`components/settings_dialog.py`)
+Multi-page settings dialog (Editor, View, Appearance/Preview, Files, Tools, Keyboard).
+
+#### `SnippetManager` / `SnippetPopup` (`snippets.py`)
+Snippet system (Ctrl+J) with searchable popup and `${1:placeholder}` cursor placement.
+
+#### `FileTreeWidget` (`file_tree_widget.py`)
+Reusable checkbox file-tree widget used by export and graph dialogs.
 
 #### `MarkdownHighlighter` (syntax_highlighter.py)
 QSyntaxHighlighter for markdown with dark/light theme support.
@@ -158,8 +188,9 @@ Stateless module for export operations.
 Centralized theme definitions and stylesheet generators.
 
 ```python
-from fun.markdown6.theme import get_theme, StyleSheets
-theme = get_theme(dark_mode=True)
+from markdown_editor.markdown6.theme import get_theme, get_theme_from_ctx, StyleSheets
+theme = get_theme(dark_mode=True)           # explicit
+theme = get_theme_from_ctx(ctx)              # from AppContext settings (0.1.10+)
 stylesheet = StyleSheets.dialog(theme) + StyleSheets.button(theme)
 ```
 
@@ -219,15 +250,61 @@ AppContext.set("view.theme", "dark")
         → Update all panels and dialogs
 ```
 
+### Command Palette Dispatch
+```
+User types Ctrl+Shift+P
+    → CommandPalette pops up with entries built from actions.py
+    → User selects a Command
+    → Command.callback() is invoked
+        → Routes back to the corresponding method on MarkdownEditor
+           (the ActionDef.method name; resolved by apply_shortcuts /
+            build_command_palette at startup)
+```
+
+### Session Restore on Startup
+```
+MarkdownEditor.__init__()
+    → AppContext loads settings, shortcuts, SessionState JSON
+    → Read project.last_path, project.open_files, project.active_tab
+    → Open project (ProjectPanel.open_project)
+    → For each remembered open file: open_file(path)
+    → Activate the last active tab, restore sidebar state
+    → ExternalChangeBar starts watching loaded files
+```
+
+### Source-Line Scroll Sync (bidirectional)
+```
+SourceLinePreprocessor / SourceLinePostprocessor
+    → emit data-source-line="N" on HTML block elements
+Editor scrolls:
+    → EnhancedEditor.cursor_position_changed(line, col)
+    → DocumentTab scrolls preview to element with matching data-source-line
+Preview scrolls:
+    → JS in preview page posts the topmost visible data-source-line to Qt
+    → DocumentTab scrolls editor to that line
+```
+
+### Async Diagram Render Pipeline
+```
+Preview HTML contains a placeholder <div data-mermaid-src="..."> or <div data-dot-src="...">
+    → DocumentTab submits the source to mermaid_service / graphviz_service
+    → Service checks in-memory MD5 cache; on miss, runs mmdc/dot in a thread
+    → On completion: service returns SVG; DocumentTab injects it into the
+      placeholder via QWebChannel / document.getElementById replacement
+    → Errors are rendered as inline error SVG with the stderr text
+```
+
 ## Adding New Features
 
 ### Adding a New Panel
 
-1. Create panel class in new file:
+1. Create the panel class under `components/`:
 ```python
-# my_panel.py
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+# components/my_panel.py
 from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QWidget
+
+from ..theme import get_theme_from_ctx
 
 class MyPanel(QWidget):
     item_clicked = Signal(str)
@@ -244,45 +321,50 @@ class MyPanel(QWidget):
             self._apply_theme()
 ```
 
-2. Add to MarkdownEditor._init_ui():
+2. In `MarkdownEditor._init_ui()`, register an `ActivityTab` and add the panel as a page to the sidebar's stacked widget:
 ```python
-self.my_panel = MyPanel()
-my_page = QWidget()
-my_layout = QVBoxLayout(my_page)
-my_layout.setContentsMargins(0, 0, 0, 0)
-my_layout.addWidget(self.my_panel)
-self.side_toolbox.addItem(my_page, "MY PANEL")
+self.my_panel = MyPanel(self.ctx)
+self.sidebar.add_panel("my", "🧩", "My Panel", self.my_panel)
 ```
 
-3. Connect signals in MarkdownEditor:
+3. Connect signals in `MarkdownEditor`:
 ```python
 self.my_panel.item_clicked.connect(self._on_my_panel_item_clicked)
 ```
 
-### Adding a New Keyboard Shortcut
+4. If the panel should be toggleable via shortcut / command palette, add a toggle `ActionDef` to `actions.MENU_STRUCTURE` — that single entry handles menu, shortcut, and palette registration.
 
-1. Add default in shortcut_manager.py DEFAULT_SHORTCUTS:
+### Adding a New Menu Item / Keyboard Shortcut
+
+Since 0.1.11 the menu bar, keyboard shortcuts, and command palette are all wired up from a single `ActionDef` entry in `actions.py`. One edit registers all three.
+
+1. Add the default shortcut in `app_context/shortcut_manager.py`:
 ```python
-"my_feature.action": "Ctrl+Shift+M",
+DEFAULT_SHORTCUTS = {
+    ...
+    "my_feature.action": "Ctrl+Shift+M",
+}
 ```
 
-2. Create action in MarkdownEditor._create_menu_bar():
+2. Add the action to `MENU_STRUCTURE` in `actions.py` (or to `PALETTE_ONLY` for a palette-only entry) and implement the handler on `MarkdownEditor`:
 ```python
-self.my_action = menu.addAction("My Action")
-self.my_action.setShortcut(self.ctx.get_shortcut("my_feature.action"))
-self.my_action.triggered.connect(self._my_action_handler)
+# actions.py
+MENU_STRUCTURE = [
+    ...
+    MenuDef("Tools", [
+        ...
+        ActionDef(
+            label="My Action",
+            method="_my_action_handler",
+            shortcut_id="my_feature.action",
+            palette_name="My Action",
+            palette_category="Tools",
+        ),
+    ]),
+]
 ```
 
-3. Add to command palette in MarkdownEditor._init_command_palette():
-```python
-commands.append(Command(
-    "my_feature.action",
-    "My Action Description",
-    self.ctx.get_shortcut("my_feature.action"),
-    self._my_action_handler,
-    "Category"
-))
-```
+3. `build_menu_bar(editor)`, `apply_shortcuts(editor, action_defs)`, and `build_command_palette(editor, action_defs)` will create the menu item, assign the shortcut, and register the palette entry automatically.
 
 ### Adding a New Export Format
 
@@ -306,8 +388,14 @@ elif format_type == "xyz":
 
 ### Adding a New Markdown Extension
 
-1. Create preprocessor/extension in markdown_extensions.py:
+Extensions live in the `extensions/` subpackage (`callouts.py`, `diagrams.py`, `lists.py`, `logseq.py`, `math.py`, `source_lines.py`, `wikilinks.py`). The top-level `markdown_extensions.py` is a backwards-compat re-export shim.
+
+1. Create a new module under `extensions/`:
 ```python
+# extensions/my_ext.py
+from markdown import Extension
+from markdown.preprocessors import Preprocessor
+
 class MyPreprocessor(Preprocessor):
     def run(self, lines):
         # Process lines
@@ -318,11 +406,13 @@ class MyExtension(Extension):
         md.preprocessors.register(MyPreprocessor(md), 'my_ext', 25)
 ```
 
-2. Add to markdown instance in MarkdownEditor.__init__():
+2. Register it where the preview markdown instance is constructed (`components/document_tab.py`):
 ```python
-from .markdown_extensions import MyExtension
+from ..extensions.my_ext import MyExtension
 self.md = markdown.Markdown(extensions=[..., MyExtension()])
 ```
+
+3. (Optional) If you want the old flat import path to keep working, add a re-export line to `markdown_extensions.py`.
 
 ## Code Patterns
 
@@ -378,67 +468,120 @@ The editor recognizes these link patterns:
 ## Known Technical Debt
 
 ### Architecture Issues
-1. **MarkdownEditor is too large** (~2600 lines) - Should extract:
-   - TabManager for tab operations
-   - PanelManager for side panel coordination
-   - ActionManager for menu/shortcut handling
-
-2. **No Model layer** - Document state is mixed with UI in DocumentTab
-
-3. **~~Global settings singleton~~** - Resolved: Settings refactored into AppContext with dependency injection
-
-4. **Duplicated theme handling** - Each widget implements its own `_apply_theme()`
+1. **MarkdownEditor is still large** (~1800 lines) — could still extract `TabManager` and `PanelManager`. `ActionManager`-style concerns are already addressed by `actions.py`.
+2. **No Model layer** — document state is mixed with UI in `DocumentTab`.
+3. ~~**Global settings singleton**~~ — resolved: settings refactored into `AppContext` with dependency injection.
+4. ~~**Action/shortcut/palette duplication** (three-place registration)~~ — resolved: single `ActionDef` in `actions.py` wires all three.
+5. ~~**DocumentTab defined inside markdown_editor.py**~~ — resolved: extracted to `components/document_tab.py` (0.1.11).
+6. **Duplicated theme handling** — each widget implements its own `_apply_theme()`.
 
 ### Code Duplication
-1. Theme application code repeated in ~10 locations
-2. Link detection regex duplicated in EnhancedEditor and ReferencesPanel
-3. Similar panel initialization patterns repeated
+1. Theme application code repeated in ~10 widget classes.
+2. Link detection regex duplicated between `EnhancedEditor` and `components/references_panel.py`.
+3. Similar panel initialization patterns repeated across `components/`.
 
 ### Potential Improvements
-1. Extract signal hub for centralized event management
-2. Create base ThemedWidget class to reduce duplication
-3. Add proper Model layer for document state
-4. Implement undo/redo framework
-5. Add unit tests (currently none)
+1. Extract a signal hub for centralized event management.
+2. Create a base `ThemedWidget` class to reduce duplication.
+3. Add a proper Model layer for document state.
+4. Implement an app-wide undo/redo framework (beyond the editor's built-in undo).
 
 ## File Reference
 
-| File | Lines | Primary Class | Purpose |
-|------|-------|---------------|---------|
-| markdown_editor.py | ~2600 | MarkdownEditor, DocumentTab | Main window, tabs |
-| enhanced_editor.py | ~1200 | EnhancedEditor | Text editor widget |
-| app_context.py | ~340 | AppContext | Settings, shortcuts, session state |
-| shortcut_manager.py | ~130 | ShortcutManager | Keyboard shortcut persistence |
-| session_state.py | ~120 | SessionState | Recent files, project/sidebar state |
-| settings_dialog.py | ~450 | SettingsDialog | Settings UI |
-| project_manager.py | ~500 | ProjectPanel, ProjectExportDialog | Project management |
-| outline_panel.py | ~150 | OutlinePanel | Document outline |
-| references_panel.py | ~230 | ReferencesPanel | Backlinks |
-| syntax_highlighter.py | ~250 | MarkdownHighlighter | Syntax highlighting |
-| theme.py | ~390 | ThemeColors, StyleSheets | Theming |
-| export_service.py | ~200 | (module) | Export functions |
-| command_palette.py | ~100 | CommandPalette | Command palette |
-| snippets.py | ~400 | SnippetManager, SnippetPopup | Snippets |
-| table_editor.py | ~200 | TableEditorDialog | Table editing |
-| searchable_popup.py | ~110 | SearchablePopup | Base popup class |
-| markdown_extensions.py | ~100 | CalloutExtension | Custom markdown |
+All paths are relative to `src/markdown_editor/markdown6/`.
+
+### Top-level
+
+| File | Lines | Primary Class / Purpose |
+|------|------:|------------------------|
+| `markdown_editor.py`       | 1816 | `MarkdownEditor` QMainWindow; primary integration point |
+| `markdown_editor_cli.py`   | 1330 | `mde` CLI entry point: GUI mode + `export`/`graph`/`stats`/`validate`/`(un)install-desktop`/`(un)install-autocomplete` |
+| `actions.py`               |  351 | `ActionDef`, `MenuDef`, `MENU_STRUCTURE`, `PALETTE_ONLY`; `build_menu_bar`, `apply_shortcuts`, `build_command_palette` |
+| `enhanced_editor.py`       | 1471 | `EnhancedEditor`, `LineNumberArea`, `WikiLinkCompleter`, `FoldingRegion` |
+| `syntax_highlighter.py`    |  329 | `MarkdownHighlighter` |
+| `theme.py`                 |  765 | `ThemeColors`, `StyleSheets`, `get_theme`, `get_theme_from_ctx` |
+| `export_service.py`        |  269 | `markdown_to_html`, `export_html/pdf/docx`, `has_pandoc`, `ExportError` |
+| `graphviz_service.py`      |  302 | `render_dot`, `has_graphviz` (cached) |
+| `mermaid_service.py`       |  255 | `render_mermaid`, `has_mermaid` (cached) |
+| `tool_paths.py`            |   68 | `get_pandoc_path` / `get_dot_path` / `get_mmdc_path` + `has_*` |
+| `snippets.py`              |  406 | `Snippet`, `SnippetManager`, `SnippetPopup` |
+| `searchable_popup.py`      |   99 | `SearchablePopup` base class |
+| `logger.py`                |   77 | Colored `getLogger` / `setup` under `mde` namespace |
+| `temp_files.py`            |  121 | `create_temp_file`, `create_temp_dir`, `atomic_write` |
+| `file_tree_widget.py`      |  192 | `FileTreeWidget` (checkbox file tree) |
+| `project_manager.py`       |  589 | `ProjectPanel`, `ProjectConfig` |
+| `markdown_extensions.py`   |   18 | Backwards-compat re-export shim for `extensions/` |
+
+### `app_context/`
+
+| File | Lines | Purpose |
+|------|------:|---------|
+| `__init__.py`          | 246 | `AppContext` facade, `get_app_context()`, `init_app_context()` |
+| `settings_manager.py`  | 133 | `SettingsManager` — user preferences |
+| `shortcut_manager.py`  | 206 | `ShortcutManager` — keyboard-shortcut defaults + persistence |
+| `session_state.py`     | 129 | `SessionState` — recent files, open tabs, sidebar state |
+
+### `components/`
+
+| File | Lines | Purpose |
+|------|------:|---------|
+| `activity_bar.py`       |  232 | `ActivityBar`, `ActivityTab` |
+| `sidebar.py`            |  255 | Collapsible `Sidebar` tool window |
+| `document_tab.py`       |  661 | `DocumentTab` — per-document editor + preview container |
+| `outline_panel.py`      |  167 | `OutlinePanel`, `Heading` |
+| `references_panel.py`   |  261 | `ReferencesPanel`, `Reference` |
+| `search_panel.py`       |  281 | `SearchPanel`, `SearchMatch` |
+| `command_palette.py`    |  133 | `CommandPalette`, `Command` |
+| `find_replace_bar.py`   |  401 | `FindReplaceBar` |
+| `external_change_bar.py`|   64 | `ExternalChangeBar` |
+| `settings_dialog.py`    |  844 | `SettingsDialog` multi-page |
+| `table_editor.py`       |  287 | `TableEditorDialog` |
+| `graph_export.py`       | 1120 | `GraphExportDialog` |
+
+### `extensions/`
+
+| File | Lines | Purpose |
+|------|------:|---------|
+| `callouts.py`     | 224 | GitHub `> [!NOTE]` + admonition `!!!` styling |
+| `diagrams.py`     | 260 | Mermaid + Graphviz code-fence processors (cached) |
+| `lists.py`        | 123 | Breakless lists + task lists |
+| `logseq.py`       | 127 | Logseq-flavoured markdown cleanup |
+| `math.py`         | 101 | `$…$` / `$$…$$` math blocks with KaTeX/MathJax |
+| `source_lines.py` | 103 | `data-source-line` attrs for editor↔preview scroll sync |
+| `wikilinks.py`    |  49 | `[[target]]` / `[[target|display]]` |
+
+### `templates/`
+
+| File | Lines | Purpose |
+|------|------:|---------|
+| `preview.py` | 332 | HTML preview page templates |
 
 ## Testing
 
-Currently no automated tests exist. To add tests:
+Tests live in `tests/markdown6/` (26 modules) and use **pytest** + **pytest-qt**. External tools (pandoc, graphviz, mmdc) are mocked.
 
-1. Add pytest to dev dependencies (already in pyproject.toml)
-2. Create tests/ directory
-3. Use pytest-qt for widget testing
+`tests/markdown6/conftest.py` provides an autouse `ephemeral_settings` fixture that resets the global `AppContext` with `ephemeral=True` before each test, so tests never touch the user's real `~/.config/markdown-editor/` files. Widget tests use the `qtbot` fixture.
+
+Run the full suite:
+
+```bash
+pytest tests/markdown6/ -p no:xdist
+```
+
+Run a single module or test:
+
+```bash
+pytest tests/markdown6/test_export_service.py
+pytest tests/markdown6/test_export_service.py::TestMarkdownToHtml::test_basic_conversion
+```
+
+(Never use `-q` or truncate the output — see the rule in top-level `CLAUDE.md`.)
+
+Example unit test for a stateless service:
 
 ```python
-# tests/test_export_service.py
-from fun.markdown6 import export_service
-
-def test_has_pandoc():
-    # Returns bool, doesn't crash
-    result = export_service.has_pandoc()
-    assert isinstance(result, bool)
+# tests/markdown6/test_export_service.py
+from markdown_editor.markdown6 import export_service
 
 def test_markdown_to_html():
     html = export_service.markdown_to_html("# Hello", "Test")
@@ -447,13 +590,23 @@ def test_markdown_to_html():
 
 ## Dependencies
 
-Core runtime:
-- PySide6 >= 6.5 (Qt bindings)
-- PySide6-Addons >= 6.5 (WebEngine)
-- markdown >= 3.5 (parsing)
-- Pygments >= 2.0 (syntax highlighting)
-- weasyprint >= 60.0 (PDF export)
-- python-docx >= 1.0 (DOCX export)
+Core runtime (from `pyproject.toml`):
+- `PySide6 >= 6.5` — Qt bindings
+- `PySide6-Addons >= 6.5` — WebEngine for preview
+- `markdown >= 3.5` — Markdown parsing
+- `Pygments >= 2.0` — syntax highlighting
+- `weasyprint >= 60.0` — PDF export fallback
+- `python-docx >= 1.0` — DOCX export fallback
+- `graphviz >= 0.20` — Python bindings for Graphviz
+- `pydantic >= 2.0` — data models and validation
+- `email-validator` — dependency of pydantic's `EmailStr`
+- `argcomplete >= 3.0` — shell tab-completion for `mde`
 
-Optional:
-- pandoc (system) - Enhanced PDF/DOCX export with LaTeX support
+Dev extras (`pip install -e ".[dev]"`):
+- `pytest >= 7.0`
+- `pytest-qt >= 4.0`
+
+Optional system tools (configurable paths in Settings → Tools):
+- `pandoc` + `texlive-xetex` — high-quality PDF/DOCX export
+- `graphviz` (`dot`) — native Graphviz rendering
+- `@mermaid-js/mermaid-cli` (`mmdc`) — native Mermaid rendering
