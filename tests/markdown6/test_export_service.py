@@ -74,7 +74,9 @@ class TestMarkdownToHtml:
 | --- | --- |
 | 1 | 2 |"""
         html = markdown_to_html(table)
-        assert "<table>" in html
+        # Partial match tolerates `data-source-line` attributes added by
+        # the unified renderer's SourceLineExtension (decision D3).
+        assert "<table" in html
         assert "<th>" in html
         assert "<td>" in html
 

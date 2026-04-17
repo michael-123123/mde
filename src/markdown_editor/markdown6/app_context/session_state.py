@@ -3,6 +3,11 @@
 Manages ephemeral application state that is remembered between sessions
 but is not a user preference — recent files, last project, open tabs,
 sidebar state, etc.
+
+NON-QT-APPLICATION-SAFE: This module must remain loadable in non-Qt-application
+environments (CLI exports use AppContext without a QApplication). QObject +
+Signal from PySide6.QtCore are allowed. Do NOT add PySide6.QtWidgets or
+QApplication-requiring code. See local/html-export-unify.md §4 decision A.
 """
 
 import json

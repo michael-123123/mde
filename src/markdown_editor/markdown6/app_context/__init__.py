@@ -1,5 +1,15 @@
-"""Application context — settings, shortcuts, and session state."""
+"""Application context — settings, shortcuts, and session state.
 
+NON-QT-APPLICATION-SAFE: This module (and its subpackages) must remain
+loadable in non-Qt-application environments. AppContext is used by
+`html_renderer_core` which runs in CLI exports without a QApplication.
+QObject + Signal from PySide6.QtCore are allowed (they work without an
+event loop). Do NOT introduce dependencies on PySide6.QtWidgets,
+QApplication, or anything requiring the GUI to be up. Violations silently
+break `mde export`. See local/html-export-unify.md §4 decision A.
+"""
+
+import copy as _copy
 from pathlib import Path
 from typing import Any
 
@@ -215,6 +225,38 @@ class AppContext(QObject):
         self._settings_manager.restore_defaults()
         self._shortcut_manager.restore_defaults()
         self._session_state.restore_defaults()
+
+    # --- Ephemeral copy (for export paths, decision E) ---
+
+    def ephemeral_copy(self) -> "AppContext":
+        """Return an ephemeral AppContext with the same state as `self`.
+
+        The returned instance:
+          - Is independent — mutations on it do NOT affect `self`.
+          - Starts with copies of `self`'s settings, shortcuts, and
+            session-state dicts.
+          - Is ephemeral — calling `.set(...)` on it never writes to disk.
+          - Has its own signal connections (nothing wired to the original).
+
+        Intended for export paths that need to override a few settings
+        (e.g. `editor.scroll_past_end=False` for HTML export) without
+        polluting the live AppContext. See local/html-export-unify.md §4
+        decision E.
+
+        Named `ephemeral_copy` (not `copy` or `clone`) to make the
+        ephemerality unambiguous — callers should not persist or share
+        the returned instance.
+
+        Uses `copy.deepcopy` on the inner state dicts so nested mutable
+        containers (e.g. `files.recent_files: list`) cannot leak back to
+        the original. A shallow `dict(...)` copy would share those list
+        references and silently break the independence contract.
+        """
+        clone = AppContext(ephemeral=True)
+        clone._settings_manager._settings = _copy.deepcopy(self._settings_manager._settings)
+        clone._shortcut_manager._shortcuts = _copy.deepcopy(self._shortcut_manager._shortcuts)
+        clone._session_state._state = _copy.deepcopy(self._session_state._state)
+        return clone
 
 
 # Global instance

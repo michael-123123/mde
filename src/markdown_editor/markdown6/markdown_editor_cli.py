@@ -148,6 +148,21 @@ Examples:
         action="store_true",
         help="Use pandoc for export (if available)",
     )
+    export_parser.add_argument(
+        "--theme",
+        choices=["light", "dark"],
+        default="light",
+        help="Theme for HTML/PDF output (default: light). See "
+             "local/html-export-unify.md decision C2.",
+    )
+    export_parser.add_argument(
+        "--canonical-fonts",
+        action="store_true",
+        help="Ignore the user's preview font/size settings and use "
+             "built-in canonical defaults in the exported HTML/PDF "
+             "(gives a consistent look across readers). See "
+             "local/html-export-unify.md decision G.",
+    )
 
     # Graph subcommand
     graph_parser = subparsers.add_parser(
@@ -288,10 +303,26 @@ def get_project_files(project_path: Path) -> list[Path]:
 def cmd_export(args: argparse.Namespace) -> int:
     """Handle export subcommand."""
     from markdown_editor.markdown6 import export_service
+    from markdown_editor.markdown6.app_context import init_app_context
+
+    # Build an ephemeral AppContext so the export path has somewhere to
+    # read theme / canonical-fonts from. `ephemeral=True` means nothing
+    # is loaded from or saved to the user's config files. The CLI
+    # applies --theme and --canonical-fonts to this ctx before calling
+    # into export_service. See local/html-export-unify.md decisions
+    # A1.a, C2, G.
+    cli_ctx = init_app_context(ephemeral=True)
+    cli_ctx.set("view.theme", args.theme)
+    if args.canonical_fonts:
+        cli_ctx.set("export.use_canonical_fonts", True)
 
     # Determine input content
     content_parts = []
     title = args.title or "Document"
+    # Source markdown path — used by the renderer to resolve relative
+    # `.dot` image references. Set only for single-file exports; None
+    # for project/multi-file/stdin (inherently ambiguous).
+    source_path: Path | None = None
 
     if args.project:
         if not args.project.is_dir():
@@ -303,32 +334,37 @@ def cmd_export(args: argparse.Namespace) -> int:
             return 1
         title = args.title or args.project.name
 
-        if args.toc:
-            content_parts.append("# Table of Contents\n")
-            for i, f in enumerate(files, 1):
-                name = f.stem.replace("-", " ").replace("_", " ").title()
-                content_parts.append(f"{i}. [{name}](#{name.lower().replace(' ', '-')})")
-            content_parts.append("\n---\n")
-
-        for f in files:
-            if args.page_breaks and content_parts:
-                if args.format == "html":
-                    content_parts.append('<div style="page-break-before: always;"></div>\n')
-                else:
-                    content_parts.append("\n---\n")
-            content_parts.append(f.read_text(encoding="utf-8"))
-            content_parts.append("\n\n")
+        documents = [(f, f.read_text(encoding="utf-8")) for f in files]
+        combined = export_service.combine_project_markdown(
+            documents,
+            include_toc=args.toc,
+            page_breaks=args.page_breaks,
+            output_format=("html" if args.format == "html" else "markdown"),
+        )
+        content_parts.append(combined)
 
     elif args.files:
         for f in args.files:
             if not f.exists():
                 print(f"Error: File not found: {f}", file=sys.stderr)
                 return 1
-            content_parts.append(f.read_text(encoding="utf-8"))
-            if len(args.files) > 1:
-                content_parts.append("\n\n")
         if len(args.files) == 1:
             title = args.title or args.files[0].stem
+            source_path = args.files[0]
+            content_parts.append(args.files[0].read_text(encoding="utf-8"))
+        else:
+            # Multi-file: combine via the shared helper so relative `.dot`
+            # image refs get absolutized per-file (fixing resolution across
+            # files from different source dirs) and the combining logic
+            # stays DRY with project export.
+            documents = [(f, f.read_text(encoding="utf-8")) for f in args.files]
+            combined = export_service.combine_project_markdown(
+                documents,
+                include_toc=False,
+                page_breaks=False,
+                output_format=("html" if args.format == "html" else "markdown"),
+            )
+            content_parts.append(combined)
 
     else:
         # Read from stdin
@@ -347,7 +383,9 @@ def cmd_export(args: argparse.Namespace) -> int:
         if fmt in ("html", "markdown"):
             # Output to stdout
             if fmt == "html":
-                print(export_service.markdown_to_html(content, title))
+                print(export_service.markdown_to_html(
+                    content, title, ctx=cli_ctx, source_path=source_path,
+                ))
             else:
                 print(content)
             return 0
@@ -359,7 +397,10 @@ def cmd_export(args: argparse.Namespace) -> int:
     # Export to file
     try:
         if fmt == "html":
-            export_service.export_html(content, output_path, title)
+            export_service.export_html(
+                content, output_path, title,
+                ctx=cli_ctx, source_path=source_path,
+            )
         elif fmt == "pdf":
             export_service.export_pdf(content, output_path, title, use_pandoc=args.use_pandoc)
         elif fmt == "docx":

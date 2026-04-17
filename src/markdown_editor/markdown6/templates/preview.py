@@ -31,6 +31,8 @@ PREVIEW_TEMPLATE_FULL = """
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
+            <title></title>
             {math_js}
             <style>
                 body {{

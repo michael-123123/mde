@@ -1,4 +1,10 @@
-"""User preference management for the Markdown editor."""
+"""User preference management for the Markdown editor.
+
+NON-QT-APPLICATION-SAFE: This module must remain loadable in non-Qt-application
+environments (CLI exports use AppContext without a QApplication). QObject +
+Signal from PySide6.QtCore are allowed. Do NOT add PySide6.QtWidgets or
+QApplication dependencies. See local/html-export-unify.md §4 decision A.
+"""
 
 import json
 from pathlib import Path
@@ -61,6 +67,15 @@ DEFAULT_SETTINGS = {
     "tools.pandoc_path": "",
     "tools.dot_path": "",
     "tools.mmdc_path": "",
+    # Export font handling. False (default) → exported HTML uses the
+    # user's `preview.*` font settings, matching the GUI preview. True
+    # → renderer ignores user fonts and uses hardcoded canonical
+    # defaults. Set only by the CLI's `--canonical-fonts` flag today;
+    # a GUI Export-dialog checkbox is future work. Registered here so
+    # the default is documented and doesn't persist on accidental
+    # `set(..., False)` on a non-ephemeral ctx. See decision G in
+    # local/html-export-unify.md.
+    "export.use_canonical_fonts": False,
 }
 
 

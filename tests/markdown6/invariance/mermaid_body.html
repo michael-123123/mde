@@ -1,0 +1,7 @@
+<div data-source-line="0" class="mermaid">
+graph LR
+    A[Editor] -->|source-line sync| B[Preview]
+    B -->|click link| C{md file?}
+    C -->|yes| D[Open in new tab]
+    C -->|no| E[OS default handler]
+</div>

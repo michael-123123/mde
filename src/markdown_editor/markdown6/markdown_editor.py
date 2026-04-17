@@ -7,12 +7,6 @@ from pathlib import Path
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
-import markdown
-from markdown.extensions.codehilite import CodeHiliteExtension
-from markdown.extensions.fenced_code import FencedCodeExtension
-from markdown.extensions.tables import TableExtension
-from markdown.extensions.toc import TocExtension
-from pygments.formatters import HtmlFormatter
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import (QColor, QDesktopServices, QIcon, QKeySequence,
                            QPalette, QShortcut, QTextCursor)
@@ -26,19 +20,6 @@ from markdown_editor.markdown6.actions import (_action_attr, _shortcut_id,
                                                apply_shortcuts,
                                                build_command_palette,
                                                build_menu_bar)
-
-# Cache HtmlFormatter instances to avoid recreation on every render
-_html_formatter_cache: dict[str, HtmlFormatter] = {}
-
-
-def get_cached_html_formatter(style: str) -> HtmlFormatter:
-    """Get a cached HtmlFormatter for the given style."""
-    if style not in _html_formatter_cache:
-        _html_formatter_cache[style] = HtmlFormatter(style=style, cssclass="highlight")
-    return _html_formatter_cache[style]
-
-
-
 
 
 
@@ -108,16 +89,16 @@ from markdown_editor.markdown6.components.search_panel import SearchPanel
 from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
 from markdown_editor.markdown6.components.sidebar import Sidebar
 from markdown_editor.markdown6.components.table_editor import TableEditorDialog
+from markdown_editor.markdown6.html_renderer_core import (
+    build_markdown, get_cached_html_formatter, wrap_html_in_full_template)
 from markdown_editor.markdown6.markdown_extensions import (
-    BreaklessListExtension, CalloutExtension, GraphvizExtension,
-    LogseqExtension, MathExtension, MermaidExtension, SourceLineExtension,
-    TaskListExtension, WikiLinkExtension, get_callout_css, get_math_js,
-    get_mermaid_css, get_mermaid_js, get_tasklist_css)
+    get_callout_css, get_math_js, get_mermaid_css, get_mermaid_js,
+    get_tasklist_css)
 from markdown_editor.markdown6.project_manager import ProjectPanel
 from markdown_editor.markdown6.snippets import (SnippetPopup,
                                                 get_snippet_manager)
-from markdown_editor.markdown6.templates.preview import (
-    PREVIEW_TEMPLATE_FULL, PREVIEW_TEMPLATE_SIMPLE)
+from markdown_editor.markdown6.templates.preview import \
+    PREVIEW_TEMPLATE_SIMPLE
 from markdown_editor.markdown6.theme import (StyleSheets, get_theme,
                                              get_theme_from_ctx)
 
@@ -171,26 +152,14 @@ class MarkdownEditor(QMainWindow):
             app.setWindowIcon(icon)
 
     def _init_markdown(self):
-        """Initialize the Markdown converter with extensions."""
-        self.md = markdown.Markdown(
-            extensions=[
-                "extra",
-                LogseqExtension(),  # Priority 101 — strip Logseq syntax before everything else
-                BreaklessListExtension(),  # Add blank lines before lists automatically
-                FencedCodeExtension(),
-                CodeHiliteExtension(css_class="highlight", guess_lang=True),
-                TableExtension(),
-                TocExtension(),
-                'admonition',
-                CalloutExtension(),
-                WikiLinkExtension(),
-                MathExtension(),
-                MermaidExtension(),
-                GraphvizExtension(),
-                TaskListExtension(),
-                SourceLineExtension(),
-            ]
-        )
+        """Initialize the Markdown converter with the shared extension stack.
+
+        Delegates to `html_renderer_core.build_markdown()` — the single
+        source of truth for "preview-grade rendering". The live preview
+        and export paths build Markdown instances via the same factory
+        so their extension sets can never drift apart.
+        """
+        self.md = build_markdown()
 
     def _init_ui(self):
         """Set up the user interface."""
@@ -461,7 +430,15 @@ class MarkdownEditor(QMainWindow):
         Args:
             content: The HTML content to wrap.
             for_qtextbrowser: If True, generate simpler HTML for QTextBrowser.
+
+        FULL case delegates to `html_renderer_core.wrap_html_in_full_template`
+        — the single source of truth for the full preview/export template.
+        SIMPLE case (QTextBrowser preview fallback) stays local because the
+        simple template is preview-only and never shared with exports.
         """
+        if not for_qtextbrowser:
+            return wrap_html_in_full_template(content, self.ctx, total_lines)
+
         theme = self.ctx.get("view.theme", "light")
         dark_mode = theme == "dark"
         scroll_past_end = self.ctx.get("editor.scroll_past_end", True)
@@ -546,11 +523,10 @@ class MarkdownEditor(QMainWindow):
             scroll_past_end_div=scroll_past_end_div,
         )
 
-        # QTextBrowser has limited CSS support, use simplified HTML
-        if for_qtextbrowser:
-            return PREVIEW_TEMPLATE_SIMPLE.format(**template_vars)
-
-        return PREVIEW_TEMPLATE_FULL.format(**template_vars)
+        # QTextBrowser fallback — limited CSS support, use the simple
+        # template. The FULL path was handled by the early return at
+        # the top of this method.
+        return PREVIEW_TEMPLATE_SIMPLE.format(**template_vars)
 
     # Edit menu actions
     def _undo(self):
@@ -903,7 +879,14 @@ class MarkdownEditor(QMainWindow):
         return self.save_file()
 
     def _export_html(self):
-        """Export the current document to HTML."""
+        """Export the current document to HTML via the shared export_service.
+
+        Routes through `export_service.export_html` (a thin adapter over
+        `html_renderer_core`) so single-file export, project export, and
+        CLI export all produce identical preview-grade HTML. Export-side
+        overrides (scroll-past-end=False) are applied inside the service
+        via an ephemeral ctx copy; the live ctx is not mutated.
+        """
         tab = self.current_tab()
         if not tab:
             return
@@ -918,11 +901,12 @@ class MarkdownEditor(QMainWindow):
             return
 
         try:
-            self.md.reset()
-            html_content = self.md.convert(tab.editor.toPlainText())
-            full_html = self.get_html_template(html_content)
-
-            Path(file_path).write_text(full_html, encoding="utf-8")
+            content = tab.editor.toPlainText()
+            title = tab.file_path.stem if tab.file_path else "Document"
+            export_service.export_html(
+                content, file_path, title=title, ctx=self.ctx,
+                source_path=tab.file_path,
+            )
             self.status_bar.showMessage(f"Exported to: {file_path}")
         except Exception as e:
             logger.exception(f"Could not export HTML to {file_path}")
