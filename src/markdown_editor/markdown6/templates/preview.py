@@ -86,6 +86,7 @@ PREVIEW_TEMPLATE_FULL = """
                     line-height: 1.2;
                     margin: 0 0 16px 0;
                     white-space: pre;
+                    position: relative;
                 }}
                 pre code {{
                     background-color: transparent;
@@ -102,6 +103,38 @@ PREVIEW_TEMPLATE_FULL = """
                     overflow: auto;
                     margin-bottom: 16px;
                     line-height: 1.2;
+                    position: relative;
+                }}
+                /* Copy-to-clipboard button on code blocks (preview only) */
+                .mde-copy-btn {{
+                    position: absolute;
+                    top: 6px;
+                    right: 6px;
+                    padding: 2px 6px;
+                    font-size: 12px;
+                    line-height: 1;
+                    color: {text_color};
+                    background-color: {bg_color};
+                    border: 1px solid {heading_border};
+                    border-radius: 4px;
+                    cursor: pointer;
+                    opacity: 0;
+                    transition: opacity 0.15s ease-in-out;
+                    z-index: 2;
+                    font-family: {body_font};
+                }}
+                #md-content .highlight:hover > .mde-copy-btn,
+                #md-content pre:hover > .mde-copy-btn,
+                .mde-copy-btn:focus,
+                .mde-copy-btn.mde-copied {{
+                    opacity: 1;
+                }}
+                .mde-copy-btn:hover {{
+                    border-color: {link_color};
+                }}
+                .mde-copy-btn.mde-copied {{
+                    color: {link_color};
+                    border-color: {link_color};
                 }}
                 .highlight pre {{
                     margin: 0;
@@ -326,6 +359,90 @@ PREVIEW_TEMPLATE_FULL = """
 
                 window.scrollTo(0, Math.max(0, targetY));
             }}
+
+            /* Copy-to-clipboard button on every <pre> in the preview.
+               Buttons are injected on initial load and re-injected after
+               incremental innerHTML updates via a MutationObserver. */
+            (function() {{
+                if (window._mdeCopyInit) return;
+                window._mdeCopyInit = true;
+
+                var ICON_IDLE = String.fromCodePoint(0x1F4CB);  /* clipboard */
+                var ICON_DONE = String.fromCodePoint(0x2713);   /* check mark */
+
+                function installButton(pre) {{
+                    var host = pre.closest('.highlight') || pre;
+                    if (host.querySelector(':scope > .mde-copy-btn')) return;
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'mde-copy-btn';
+                    btn.setAttribute('aria-label', 'Copy code');
+                    btn.title = 'Copy code';
+                    btn.textContent = ICON_IDLE;
+                    host.appendChild(btn);
+                }}
+
+                function installAll() {{
+                    var content = document.getElementById('md-content');
+                    if (!content) return;
+                    var pres = content.querySelectorAll('pre');
+                    for (var i = 0; i < pres.length; i++) installButton(pres[i]);
+                }}
+
+                function fallbackCopy(text) {{
+                    try {{
+                        var ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.setAttribute('readonly', '');
+                        ta.style.position = 'fixed';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        var ok = document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        return ok;
+                    }} catch (e) {{
+                        return false;
+                    }}
+                }}
+
+                function flash(btn, ok) {{
+                    btn.textContent = ok ? ICON_DONE : '!';
+                    btn.classList.add('mde-copied');
+                    setTimeout(function() {{
+                        btn.textContent = ICON_IDLE;
+                        btn.classList.remove('mde-copied');
+                    }}, 1500);
+                }}
+
+                document.addEventListener('click', function(e) {{
+                    var btn = e.target && e.target.closest && e.target.closest('.mde-copy-btn');
+                    if (!btn) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var host = btn.parentElement;
+                    if (!host) return;
+                    var pre = host.tagName === 'PRE' ? host : host.querySelector('pre');
+                    if (!pre) return;
+                    var code = pre.querySelector('code');
+                    var text = (code || pre).textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {{
+                        navigator.clipboard.writeText(text).then(
+                            function() {{ flash(btn, true); }},
+                            function() {{ flash(btn, fallbackCopy(text)); }}
+                        );
+                    }} else {{
+                        flash(btn, fallbackCopy(text));
+                    }}
+                }});
+
+                installAll();
+                var content = document.getElementById('md-content');
+                if (content && typeof MutationObserver !== 'undefined') {{
+                    var observer = new MutationObserver(function() {{ installAll(); }});
+                    observer.observe(content, {{ childList: true, subtree: true }});
+                }}
+            }})();
             </script>
         </body>
         </html>

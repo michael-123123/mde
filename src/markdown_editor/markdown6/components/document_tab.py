@@ -228,6 +228,10 @@ class DocumentTab(QWidget):
             self._custom_page.settings().setAttribute(
                 QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True
             )
+            # Allow the code-block copy buttons to use navigator.clipboard
+            self._custom_page.settings().setAttribute(
+                QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True
+            )
             self._use_webengine = True
         else:
             self.preview = QTextBrowser()
