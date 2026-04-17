@@ -66,7 +66,7 @@ Below the rule.
 - Reference-style link: see [the spec][md-spec]
 - Wiki link (bare): [[another-note]]
 - Wiki link (with display text): [[another-note|a human-friendly label]]
-- Image (remote URL): ![Placeholder](https://via.placeholder.com/120x40.png "alt text")
+- Image (remote URL): ![Placeholder](https://placehold.co/120x40.png "alt text")
 
 [md-spec]: https://daringfireball.net/projects/markdown/
 
