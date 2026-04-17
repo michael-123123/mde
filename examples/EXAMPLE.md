@@ -79,23 +79,123 @@ These exercise the preview's local-file image rendering — a raster format (PNG
 
 ## Code
 
-Fenced code with syntax highlighting (Python):
+### Python — function with type hints and f-strings
 
 ```python
-def greet(name: str) -> str:
-    """Return a friendly greeting."""
-    return f"Hello, {name}!"
+def greet(name: str, punctuation: str = "!") -> str:
+    """Return a friendly greeting.
 
-print(greet("world"))
+    >>> greet("world")
+    'Hello, world!'
+    """
+    return f"Hello, {name}{punctuation}"
+
+
+if __name__ == "__main__":
+    print(greet("world"))
+    print(greet("mde", punctuation="..."))
 ```
 
-Shell example:
+### Python — dataclass, decorators, classmethods, properties
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import ClassVar
+
+
+@dataclass(frozen=True, slots=True)
+class Document:
+    """An immutable document record with a unique auto-assigned id."""
+
+    title: str
+    body: str
+    tags: list[str] = field(default_factory=list)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+    _next_id: ClassVar[int] = 0
+    id: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        # object.__setattr__ because the dataclass is frozen
+        object.__setattr__(self, "id", Document._next_id)
+        Document._next_id += 1
+
+    @property
+    def word_count(self) -> int:
+        return len(self.body.split())
+
+    @classmethod
+    def from_markdown(cls, raw: str) -> Document:
+        title, _, body = raw.partition("\n")
+        return cls(title=title.lstrip("# ").strip(), body=body.strip())
+
+
+doc = Document.from_markdown("# Hello\n\nFirst paragraph with some words.")
+assert doc.word_count == 5
+print(f"doc #{doc.id}: {doc.title!r} ({doc.word_count} words)")
+```
+
+### Python — async I/O, context managers, comprehensions, numbers
+
+```python
+import asyncio
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+MAX_CONCURRENT = 8          # plain int
+TIMEOUT_SEC    = 2.5        # float
+MAGIC_BYTES    = 0xDEADBEEF  # hex literal
+GOLDEN_RATIO   = 1.618_033_988_749  # underscores-in-numbers
+
+
+@asynccontextmanager
+async def limiter(n: int):
+    sem = asyncio.Semaphore(n)
+    try:
+        yield sem
+    finally:
+        # drain pending permits
+        while sem._value < n:
+            sem.release()
+
+
+async def read_first_line(path: Path, sem: asyncio.Semaphore) -> tuple[Path, str | None]:
+    async with sem:
+        try:
+            with open(path, encoding="utf-8") as fp:
+                return path, fp.readline().rstrip("\n")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"skip {path}: {exc!r}")
+            return path, None
+
+
+async def main(root: Path) -> dict[Path, str]:
+    md_files = [p for p in root.rglob("*.md") if p.is_file()]
+    async with limiter(MAX_CONCURRENT) as sem:
+        results = await asyncio.gather(*(read_first_line(p, sem) for p in md_files))
+    return {p: line for p, line in results if line is not None}
+
+
+if __name__ == "__main__":
+    headlines = asyncio.run(main(Path(".")))
+    for path, line in sorted(headlines.items()):
+        print(f"{path}: {line}")
+```
+
+### Shell
 
 ```bash
-mde export README.md -f pdf -o out.pdf
+# Export the project to PDF via pandoc, with a TOC and page breaks
+mde export -p ./docs -f pdf -o out.pdf --toc --page-breaks
+
+# Validate every wiki link in the project and print JSON
+mde validate -p ./docs --json | jq '.broken'
 ```
 
-Plain fenced code (no language):
+### Plain fenced code (no language — monospace only, no highlighting)
 
 ```
 no highlighting here
