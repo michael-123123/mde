@@ -119,9 +119,26 @@
                 }
                 #md-content .highlight:hover > .mde-copy-btn,
                 #md-content pre:hover > .mde-copy-btn,
+                #md-content .mermaid-diagram:hover > .mde-copy-btn,
+                #md-content .graphviz-diagram:hover > .mde-copy-btn,
                 .mde-copy-btn:focus,
                 .mde-copy-btn.mde-copied {
                     opacity: 1;
+                }
+                /* Diagram containers host an absolutely-positioned copy button.
+                   Extra top-margin reserves space for the button above the
+                   rendered SVG so it never sits on top of the diagram. */
+                .mermaid-diagram,
+                .graphviz-diagram {
+                    position: relative;
+                    margin-top: 40px;
+                }
+                /* Diagram copy button floats just above the diagram's top-right
+                   corner, in the reserved margin above the SVG. */
+                .mermaid-diagram > .mde-copy-btn,
+                .graphviz-diagram > .mde-copy-btn {
+                    top: -36px;
+                    right: 0;
                 }
                 .mde-copy-btn:hover {
                     border-color: #0366d6;
@@ -676,14 +693,13 @@ Negative potential consequences of an action.
                 var ICON_IDLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
                 var ICON_DONE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
-                function installButton(pre) {
-                    var host = pre.closest('.highlight') || pre;
+                function installButton(host, label) {
                     if (host.querySelector(':scope > .mde-copy-btn')) return;
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'mde-copy-btn';
-                    btn.setAttribute('aria-label', 'Copy code');
-                    btn.title = 'Copy code';
+                    btn.setAttribute('aria-label', label);
+                    btn.title = label;
                     btn.innerHTML = ICON_IDLE;
                     host.appendChild(btn);
                 }
@@ -692,7 +708,32 @@ Negative potential consequences of an action.
                     var content = document.getElementById('md-content');
                     if (!content) return;
                     var pres = content.querySelectorAll('pre');
-                    for (var i = 0; i < pres.length; i++) installButton(pres[i]);
+                    for (var i = 0; i < pres.length; i++) {
+                        // Skip the <pre> inside a pending-diagram loading
+                        // placeholder — the enclosing diagram div gets its
+                        // own button below, and a second "Copy code" button
+                        // would stack on top of it.
+                        if (pres[i].closest('.diagram-loading')) continue;
+                        installButton(
+                            pres[i].closest('.highlight') || pres[i],
+                            'Copy code'
+                        );
+                    }
+                    var diagrams = content.querySelectorAll(
+                        '.mermaid-diagram, .graphviz-diagram'
+                    );
+                    for (var j = 0; j < diagrams.length; j++) {
+                        installButton(diagrams[j], 'Copy diagram source');
+                    }
+                }
+
+                /* Unescape HTML entities in a string (used to pull the
+                   diagram source back out of the container's data-source
+                   attribute, which is HTML-escaped by the preprocessor). */
+                function unescapeHtml(s) {
+                    var ta = document.createElement('textarea');
+                    ta.innerHTML = s;
+                    return ta.value;
                 }
 
                 function fallbackCopy(text) {
@@ -728,10 +769,17 @@ Negative potential consequences of an action.
                     e.stopPropagation();
                     var host = btn.parentElement;
                     if (!host) return;
-                    var pre = host.tagName === 'PRE' ? host : host.querySelector('pre');
-                    if (!pre) return;
-                    var code = pre.querySelector('code');
-                    var text = (code || pre).textContent || '';
+                    var text = '';
+                    if (host.classList && (
+                        host.classList.contains('mermaid-diagram') ||
+                        host.classList.contains('graphviz-diagram'))) {
+                        text = unescapeHtml(host.dataset.source || '');
+                    } else {
+                        var pre = host.tagName === 'PRE' ? host : host.querySelector('pre');
+                        if (!pre) return;
+                        var code = pre.querySelector('code');
+                        text = (code || pre).textContent || '';
+                    }
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(text).then(
                             function() { flash(btn, true); },
