@@ -47,7 +47,7 @@ from pygments.formatters import HtmlFormatter
 
 from markdown_editor.markdown6 import graphviz_service
 from markdown_editor.markdown6.diagram_helpers import _render_diagram
-from markdown_editor.markdown6.markdown_extensions import (
+from markdown_editor.markdown6.extensions import (
     BreaklessListExtension, CalloutExtension, GraphvizExtension,
     LogseqExtension, MathExtension, MermaidExtension, SourceLineExtension,
     TaskListExtension, WikiLinkExtension, get_callout_css, get_math_js,

@@ -91,7 +91,7 @@ from markdown_editor.markdown6.components.sidebar import Sidebar
 from markdown_editor.markdown6.components.table_editor import TableEditorDialog
 from markdown_editor.markdown6.html_renderer_core import (
     build_markdown, get_cached_html_formatter, wrap_html_in_full_template)
-from markdown_editor.markdown6.markdown_extensions import (
+from markdown_editor.markdown6.extensions import (
     get_callout_css, get_math_js, get_mermaid_css, get_mermaid_js,
     get_tasklist_css)
 from markdown_editor.markdown6.project_manager import ProjectPanel
@@ -1764,8 +1764,10 @@ class MarkdownEditor(QMainWindow):
 
 def main():
     """Run the Markdown editor application."""
+    import logging
+
     from markdown_editor.markdown6.logger import setup as setup_logging
-    setup_logging()
+    setup_logging(level=logging.INFO)
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")

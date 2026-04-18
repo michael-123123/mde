@@ -2,7 +2,7 @@
 
 import markdown
 
-from markdown_editor.markdown6.markdown_extensions import LogseqExtension
+from markdown_editor.markdown6.extensions import LogseqExtension
 
 
 def _convert(text, logseq_mode=True):

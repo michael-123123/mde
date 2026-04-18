@@ -290,6 +290,9 @@ class DocumentTab(QWidget):
             self._wheel_filter = _PreviewWheelFilter(self)
             self._wheel_filter_installed = False
             self._custom_page.loadFinished.connect(self._install_wheel_filter)
+            self._custom_page.loadFinished.connect(
+                lambda ok: logger.info(f"[DIAG] loadFinished ok={ok}")
+            )
         else:
             self.preview.viewport().installEventFilter(_PreviewWheelFilter(self))
 
@@ -505,6 +508,9 @@ class DocumentTab(QWidget):
         """
         import json
 
+        # Cancel any pending debounced render — we're rendering now.
+        self.render_timer.stop()
+
         text = self.editor.toPlainText()
         total_lines = text.count('\n') + 1
         self.main_window.md.reset()
@@ -522,6 +528,7 @@ class DocumentTab(QWidget):
 
         # For QWebEngineView: use incremental JS update to preserve scroll position
         if self._use_webengine and not self._preview_needs_full_reload:
+            logger.info(f"[DIAG] incremental pending={len(pending)}")
             escaped = json.dumps(html_content)
             js = f"document.getElementById('md-content').innerHTML = {escaped};"
             js += f"document.body.dataset.totalLines = '{total_lines}';"
@@ -565,6 +572,7 @@ class DocumentTab(QWidget):
             scrollbar.setValue(scroll_pos)
         else:
             # Full reload for QWebEngineView (initial load or theme/font change)
+            logger.info(f"[DIAG] full-reload pending={len(pending)}")
             self.preview.setHtml(full_html, base_url)
             self._preview_needs_full_reload = False
             # Re-apply zoom factor after setHtml
@@ -607,14 +615,16 @@ class DocumentTab(QWidget):
                 js = f"""
                 (function() {{
                     var el = document.getElementById('diagram-pending-{idx}');
-                    if (el) {{
-                        el.innerHTML = {escaped_svg};
-                        el.classList.remove('diagram-loading');
-                        el.classList.add('{css_class}');
-                    }}
+                    if (!el) return 'missing';
+                    el.innerHTML = {escaped_svg};
+                    el.classList.remove('diagram-loading');
+                    el.classList.add('{css_class}');
+                    return 'ok';
                 }})();
                 """
-                self.preview.page().runJavaScript(js)
+                def _cb(result, _idx=idx, _len=len(svg_html)):
+                    logger.info(f"[DIAG] inject idx={_idx} result={result!r} svg_len={_len}")
+                self.preview.page().runJavaScript(js, _cb)
                 self._apply_preview_zoom()
             else:
                 remaining.append((idx, future))

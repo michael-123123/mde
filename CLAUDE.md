@@ -89,7 +89,7 @@ Emits `settings_changed`, `shortcut_changed`, `theme_changed` signals. JSON pers
 
 ### Markdown extensions
 
-`markdown_extensions.py` is a backwards-compat re-export shim. Real extensions live in `extensions/`:
+Extensions live in the `extensions/` subpackage. The package's `__init__.py` re-exports the public API from each module, so callers can `from markdown_editor.markdown6.extensions import MermaidExtension, ...`.
 
 - `callouts.py` — `CalloutExtension` (supports both GitHub `> [!NOTE]` and admonition `!!! note` syntaxes)
 - `diagrams.py` — `MermaidExtension`, `GraphvizExtension` with caching and async placeholder support
@@ -111,7 +111,7 @@ Emits `settings_changed`, `shortcut_changed`, `theme_changed` signals. JSON pers
 
 **Adding a menu item / shortcut / palette entry:** Add a single `ActionDef` to `MENU_STRUCTURE` (or to `PALETTE_ONLY` for palette-only entries) in `actions.py`. The menu, shortcut, and command-palette entry are all wired up automatically by `build_menu_bar()`, `apply_shortcuts()`, and `build_command_palette()`. Default shortcuts (with platform-aware `QKeySequence.StandardKey` on Ctrl+N, Ctrl+S, etc.) live in `app_context/shortcut_manager.py`.
 
-**Adding a markdown extension:** Create a new module under `extensions/`, export the `Extension` class and any required pre/postprocessors, and add it to the `markdown.Markdown(extensions=[...])` list where the preview is rendered (in `components/document_tab.py`). If you want to preserve the flat re-export API, also re-export it from `markdown_extensions.py`.
+**Adding a markdown extension:** Create a new module under `extensions/`, export the `Extension` class and any required pre/postprocessors, and add it to the `markdown.Markdown(extensions=[...])` list where the preview is rendered (in `components/document_tab.py`). Also add a re-export line to `extensions/__init__.py` so the extension is accessible from the package root.
 
 **Link detection regexes:** Wiki links `[[target|display]]`, Markdown links `[text](url)`, bare URLs `https?://...`. Duplicated in `EnhancedEditor` and `components/references_panel.py`.
 
