@@ -37,7 +37,7 @@ class TestAsyncDiagramUnit:
         """Uncached mermaid block should produce a placeholder div."""
         import markdown
 
-        from markdown_editor.markdown6.markdown_extensions import \
+        from markdown_editor.markdown6.extensions import \
             MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
@@ -59,7 +59,7 @@ class TestAsyncDiagramUnit:
         """Cached mermaid block should be inlined, not deferred."""
         import markdown
 
-        from markdown_editor.markdown6.markdown_extensions import \
+        from markdown_editor.markdown6.extensions import \
             MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])

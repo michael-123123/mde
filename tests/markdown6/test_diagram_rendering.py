@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import markdown
 
-from markdown_editor.markdown6.markdown_extensions import (GraphvizExtension,
-                                                           MermaidExtension)
+from markdown_editor.markdown6.extensions import (GraphvizExtension,
+                                                  MermaidExtension)
 
 
 class TestMermaidServerSideRendering:

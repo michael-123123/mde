@@ -388,7 +388,7 @@ elif format_type == "xyz":
 
 ### Adding a New Markdown Extension
 
-Extensions live in the `extensions/` subpackage (`callouts.py`, `diagrams.py`, `lists.py`, `logseq.py`, `math.py`, `source_lines.py`, `wikilinks.py`). The top-level `markdown_extensions.py` is a backwards-compat re-export shim.
+Extensions live in the `extensions/` subpackage (`callouts.py`, `diagrams.py`, `lists.py`, `logseq.py`, `math.py`, `source_lines.py`, `wikilinks.py`). The package's `__init__.py` re-exports the public API so callers can `from markdown_editor.markdown6.extensions import MermaidExtension, ...`.
 
 1. Create a new module under `extensions/`:
 ```python
@@ -412,7 +412,7 @@ from ..extensions.my_ext import MyExtension
 self.md = markdown.Markdown(extensions=[..., MyExtension()])
 ```
 
-3. (Optional) If you want the old flat import path to keep working, add a re-export line to `markdown_extensions.py`.
+3. (Optional) Add a re-export line to `extensions/__init__.py` so the extension is accessible from the package root.
 
 ## Code Patterns
 
@@ -510,7 +510,6 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 | `temp_files.py`            |  121 | `create_temp_file`, `create_temp_dir`, `atomic_write` |
 | `file_tree_widget.py`      |  192 | `FileTreeWidget` (checkbox file tree) |
 | `project_manager.py`       |  589 | `ProjectPanel`, `ProjectConfig` |
-| `markdown_extensions.py`   |   18 | Backwards-compat re-export shim for `extensions/` |
 
 ### `app_context/`
 

@@ -108,7 +108,7 @@ from markdown_editor.markdown6.components.search_panel import SearchPanel
 from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
 from markdown_editor.markdown6.components.sidebar import Sidebar
 from markdown_editor.markdown6.components.table_editor import TableEditorDialog
-from markdown_editor.markdown6.markdown_extensions import (
+from markdown_editor.markdown6.extensions import (
     BreaklessListExtension, CalloutExtension, GraphvizExtension,
     LogseqExtension, MathExtension, MermaidExtension, SourceLineExtension,
     TaskListExtension, WikiLinkExtension, get_callout_css, get_math_js,

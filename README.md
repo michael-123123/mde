@@ -337,7 +337,6 @@ src/markdown_editor/markdown6/
 ├── temp_files.py              # Tracked temp files, atomic_write()
 ├── file_tree_widget.py        # Checkbox file-tree widget (shared)
 ├── project_manager.py         # ProjectPanel (top-level for import stability)
-├── markdown_extensions.py     # Backwards-compat re-export shim
 │
 ├── app_context/               # Settings, shortcuts, session state (DI facade)
 ├── components/                # Widgets: panels, dialogs, activity bar, sidebar
