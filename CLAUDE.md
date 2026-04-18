@@ -145,7 +145,7 @@ Never merge branches into master directly via `git merge`. Always go through a G
 1. Merge or rebase from master into the feature branch to ensure it's up to date. Resolve any conflicts.
 2. Push the branch to origin.
 3. Create a PR with `gh pr create`.
-4. Approve the PR with `gh pr review --approve`.
+4. Approve the PR with `gh pr review --approve`. GitHub forbids approving your own PR — if you are the PR author, this step will fail with `Can not approve your own pull request`. That's expected on this single-author repo; skip the approval and continue to step 5.
 5. Merge the PR with `gh pr merge --merge --delete-branch`.
 
 The PR must only be approved and merged when the branch has a clean merge/rebase from master. This applies any time you are asked to merge to master/main.
