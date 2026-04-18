@@ -3,6 +3,25 @@
 All notable changes to markdown-editor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.12] - 2026-04-19
+
+### Added
+- Copy-to-clipboard button on code blocks in the preview
+- Copy-to-clipboard button on rendered mermaid/graphviz diagrams — copies the original source back to the clipboard
+- CLI `mde export` now accepts `--theme {light,dark}` and `--canonical-fonts` flags
+- New `examples/DIAGRAMS.md` showcasing richer mermaid and graphviz samples
+
+### Changed
+- Unified HTML export pipeline: GUI File→Export, CLI `mde export`, project export, and WeasyPrint PDF all now use the same preview-grade renderer. Exports finally honour wiki links, callouts, math, mermaid, graphviz, task lists, and Logseq cleanup instead of the previous stripped-down output
+- Code-block copy button uses larger inline-SVG icons
+- Consolidated README into the repo root; example content moved under `examples/`
+
+### Fixed
+- Initial file open could leave diagrams stuck on "Rendering…" placeholders (duplicate-render race against the asynchronous page load in the preview)
+- `mde export -f html` shipped unrendered "Rendering…" placeholders instead of SVGs for any diagram
+- Graphviz diagrams in dark mode painted light-grey text on user-chosen pastel fill colours, making labels unreadable; text inside user-filled nodes now uses dark colour for contrast
+- Broken `via.placeholder.com` image URLs in the examples replaced with `placehold.co`
+
 ## [0.1.11] - 2026-04-15
 
 ### Added
