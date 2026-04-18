@@ -1239,6 +1239,11 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Main entry point."""
+    import logging
+
+    from markdown_editor.markdown6.logger import setup as setup_logging
+    setup_logging(level=logging.INFO)
+
     if argv is None:
         argv = sys.argv[1:]
 

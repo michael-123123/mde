@@ -1780,8 +1780,10 @@ class MarkdownEditor(QMainWindow):
 
 def main():
     """Run the Markdown editor application."""
+    import logging
+
     from markdown_editor.markdown6.logger import setup as setup_logging
-    setup_logging()
+    setup_logging(level=logging.INFO)
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")
