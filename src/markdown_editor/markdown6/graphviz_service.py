@@ -141,11 +141,18 @@ def _make_svg_responsive(svg: str) -> str:
 def _apply_dark_mode(svg: str) -> str:
     """Apply dark mode styling to SVG.
 
-    Inverts common colors used by Graphviz.
+    Swaps the graphviz defaults (white background, black strokes/text) for
+    dark equivalents, but respects user-specified `fillcolor` on nodes.
+
+    Text inside a `<g class="node">` whose shape carries a user-specified
+    fill (any colour other than `none` or the dark-mode substitute
+    `#1e1e1e`) gets dark text (`#000`) so it stays readable against the
+    pastel fill. Text everywhere else — edge labels, graph titles,
+    unfilled nodes — gets light text (`#d4d4d4`) for contrast with the
+    dark page background.
     """
     import re
 
-    # Replace common light colors with dark equivalents
     replacements = [
         ('fill="white"', 'fill="#1e1e1e"'),
         ('fill="black"', 'fill="#d4d4d4"'),
@@ -153,24 +160,43 @@ def _apply_dark_mode(svg: str) -> str:
         ("fill='white'", "fill='#1e1e1e'"),
         ("fill='black'", "fill='#d4d4d4'"),
         ("stroke='black'", "stroke='#d4d4d4'"),
-        # Handle none background
-        ('fill="none"', 'fill="none"'),  # Keep as-is
     ]
-
     for old, new in replacements:
         svg = svg.replace(old, new)
 
-    # Add fill color to text elements that don't have one
-    # Graphviz text elements often inherit black color without explicit fill
-    def add_text_fill(match):
-        tag = match.group(0)
-        # Check if fill is already present
-        if 'fill=' in tag:
-            return tag
-        # Add fill color before the closing >
-        return tag[:-1] + ' fill="#d4d4d4">'
+    text_tag_re = re.compile(r'<text\b[^>]*>')
 
-    svg = re.sub(r'<text[^>]*>', add_text_fill, svg)
+    def _inject_text_fill(block: str, color: str) -> str:
+        def _sub(m):
+            tag = m.group(0)
+            if 'fill=' in tag:
+                return tag
+            return tag[:-1] + f' fill="{color}">'
+        return text_tag_re.sub(_sub, block)
+
+    # Text inside user-filled node groups needs dark colour for contrast.
+    # The first shape (path/polygon/ellipse/rect/circle) inside the group
+    # carries the node's fill.
+    shape_fill_re = re.compile(
+        r'<(?:path|polygon|ellipse|rect|circle)\b[^>]*\bfill="([^"]+)"'
+    )
+
+    def _handle_node_group(m):
+        block = m.group(0)
+        shape = shape_fill_re.search(block)
+        if shape and shape.group(1).lower() not in ('none', '#1e1e1e'):
+            return _inject_text_fill(block, '#000')
+        return _inject_text_fill(block, '#d4d4d4')
+
+    svg = re.sub(
+        r'<g[^>]*\bclass="node"[^>]*>.*?</g>',
+        _handle_node_group,
+        svg,
+        flags=re.DOTALL,
+    )
+
+    # Any remaining text (outside node groups) gets the default light fill.
+    svg = _inject_text_fill(svg, '#d4d4d4')
 
     return svg
 
