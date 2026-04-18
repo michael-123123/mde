@@ -1,0 +1,712 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title></title>
+            
+    <script>
+        // Polyfill for structuredClone (not available in older Chromium)
+        if (typeof structuredClone === 'undefined') {
+            window.structuredClone = function(obj) {
+                return JSON.parse(JSON.stringify(obj));
+            };
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });"></script>
+    
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    color: #24292e;
+                    background-color: #ffffff;
+                    max-width: 100%;
+                    padding: 20px;
+                    margin: 0;
+                }
+                * {
+                    box-sizing: border-box;
+                }
+                h1 {
+                    font-size: 2.0em;
+                    font-weight: 600;
+                    
+                    border-bottom: 1px solid #eaecef;
+                    padding-bottom: 0.3em;
+                    margin-top: 24px;
+                    margin-bottom: 16px;
+                }
+                h2 {
+                    font-size: 1.5em;
+                    font-weight: 600;
+                    
+                    border-bottom: 1px solid #eaecef;
+                    padding-bottom: 0.3em;
+                    margin-top: 24px;
+                    margin-bottom: 16px;
+                }
+                h3 { font-size: 1.25em; font-weight: 600;  margin-top: 24px; margin-bottom: 16px; }
+                h4 { font-size: 1.0em; font-weight: 600;  margin-top: 24px; margin-bottom: 16px; }
+                h5 { font-size: 0.875em; font-weight: 600;  margin-top: 24px; margin-bottom: 16px; }
+                h6 { font-size: 0.85em; font-weight: 600;  margin-top: 24px; margin-bottom: 16px; }
+                p { margin-top: 0; margin-bottom: 16px; }
+                code {
+                    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+                    font-size: 85%;
+                    background-color: #f6f8fa;
+                    padding: 0.2em 0.4em;
+                    border-radius: 3px;
+                }
+                pre {
+                    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+                    font-size: 85%;
+                    background-color: #f6f8fa;
+                    padding: 16px;
+                    overflow: auto;
+                    border-radius: 6px;
+                    line-height: 1.2;
+                    margin: 0 0 16px 0;
+                    white-space: pre;
+                    position: relative;
+                }
+                pre code {
+                    background-color: transparent;
+                    padding: 0;
+                    font-size: 100%;
+                    line-height: inherit;
+                    display: block;
+                }
+                /* Pygments highlight container */
+                .highlight {
+                    background-color: #f6f8fa;
+                    padding: 16px;
+                    border-radius: 6px;
+                    overflow: auto;
+                    margin-bottom: 16px;
+                    line-height: 1.2;
+                    position: relative;
+                }
+                /* Copy-to-clipboard button on code blocks (preview only) */
+                .mde-copy-btn {
+                    position: absolute;
+                    top: 8px;
+                    right: 8px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 6px 8px;
+                    font-size: 14px;
+                    line-height: 1;
+                    color: #24292e;
+                    background-color: #ffffff;
+                    border: 1px solid #eaecef;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    opacity: 0;
+                    transition: opacity 0.15s ease-in-out;
+                    z-index: 2;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                }
+                #md-content .highlight:hover > .mde-copy-btn,
+                #md-content pre:hover > .mde-copy-btn,
+                .mde-copy-btn:focus,
+                .mde-copy-btn.mde-copied {
+                    opacity: 1;
+                }
+                .mde-copy-btn:hover {
+                    border-color: #0366d6;
+                }
+                .mde-copy-btn.mde-copied {
+                    color: #0366d6;
+                    border-color: #0366d6;
+                }
+                .highlight pre {
+                    margin: 0;
+                    padding: 0;
+                    background-color: transparent;
+                    line-height: 1.2;
+                }
+                .highlight code {
+                    line-height: 1.2;
+                }
+                /* Remove any margins/padding inside code blocks */
+                pre *, .highlight * {
+                    margin: 0;
+                    padding: 0;
+                    line-height: 1.2;
+                }
+                pre span, .highlight span {
+                    display: inline;
+                }
+                .codehilite {
+                    background-color: #f6f8fa;
+                    padding: 16px;
+                    border-radius: 6px;
+                    overflow: auto;
+                    margin-bottom: 16px;
+                }
+                .codehilite pre {
+                    margin: 0;
+                    padding: 0;
+                    background-color: transparent;
+                    line-height: 1.2;
+                }
+                blockquote {
+                    margin: 0;
+                    padding: 0 1em;
+                    color: #6a737d;
+                    border-left: 0.25em solid #eaecef;
+                }
+                ul, ol {
+                    display: block;
+                    padding-left: 2em;
+                    margin-top: 0;
+                    margin-bottom: 16px;
+                    list-style-position: outside;
+                }
+                ul { list-style-type: disc; }
+                ol { list-style-type: decimal; }
+                li {
+                    display: list-item;
+                    margin-top: 0.25em;
+                }
+                table { border-collapse: collapse; margin-top: 0; margin-bottom: 16px; width: 100%; }
+                th, td { padding: 6px 13px; border: 1px solid #eaecef; }
+                th { font-weight: 600; background-color: #f6f8fa; }
+                hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #eaecef; border: 0; }
+                a { color: #0366d6; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+                img { max-width: 100%; box-sizing: border-box; }
+                /* Wiki links */
+                a.wiki-link {
+                    color: #0366d6;
+                    border-bottom: 1px dashed #0366d6;
+                }
+                a.wiki-link:hover {
+                    border-bottom-style: solid;
+                }
+                /* Math blocks */
+                .math-block {
+                    overflow-x: auto;
+                    padding: 16px 0;
+                }
+                .math-inline {
+                    padding: 0 2px;
+                }
+                /* Mermaid diagrams */
+                .mermaid {
+                    background: #f6f8fa;
+                    padding: 16px;
+                    border-radius: 6px;
+                    margin: 16px 0;
+                    text-align: center;
+                }
+                /* Pygments syntax highlighting */
+                pre { line-height: 125%; }
+td.linenos .normal { color: #6e7681; background-color: #0d1117; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: #6e7681; background-color: #0d1117; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #e6edf3; background-color: #6e7681; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 5px; padding-right: 5px; }
+.highlight .hll { background-color: #6e7681 }
+.highlight { background: #0d1117; color: #E6EDF3 }
+.highlight .c { color: #8B949E; font-style: italic } /* Comment */
+.highlight .err { color: #F85149 } /* Error */
+.highlight .esc { color: #E6EDF3 } /* Escape */
+.highlight .g { color: #E6EDF3 } /* Generic */
+.highlight .k { color: #FF7B72 } /* Keyword */
+.highlight .l { color: #A5D6FF } /* Literal */
+.highlight .n { color: #E6EDF3 } /* Name */
+.highlight .o { color: #FF7B72; font-weight: bold } /* Operator */
+.highlight .x { color: #E6EDF3 } /* Other */
+.highlight .p { color: #E6EDF3 } /* Punctuation */
+.highlight .ch { color: #8B949E; font-style: italic } /* Comment.Hashbang */
+.highlight .cm { color: #8B949E; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #8B949E; font-weight: bold; font-style: italic } /* Comment.Preproc */
+.highlight .cpf { color: #8B949E; font-style: italic } /* Comment.PreprocFile */
+.highlight .c1 { color: #8B949E; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #8B949E; font-weight: bold; font-style: italic } /* Comment.Special */
+.highlight .gd { color: #FFA198; background-color: #490202 } /* Generic.Deleted */
+.highlight .ge { color: #E6EDF3; font-style: italic } /* Generic.Emph */
+.highlight .ges { color: #E6EDF3; font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+.highlight .gr { color: #FFA198 } /* Generic.Error */
+.highlight .gh { color: #79C0FF; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #56D364; background-color: #0F5323 } /* Generic.Inserted */
+.highlight .go { color: #8B949E } /* Generic.Output */
+.highlight .gp { color: #8B949E } /* Generic.Prompt */
+.highlight .gs { color: #E6EDF3; font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #79C0FF } /* Generic.Subheading */
+.highlight .gt { color: #FF7B72 } /* Generic.Traceback */
+.highlight .g-Underline { color: #E6EDF3; text-decoration: underline } /* Generic.Underline */
+.highlight .kc { color: #79C0FF } /* Keyword.Constant */
+.highlight .kd { color: #FF7B72 } /* Keyword.Declaration */
+.highlight .kn { color: #FF7B72 } /* Keyword.Namespace */
+.highlight .kp { color: #79C0FF } /* Keyword.Pseudo */
+.highlight .kr { color: #FF7B72 } /* Keyword.Reserved */
+.highlight .kt { color: #FF7B72 } /* Keyword.Type */
+.highlight .ld { color: #79C0FF } /* Literal.Date */
+.highlight .m { color: #A5D6FF } /* Literal.Number */
+.highlight .s { color: #A5D6FF } /* Literal.String */
+.highlight .na { color: #E6EDF3 } /* Name.Attribute */
+.highlight .nb { color: #E6EDF3 } /* Name.Builtin */
+.highlight .nc { color: #F0883E; font-weight: bold } /* Name.Class */
+.highlight .no { color: #79C0FF; font-weight: bold } /* Name.Constant */
+.highlight .nd { color: #D2A8FF; font-weight: bold } /* Name.Decorator */
+.highlight .ni { color: #FFA657 } /* Name.Entity */
+.highlight .ne { color: #F0883E; font-weight: bold } /* Name.Exception */
+.highlight .nf { color: #D2A8FF; font-weight: bold } /* Name.Function */
+.highlight .nl { color: #79C0FF; font-weight: bold } /* Name.Label */
+.highlight .nn { color: #FF7B72 } /* Name.Namespace */
+.highlight .nx { color: #E6EDF3 } /* Name.Other */
+.highlight .py { color: #79C0FF } /* Name.Property */
+.highlight .nt { color: #7EE787 } /* Name.Tag */
+.highlight .nv { color: #79C0FF } /* Name.Variable */
+.highlight .ow { color: #FF7B72; font-weight: bold } /* Operator.Word */
+.highlight .pm { color: #E6EDF3 } /* Punctuation.Marker */
+.highlight .w { color: #6E7681 } /* Text.Whitespace */
+.highlight .mb { color: #A5D6FF } /* Literal.Number.Bin */
+.highlight .mf { color: #A5D6FF } /* Literal.Number.Float */
+.highlight .mh { color: #A5D6FF } /* Literal.Number.Hex */
+.highlight .mi { color: #A5D6FF } /* Literal.Number.Integer */
+.highlight .mo { color: #A5D6FF } /* Literal.Number.Oct */
+.highlight .sa { color: #79C0FF } /* Literal.String.Affix */
+.highlight .sb { color: #A5D6FF } /* Literal.String.Backtick */
+.highlight .sc { color: #A5D6FF } /* Literal.String.Char */
+.highlight .dl { color: #79C0FF } /* Literal.String.Delimiter */
+.highlight .sd { color: #A5D6FF } /* Literal.String.Doc */
+.highlight .s2 { color: #A5D6FF } /* Literal.String.Double */
+.highlight .se { color: #79C0FF } /* Literal.String.Escape */
+.highlight .sh { color: #79C0FF } /* Literal.String.Heredoc */
+.highlight .si { color: #A5D6FF } /* Literal.String.Interpol */
+.highlight .sx { color: #A5D6FF } /* Literal.String.Other */
+.highlight .sr { color: #79C0FF } /* Literal.String.Regex */
+.highlight .s1 { color: #A5D6FF } /* Literal.String.Single */
+.highlight .ss { color: #A5D6FF } /* Literal.String.Symbol */
+.highlight .bp { color: #E6EDF3 } /* Name.Builtin.Pseudo */
+.highlight .fm { color: #D2A8FF; font-weight: bold } /* Name.Function.Magic */
+.highlight .vc { color: #79C0FF } /* Name.Variable.Class */
+.highlight .vg { color: #79C0FF } /* Name.Variable.Global */
+.highlight .vi { color: #79C0FF } /* Name.Variable.Instance */
+.highlight .vm { color: #79C0FF } /* Name.Variable.Magic */
+.highlight .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
+                /* Callouts */
+                
+        .callout {
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .callout-note { background: #ddf4ff; border-color: #0969da; }
+        .callout-note .callout-title { color: #0969da; }
+        .callout-tip { background: #dafbe1; border-color: #1a7f37; }
+        .callout-tip .callout-title { color: #1a7f37; }
+        .callout-important { background: #fbefff; border-color: #8250df; }
+        .callout-important .callout-title { color: #8250df; }
+        .callout-warning { background: #fff8c5; border-color: #9a6700; }
+        .callout-warning .callout-title { color: #9a6700; }
+        .callout-caution { background: #ffebe9; border-color: #cf222e; }
+        .callout-caution .callout-title { color: #cf222e; }
+        
+        .admonition {
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 6px;
+            border-left: 4px solid #0969da;
+            background: #ddf4ff;
+        }
+        .admonition-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #0969da;
+        }
+        .admonition.note, .admonition.info { background: #ddf4ff; border-color: #0969da; }
+        .admonition.note .admonition-title, .admonition.info .admonition-title { color: #0969da; }
+        .admonition.tip, .admonition.success, .admonition.example { background: #dafbe1; border-color: #1a7f37; }
+        .admonition.tip .admonition-title, .admonition.success .admonition-title, .admonition.example .admonition-title { color: #1a7f37; }
+        .admonition.important, .admonition.abstract, .admonition.question { background: #fbefff; border-color: #8250df; }
+        .admonition.important .admonition-title, .admonition.abstract .admonition-title, .admonition.question .admonition-title { color: #8250df; }
+        .admonition.warning, .admonition.quote { background: #fff8c5; border-color: #9a6700; }
+        .admonition.warning .admonition-title, .admonition.quote .admonition-title { color: #9a6700; }
+        .admonition.caution, .admonition.danger, .admonition.failure, .admonition.bug { background: #ffebe9; border-color: #cf222e; }
+        .admonition.caution .admonition-title, .admonition.danger .admonition-title, .admonition.failure .admonition-title, .admonition.bug .admonition-title { color: #cf222e; }
+        
+                /* Graphviz */
+                
+        .graphviz-diagram {
+            text-align: center;
+            margin: 16px 0;
+        }
+        .graphviz-diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .graphviz-error {
+            background: #ffebe9;
+            border: 1px solid #cf222e;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 16px 0;
+            font-family: monospace;
+        }
+        .graphviz-error-header {
+            color: #cf222e;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .graphviz-error-source {
+            background: #f6f8fa;
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+            color: #24292f;
+            margin: 8px 0;
+        }
+        .graphviz-error-message {
+            color: #cf222e;
+            font-size: 0.9em;
+        }
+        
+                /* Mermaid */
+                
+        .mermaid-diagram {
+            text-align: center;
+            margin: 16px 0;
+        }
+        .mermaid-diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .mermaid-error {
+            background: #ffebe9;
+            border: 1px solid #cf222e;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 16px 0;
+            font-family: monospace;
+        }
+        .mermaid-error-header {
+            color: #cf222e;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .mermaid-error-source {
+            background: #f6f8fa;
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+            color: #24292f;
+            margin: 8px 0;
+        }
+        .mermaid-error-message {
+            color: #cf222e;
+            font-size: 0.9em;
+        }
+        
+                /* Task lists */
+                
+        .task-list-item {
+            list-style-type: none;
+            position: relative;
+            margin-left: -1.5em;
+        }
+        .checkbox {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 1.5px solid #d0d7de;
+            border-radius: 3px;
+            margin-right: 0.4em;
+            text-align: center;
+            line-height: 1em;
+            font-size: 0.85em;
+            vertical-align: middle;
+            position: relative;
+            top: -0.1em;
+        }
+        .checkbox.checked {
+            background-color: #0969da;
+            border-color: #0969da;
+            color: #ffffff;
+        }
+    
+                /* When zoomed, let diagram SVGs scale instead of fitting container */
+                body.zoomed .mermaid-diagram svg,
+                body.zoomed .graphviz-diagram svg {
+                    max-width: none;
+                }
+                /* Diagram loading placeholder */
+                .diagram-loading {
+                    padding: 16px;
+                    border-radius: 6px;
+                    background: #f6f8fa;
+                    margin: 8px 0;
+                    text-align: left;
+                }
+                .diagram-loading-source {
+                    font-size: 80%;
+                    opacity: 0.5;
+                    max-height: 120px;
+                    overflow: hidden;
+                    margin: 0 0 8px 0;
+                    background: transparent;
+                    padding: 0;
+                }
+                .diagram-loading-spinner {
+                    color: #6a737d;
+                    font-style: italic;
+                    font-size: 0.9em;
+                }
+                /* Ctrl+hover hint — only the hovered element */
+                body.ctrl-held img,
+                body.ctrl-held .mermaid-diagram svg,
+                body.ctrl-held .graphviz-diagram svg {
+                    cursor: pointer;
+                }
+                body.ctrl-held img:hover,
+                body.ctrl-held .mermaid-diagram:hover svg,
+                body.ctrl-held .graphviz-diagram:hover svg {
+                    filter: drop-shadow(0 0 3px #0366d6) drop-shadow(0 0 1px #0366d6);
+                }
+            </style>
+        </head>
+        <body class="light" data-total-lines="0">
+            <div id="md-content"><blockquote data-source-line="0">
+<p>Simple blockquote.</p>
+<blockquote>
+<p>Nested blockquote.</p>
+</blockquote>
+</blockquote></div>
+            <div style='height: 80vh;'></div>
+            
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@9.4.3/dist/mermaid.min.js"></script>
+    <script>
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: document.body.classList.contains('dark') ? 'dark' : 'default',
+                securityLevel: 'loose'
+            });
+        }
+    </script>
+    
+            
+    <script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.2.4/lib/viz-standalone.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find all unrendered graphviz blocks (those with raw DOT source)
+            document.querySelectorAll('.graphviz-pending').forEach(async function(el) {
+                try {
+                    const source = el.textContent;
+                    const viz = await Viz.instance();
+                    const svg = viz.renderSVGElement(source);
+                    el.innerHTML = '';
+                    el.appendChild(svg);
+                    el.classList.remove('graphviz-pending');
+                    el.classList.add('graphviz-diagram');
+                } catch (e) {
+                    el.innerHTML = '<div class="graphviz-error">' +
+                        '<div class="graphviz-error-header">Graphviz Error</div>' +
+                        '<pre class="graphviz-error-source">' + el.textContent.replace(/</g, '&lt;') + '</pre>' +
+                        '<div class="graphviz-error-message">' + e.message.replace(/</g, '&lt;') + '</div>' +
+                        '</div>';
+                    el.classList.remove('graphviz-pending');
+                }
+            });
+        });
+    </script>
+    
+            <script>
+            /* Ctrl+click on images/diagrams → open in external app */
+            document.addEventListener('mousemove', function(e) {
+                document.body.classList.toggle('ctrl-held', e.ctrlKey || e.metaKey);
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Control' || e.key === 'Meta') document.body.classList.add('ctrl-held');
+            });
+            document.addEventListener('keyup', function(e) {
+                if (e.key === 'Control' || e.key === 'Meta') document.body.classList.remove('ctrl-held');
+            });
+            window.addEventListener('blur', function() {
+                document.body.classList.remove('ctrl-held');
+            });
+            document.addEventListener('click', function(e) {
+                if (!e.ctrlKey && !e.metaKey) return;
+                var el = e.target;
+                while (el && el !== document.body) {
+                    if (el.tagName === 'IMG') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = 'open-image://img?src=' + encodeURIComponent(el.src);
+                        return;
+                    }
+                    if (el.tagName === 'svg' || (el.classList && (
+                        el.classList.contains('mermaid-diagram') ||
+                        el.classList.contains('graphviz-diagram')))) {
+                        var container = el.closest('.mermaid-diagram, .graphviz-diagram');
+                        if (container && container.dataset.source) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var kind = container.classList.contains('mermaid-diagram') ? 'mermaid' : 'graphviz';
+                            window._pendingDiagramSource = container.dataset.source;
+                            window.location.href = 'open-image://diagram?kind=' + kind;
+                            return;
+                        }
+                    }
+                    el = el.parentElement;
+                }
+            }, true);
+
+            /* Source-line-based scroll synchronization */
+            function scrollToSourceLine(line) {
+                var anchors = document.querySelectorAll('[data-source-line]');
+                if (anchors.length === 0) {
+                    /* Fallback to proportional scroll */
+                    var total = document.body.dataset.totalLines || 1;
+                    window.scrollTo(0, document.body.scrollHeight * (line / total));
+                    return;
+                }
+
+                var before = null, after = null;
+                for (var i = 0; i < anchors.length; i++) {
+                    var al = parseInt(anchors[i].dataset.sourceLine, 10);
+                    if (al <= line) {
+                        before = { el: anchors[i], line: al };
+                    }
+                    if (al > line && after === null) {
+                        after = { el: anchors[i], line: al };
+                        break;
+                    }
+                }
+
+                if (!before && !after) return;
+
+                var targetY;
+                if (!before) {
+                    targetY = after.el.getBoundingClientRect().top + window.scrollY;
+                } else if (!after) {
+                    var beforeY = before.el.getBoundingClientRect().top + window.scrollY;
+                    var docBottom = document.body.scrollHeight;
+                    var totalLines = parseInt(document.body.dataset.totalLines || '0', 10);
+                    if (totalLines > before.line) {
+                        var t = (line - before.line) / (totalLines - before.line);
+                        targetY = beforeY + t * (docBottom - beforeY);
+                    } else {
+                        targetY = beforeY;
+                    }
+                } else {
+                    var beforeY = before.el.getBoundingClientRect().top + window.scrollY;
+                    var afterY = after.el.getBoundingClientRect().top + window.scrollY;
+                    var t = (after.line === before.line) ? 0 : (line - before.line) / (after.line - before.line);
+                    targetY = beforeY + t * (afterY - beforeY);
+                }
+
+                window.scrollTo(0, Math.max(0, targetY));
+            }
+
+            /* Copy-to-clipboard button on every <pre> in the preview.
+               Buttons are injected on initial load and re-injected after
+               incremental innerHTML updates via a MutationObserver. */
+            (function() {
+                if (window._mdeCopyInit) return;
+                window._mdeCopyInit = true;
+
+                /* Inline SVG icons — avoid emoji so the renderer never attempts
+                   to resolve a color-emoji font (which can trigger network
+                   lookups on systems lacking a local emoji font). */
+                var ICON_IDLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                var ICON_DONE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
+                function installButton(pre) {
+                    var host = pre.closest('.highlight') || pre;
+                    if (host.querySelector(':scope > .mde-copy-btn')) return;
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'mde-copy-btn';
+                    btn.setAttribute('aria-label', 'Copy code');
+                    btn.title = 'Copy code';
+                    btn.innerHTML = ICON_IDLE;
+                    host.appendChild(btn);
+                }
+
+                function installAll() {
+                    var content = document.getElementById('md-content');
+                    if (!content) return;
+                    var pres = content.querySelectorAll('pre');
+                    for (var i = 0; i < pres.length; i++) installButton(pres[i]);
+                }
+
+                function fallbackCopy(text) {
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.setAttribute('readonly', '');
+                        ta.style.position = 'fixed';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        var ok = document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        return ok;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+
+                function flash(btn, ok) {
+                    btn.innerHTML = ok ? ICON_DONE : '!';
+                    btn.classList.add('mde-copied');
+                    setTimeout(function() {
+                        btn.innerHTML = ICON_IDLE;
+                        btn.classList.remove('mde-copied');
+                    }, 1500);
+                }
+
+                document.addEventListener('click', function(e) {
+                    var btn = e.target && e.target.closest && e.target.closest('.mde-copy-btn');
+                    if (!btn) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var host = btn.parentElement;
+                    if (!host) return;
+                    var pre = host.tagName === 'PRE' ? host : host.querySelector('pre');
+                    if (!pre) return;
+                    var code = pre.querySelector('code');
+                    var text = (code || pre).textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(
+                            function() { flash(btn, true); },
+                            function() { flash(btn, fallbackCopy(text)); }
+                        );
+                    } else {
+                        flash(btn, fallbackCopy(text));
+                    }
+                });
+
+                installAll();
+                var content = document.getElementById('md-content');
+                if (content && typeof MutationObserver !== 'undefined') {
+                    var observer = new MutationObserver(function() { installAll(); });
+                    observer.observe(content, { childList: true, subtree: true });
+                }
+            })();
+            </script>
+        </body>
+        </html>
+        

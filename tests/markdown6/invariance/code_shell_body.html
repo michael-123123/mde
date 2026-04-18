@@ -1,0 +1,6 @@
+<div data-source-line="0" class="highlight"><pre><span></span><code><span class="c1"># Export the project to PDF via pandoc, with a TOC and page breaks</span>
+mde<span class="w"> </span><span class="nb">export</span><span class="w"> </span>-p<span class="w"> </span>./docs<span class="w"> </span>-f<span class="w"> </span>pdf<span class="w"> </span>-o<span class="w"> </span>out.pdf<span class="w"> </span>--toc<span class="w"> </span>--page-breaks
+
+<span class="c1"># Validate every wiki link in the project and print JSON</span>
+mde<span class="w"> </span>validate<span class="w"> </span>-p<span class="w"> </span>./docs<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.broken&#39;</span>
+</code></pre></div>

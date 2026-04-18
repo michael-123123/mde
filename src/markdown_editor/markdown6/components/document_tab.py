@@ -20,6 +20,7 @@ from markdown_editor.markdown6.components.external_change_bar import \
     ExternalChangeBar
 from markdown_editor.markdown6.components.find_replace_bar import \
     FindReplaceBar
+from markdown_editor.markdown6.diagram_helpers import _render_diagram
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
 from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.theme import StyleSheets, get_theme
@@ -36,22 +37,6 @@ try:
 except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
-
-
-def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
-    """Render a single diagram in a thread. Returns (svg_html, css_class)."""
-    try:
-        if kind == 'mermaid':
-            from markdown_editor.markdown6 import mermaid_service
-            svg, _error = mermaid_service.render_mermaid(source, dark_mode)
-            return svg, 'mermaid-diagram'
-        else:
-            from markdown_editor.markdown6 import graphviz_service
-            svg, _error = graphviz_service.render_dot(source, dark_mode)
-            return svg, 'graphviz-diagram'
-    except Exception as e:
-        import html
-        return f'<div class="diagram-loading">Error: {html.escape(str(e))}</div>', 'mermaid-diagram'
 
 
 def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | None:

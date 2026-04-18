@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #24292e; background-color: #ffffff; padding: 10px; }
+        h1 { font-size: 2.0em; font-weight: bold;  }
+        h2 { font-size: 1.5em; font-weight: bold;  }
+        h3 { font-size: 1.25em; font-weight: bold;  }
+        code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 85%; background-color: #f6f8fa; }
+        pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 85%; background-color: #f6f8fa; padding: 10px; }
+        blockquote { color: #6a737d; margin-left: 20px; padding-left: 10px; border-left: 3px solid #eaecef; }
+        a { color: #0366d6; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #eaecef; padding: 5px; }
+        pre { line-height: 125%; }
+td.linenos .normal { color: #6e7681; background-color: #0d1117; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: #6e7681; background-color: #0d1117; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #e6edf3; background-color: #6e7681; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 5px; padding-right: 5px; }
+.highlight .hll { background-color: #6e7681 }
+.highlight { background: #0d1117; color: #E6EDF3 }
+.highlight .c { color: #8B949E; font-style: italic } /* Comment */
+.highlight .err { color: #F85149 } /* Error */
+.highlight .esc { color: #E6EDF3 } /* Escape */
+.highlight .g { color: #E6EDF3 } /* Generic */
+.highlight .k { color: #FF7B72 } /* Keyword */
+.highlight .l { color: #A5D6FF } /* Literal */
+.highlight .n { color: #E6EDF3 } /* Name */
+.highlight .o { color: #FF7B72; font-weight: bold } /* Operator */
+.highlight .x { color: #E6EDF3 } /* Other */
+.highlight .p { color: #E6EDF3 } /* Punctuation */
+.highlight .ch { color: #8B949E; font-style: italic } /* Comment.Hashbang */
+.highlight .cm { color: #8B949E; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #8B949E; font-weight: bold; font-style: italic } /* Comment.Preproc */
+.highlight .cpf { color: #8B949E; font-style: italic } /* Comment.PreprocFile */
+.highlight .c1 { color: #8B949E; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #8B949E; font-weight: bold; font-style: italic } /* Comment.Special */
+.highlight .gd { color: #FFA198; background-color: #490202 } /* Generic.Deleted */
+.highlight .ge { color: #E6EDF3; font-style: italic } /* Generic.Emph */
+.highlight .ges { color: #E6EDF3; font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+.highlight .gr { color: #FFA198 } /* Generic.Error */
+.highlight .gh { color: #79C0FF; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #56D364; background-color: #0F5323 } /* Generic.Inserted */
+.highlight .go { color: #8B949E } /* Generic.Output */
+.highlight .gp { color: #8B949E } /* Generic.Prompt */
+.highlight .gs { color: #E6EDF3; font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #79C0FF } /* Generic.Subheading */
+.highlight .gt { color: #FF7B72 } /* Generic.Traceback */
+.highlight .g-Underline { color: #E6EDF3; text-decoration: underline } /* Generic.Underline */
+.highlight .kc { color: #79C0FF } /* Keyword.Constant */
+.highlight .kd { color: #FF7B72 } /* Keyword.Declaration */
+.highlight .kn { color: #FF7B72 } /* Keyword.Namespace */
+.highlight .kp { color: #79C0FF } /* Keyword.Pseudo */
+.highlight .kr { color: #FF7B72 } /* Keyword.Reserved */
+.highlight .kt { color: #FF7B72 } /* Keyword.Type */
+.highlight .ld { color: #79C0FF } /* Literal.Date */
+.highlight .m { color: #A5D6FF } /* Literal.Number */
+.highlight .s { color: #A5D6FF } /* Literal.String */
+.highlight .na { color: #E6EDF3 } /* Name.Attribute */
+.highlight .nb { color: #E6EDF3 } /* Name.Builtin */
+.highlight .nc { color: #F0883E; font-weight: bold } /* Name.Class */
+.highlight .no { color: #79C0FF; font-weight: bold } /* Name.Constant */
+.highlight .nd { color: #D2A8FF; font-weight: bold } /* Name.Decorator */
+.highlight .ni { color: #FFA657 } /* Name.Entity */
+.highlight .ne { color: #F0883E; font-weight: bold } /* Name.Exception */
+.highlight .nf { color: #D2A8FF; font-weight: bold } /* Name.Function */
+.highlight .nl { color: #79C0FF; font-weight: bold } /* Name.Label */
+.highlight .nn { color: #FF7B72 } /* Name.Namespace */
+.highlight .nx { color: #E6EDF3 } /* Name.Other */
+.highlight .py { color: #79C0FF } /* Name.Property */
+.highlight .nt { color: #7EE787 } /* Name.Tag */
+.highlight .nv { color: #79C0FF } /* Name.Variable */
+.highlight .ow { color: #FF7B72; font-weight: bold } /* Operator.Word */
+.highlight .pm { color: #E6EDF3 } /* Punctuation.Marker */
+.highlight .w { color: #6E7681 } /* Text.Whitespace */
+.highlight .mb { color: #A5D6FF } /* Literal.Number.Bin */
+.highlight .mf { color: #A5D6FF } /* Literal.Number.Float */
+.highlight .mh { color: #A5D6FF } /* Literal.Number.Hex */
+.highlight .mi { color: #A5D6FF } /* Literal.Number.Integer */
+.highlight .mo { color: #A5D6FF } /* Literal.Number.Oct */
+.highlight .sa { color: #79C0FF } /* Literal.String.Affix */
+.highlight .sb { color: #A5D6FF } /* Literal.String.Backtick */
+.highlight .sc { color: #A5D6FF } /* Literal.String.Char */
+.highlight .dl { color: #79C0FF } /* Literal.String.Delimiter */
+.highlight .sd { color: #A5D6FF } /* Literal.String.Doc */
+.highlight .s2 { color: #A5D6FF } /* Literal.String.Double */
+.highlight .se { color: #79C0FF } /* Literal.String.Escape */
+.highlight .sh { color: #79C0FF } /* Literal.String.Heredoc */
+.highlight .si { color: #A5D6FF } /* Literal.String.Interpol */
+.highlight .sx { color: #A5D6FF } /* Literal.String.Other */
+.highlight .sr { color: #79C0FF } /* Literal.String.Regex */
+.highlight .s1 { color: #A5D6FF } /* Literal.String.Single */
+.highlight .ss { color: #A5D6FF } /* Literal.String.Symbol */
+.highlight .bp { color: #E6EDF3 } /* Name.Builtin.Pseudo */
+.highlight .fm { color: #D2A8FF; font-weight: bold } /* Name.Function.Magic */
+.highlight .vc { color: #79C0FF } /* Name.Variable.Class */
+.highlight .vg { color: #79C0FF } /* Name.Variable.Global */
+.highlight .vi { color: #79C0FF } /* Name.Variable.Instance */
+.highlight .vm { color: #79C0FF } /* Name.Variable.Magic */
+.highlight .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
+    </style>
+</head>
+<body>
+<h1 data-source-line="0" id="sample-document-feature-showcase">Sample Document — Feature Showcase</h1>
+<p data-source-line="2">Opening this file in the editor exercises every renderable feature. Each section below maps to a specific markdown extension configured in <code>markdown_editor._init_markdown()</code>.</p>
+<div data-source-line="4" class="toc">
+<ul>
+<li><a href="#sample-document-feature-showcase">Sample Document — Feature Showcase</a><ul>
+<li><a href="#inline-text">Inline text</a></li>
+<li><a href="#lists">Lists</a></li>
+<li><a href="#blockquote">Blockquote</a></li>
+<li><a href="#horizontal-rule">Horizontal rule</a></li>
+<li><a href="#links-and-images">Links and images</a><ul>
+<li><a href="#local-image-files">Local image files</a></li>
+</ul>
+</li>
+<li><a href="#code">Code</a><ul>
+<li><a href="#python-function-with-type-hints-and-f-strings">Python — function with type hints and f-strings</a></li>
+<li><a href="#python-dataclass-decorators-classmethods-properties">Python — dataclass, decorators, classmethods, properties</a></li>
+<li><a href="#python-async-io-context-managers-comprehensions-numbers">Python — async I/O, context managers, comprehensions, numbers</a></li>
+<li><a href="#shell">Shell</a></li>
+<li><a href="#plain-fenced-code-no-language-monospace-only-no-highlighting">Plain fenced code (no language — monospace only, no highlighting)</a></li>
+</ul>
+</li>
+<li><a href="#tables">Tables</a></li>
+<li><a href="#callouts-github-syntax">Callouts — GitHub syntax</a></li>
+<li><a href="#callouts-admonition-syntax">Callouts — admonition syntax</a></li>
+<li><a href="#math-katex-mathjax">Math (KaTeX / MathJax)</a></li>
+<li><a href="#mermaid-diagram">Mermaid diagram</a></li>
+<li><a href="#graphviz-dot">Graphviz (dot)</a></li>
+<li><a href="#definition-list">Definition list</a></li>
+<li><a href="#abbreviation">Abbreviation</a></li>
+<li><a href="#footnote">Footnote</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h2 data-source-line="6" id="inline-text">Inline text</h2>
+<p data-source-line="8">Plain paragraph text with <strong>bold</strong>, <em>italic</em>, <strong><em>bold italic</em></strong>, ~~strikethrough~~, and <code>inline code</code>. Lines in the same paragraph wrap softly
+to the next line.</p>
+<p data-source-line="11">A second paragraph with a hard break at the end of this line,\
+followed by a trailing line using the Markdown backslash break.</p>
+<p data-source-line="14">Keyboard hint via inline <abbr title="HyperText Markup Language">HTML</abbr>: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> for the command palette.</p>
+<h2 data-source-line="16" id="lists">Lists</h2>
+<p data-source-line="18">Unordered with nesting:</p>
+<ul data-source-line="20">
+<li>First item</li>
+<li>Second item</li>
+<li>Nested<ul>
+<li>Double-nested</li>
+</ul>
+</li>
+<li>Third item</li>
+</ul>
+<p data-source-line="26">Ordered:</p>
+<ol data-source-line="28">
+<li>One</li>
+<li>Two</li>
+<li>Two-a</li>
+<li>Two-b</li>
+<li>Three</li>
+</ol>
+<p data-source-line="34">Task list:</p>
+<ul data-source-line="36">
+<li class="task-list-item"><span class="checkbox checked">✓</span> Implement feature</li>
+<li class="task-list-item"><span class="checkbox checked">✓</span> Write regression test</li>
+<li class="task-list-item"><span class="checkbox unchecked"></span> Update docs</li>
+<li class="task-list-item"><span class="checkbox unchecked"></span> Ship it</li>
+</ul>
+<p data-source-line="41">Breakless list (no blank line before) handled by <code>BreaklessListExtension</code>:</p>
+<ul>
+<li>alpha</li>
+<li>beta</li>
+<li>gamma</li>
+</ul>
+<h2 data-source-line="46" id="blockquote">Blockquote</h2>
+<blockquote data-source-line="48">
+<p>Simple blockquote.</p>
+<blockquote>
+<p>Nested blockquote.</p>
+</blockquote>
+</blockquote>
+<h2 data-source-line="52" id="horizontal-rule">Horizontal rule</h2>
+<p data-source-line="54">Above the rule.</p>
+<hr data-source-line="56" />
+<p data-source-line="58">Below the rule.</p>
+<h2 data-source-line="60" id="links-and-images">Links and images</h2>
+<ul data-source-line="62">
+<li>Markdown link: <a href="https://www.anthropic.com">Anthropic</a></li>
+<li>Link with title: <a href="https://example.com" title="tooltip text">Hover me</a></li>
+<li>Bare URL: https://example.com</li>
+<li>Reference-style link: see <a href="https://daringfireball.net/projects/markdown/">the spec</a></li>
+<li>Wiki link (bare): <a class="wiki-link" data-wiki-link="another-note" href="another-note.md">another-note</a></li>
+<li>Wiki link (with display text): <a class="wiki-link" data-wiki-link="another-note" href="another-note.md">a human-friendly label</a></li>
+<li>Image (remote URL): <img alt="Placeholder" src="https://placehold.co/120x40.png" title="alt text" /></li>
+</ul>
+<h3 data-source-line="72" id="local-image-files">Local image files</h3>
+<p data-source-line="74">These exercise the preview's local-file image rendering — a raster format (PNG) and a vector format (SVG), resolved relative to the markdown file.</p>
+<p data-source-line="76"><img alt="A red square" src="./square.png" title="square.png — raster/PNG" />
+<img alt="A blue circle" src="./circle.svg" title="circle.svg — vector/SVG" /></p>
+<h2 data-source-line="79" id="code">Code</h2>
+<h3 data-source-line="81" id="python-function-with-type-hints-and-f-strings">Python — function with type hints and f-strings</h3>
+<div data-source-line="83" class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">punctuation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;!&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a friendly greeting.</span>
+
+<span class="sd">    &gt;&gt;&gt; greet(&quot;world&quot;)</span>
+<span class="sd">    &#39;Hello, world!&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}{</span><span class="n">punctuation</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">greet</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">greet</span><span class="p">(</span><span class="s2">&quot;mde&quot;</span><span class="p">,</span> <span class="n">punctuation</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">))</span>
+</code></pre></div>
+
+<h3 data-source-line="98" id="python-dataclass-decorators-classmethods-properties">Python — dataclass, decorators, classmethods, properties</h3>
+<div data-source-line="100" class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Document</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An immutable document record with a unique auto-assigned id.&quot;&quot;&quot;</span>
+
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
+
+    <span class="n">_next_id</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># object.__setattr__ because the dataclass is frozen</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">Document</span><span class="o">.</span><span class="n">_next_id</span><span class="p">)</span>
+        <span class="n">Document</span><span class="o">.</span><span class="n">_next_id</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">word_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_markdown</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">raw</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Document</span><span class="p">:</span>
+        <span class="n">title</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;# &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+
+<span class="n">doc</span> <span class="o">=</span> <span class="n">Document</span><span class="o">.</span><span class="n">from_markdown</span><span class="p">(</span><span class="s2">&quot;# Hello</span><span class="se">\n\n</span><span class="s2">First paragraph with some words.&quot;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">doc</span><span class="o">.</span><span class="n">word_count</span> <span class="o">==</span> <span class="mi">5</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;doc #</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">title</span><span class="si">!r}</span><span class="s2"> (</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">word_count</span><span class="si">}</span><span class="s2"> words)&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 data-source-line="140" id="python-async-io-context-managers-comprehensions-numbers">Python — async I/O, context managers, comprehensions, numbers</h3>
+<div data-source-line="142" class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">MAX_CONCURRENT</span> <span class="o">=</span> <span class="mi">8</span>          <span class="c1"># plain int</span>
+<span class="n">TIMEOUT_SEC</span>    <span class="o">=</span> <span class="mf">2.5</span>        <span class="c1"># float</span>
+<span class="n">MAGIC_BYTES</span>    <span class="o">=</span> <span class="mh">0xDEADBEEF</span>  <span class="c1"># hex literal</span>
+<span class="n">GOLDEN_RATIO</span>   <span class="o">=</span> <span class="mf">1.618_033_988_749</span>  <span class="c1"># underscores-in-numbers</span>
+
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">limiter</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="n">sem</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">sem</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c1"># drain pending permits</span>
+        <span class="k">while</span> <span class="n">sem</span><span class="o">.</span><span class="n">_value</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+            <span class="n">sem</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read_first_line</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">sem</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">sem</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">path</span><span class="p">,</span> <span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">UnicodeDecodeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;skip </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">path</span><span class="p">,</span> <span class="kc">None</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+    <span class="n">md_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;*.md&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">()]</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">limiter</span><span class="p">(</span><span class="n">MAX_CONCURRENT</span><span class="p">)</span> <span class="k">as</span> <span class="n">sem</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">read_first_line</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">sem</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">md_files</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="n">line</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">line</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">headlines</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">headlines</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 data-source-line="187" id="shell">Shell</h3>
+<div data-source-line="189" class="highlight"><pre><span></span><code><span class="c1"># Export the project to PDF via pandoc, with a TOC and page breaks</span>
+mde<span class="w"> </span><span class="nb">export</span><span class="w"> </span>-p<span class="w"> </span>./docs<span class="w"> </span>-f<span class="w"> </span>pdf<span class="w"> </span>-o<span class="w"> </span>out.pdf<span class="w"> </span>--toc<span class="w"> </span>--page-breaks
+
+<span class="c1"># Validate every wiki link in the project and print JSON</span>
+mde<span class="w"> </span>validate<span class="w"> </span>-p<span class="w"> </span>./docs<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.broken&#39;</span>
+</code></pre></div>
+
+<h3 data-source-line="197" id="plain-fenced-code-no-language-monospace-only-no-highlighting">Plain fenced code (no language — monospace only, no highlighting)</h3>
+<div data-source-line="199" class="highlight"><pre><span></span><code>no highlighting here
+just monospace text
+</code></pre></div>
+
+<h2 data-source-line="204" id="tables">Tables</h2>
+<table data-source-line="206">
+<thead>
+<tr>
+<th>Header 1</th>
+<th style="text-align: center;">Header 2</th>
+<th style="text-align: right;">Header 3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Left</td>
+<td style="text-align: center;">Center</td>
+<td style="text-align: right;">Right</td>
+</tr>
+<tr>
+<td>Data</td>
+<td style="text-align: center;">Data</td>
+<td style="text-align: right;">Data</td>
+</tr>
+<tr>
+<td>42</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: right;">99.99</td>
+</tr>
+</tbody>
+</table>
+<h2 data-source-line="212" id="callouts-github-syntax">Callouts — GitHub syntax</h2>
+<div data-source-line="214" class="callout callout-note">
+<div class="callout-title">
+<span class="callout-icon"></span>
+<span>Note</span>
+</div>
+<div class="callout-content">
+Useful information that readers should pay attention to.
+</div>
+</div>
+
+<div data-source-line="217" class="callout callout-tip">
+<div class="callout-title">
+<span class="callout-icon"></span>
+<span>Tip</span>
+</div>
+<div class="callout-content">
+Helpful advice for doing things better.
+</div>
+</div>
+
+<div data-source-line="220" class="callout callout-important">
+<div class="callout-title">
+<span class="callout-icon"></span>
+<span>Important</span>
+</div>
+<div class="callout-content">
+Key information users need to know.
+</div>
+</div>
+
+<div data-source-line="223" class="callout callout-warning">
+<div class="callout-title">
+<span class="callout-icon"></span>
+<span>Warning</span>
+</div>
+<div class="callout-content">
+Urgent info that needs immediate user attention to avoid problems.
+</div>
+</div>
+
+<div data-source-line="226" class="callout callout-caution">
+<div class="callout-title">
+<span class="callout-icon"></span>
+<span>Caution</span>
+</div>
+<div class="callout-content">
+Negative potential consequences of an action.
+</div>
+</div>
+
+<h2 data-source-line="229" id="callouts-admonition-syntax">Callouts — admonition syntax</h2>
+<div data-source-line="231" class="admonition note">
+<p class="admonition-title">A titled note</p>
+<p>Admonition callouts accept an optional title.</p>
+</div>
+<div data-source-line="234" class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Pro tip: every shortcut in the editor is remappable.</p>
+</div>
+<div data-source-line="237" class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Something to watch out for.</p>
+</div>
+<div data-source-line="240" class="admonition bug">
+<p class="admonition-title">Bug</p>
+<p>Admonition supports exotic types too — <code>bug</code>, <code>danger</code>, <code>failure</code>, <code>question</code>, <code>abstract</code>, <code>example</code>, <code>quote</code>, <code>success</code>, <code>info</code>.</p>
+</div>
+<h2 data-source-line="243" id="math-katex-mathjax">Math (KaTeX / MathJax)</h2>
+<p data-source-line="245">Inline: <span class="math-inline">$E = mc^2$</span>, <span class="math-inline">$\forall x \in \mathbb{R}$</span>, and <span class="math-inline">$\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$</span>.</p>
+<p data-source-line="247">Block:</p>
+<p data-source-line="249"><div class="math-block">$$
+\int_0^{\infty} e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+$$</div></p>
+<p data-source-line="253"><div class="math-block">$$
+\begin{pmatrix} a & b \\ c & d \end{pmatrix}
+\begin{pmatrix} x \\ y \end{pmatrix}
+=
+\begin{pmatrix} ax + by \\ cx + dy \end{pmatrix}
+$$</div></p>
+<h2 data-source-line="260" id="mermaid-diagram">Mermaid diagram</h2>
+<div data-source-line="262" class="mermaid">
+graph LR
+    A[Editor] -->|source-line sync| B[Preview]
+    B -->|click link| C{md file?}
+    C -->|yes| D[Open in new tab]
+    C -->|no| E[OS default handler]
+</div>
+
+<h2 data-source-line="270" id="graphviz-dot">Graphviz (dot)</h2>
+<div data-source-line="272" class="graphviz-pending" data-source="digraph G {
+    rankdir=LR;
+    node [shape=box, style=rounded];
+    MarkdownEditor -&gt; DocumentTab -&gt; EnhancedEditor;
+    DocumentTab -&gt; Preview;
+    EnhancedEditor -&gt; Preview [label=&quot;source-line map&quot;, style=dashed];
+}">digraph G {
+    rankdir=LR;
+    node [shape=box, style=rounded];
+    MarkdownEditor -&gt; DocumentTab -&gt; EnhancedEditor;
+    DocumentTab -&gt; Preview;
+    EnhancedEditor -&gt; Preview [label=&quot;source-line map&quot;, style=dashed];
+}</div>
+
+<h2 data-source-line="282" id="definition-list">Definition list</h2>
+<dl>
+<dt>markdown-editor</dt>
+<dd>A Qt6 Markdown editor with live preview.</dd>
+</dl>
+<dl>
+<dt>mde</dt>
+<dd>Short CLI alias for <code>markdown-editor</code>.</dd>
+</dl>
+<h2 data-source-line="290" id="abbreviation">Abbreviation</h2>
+<p data-source-line="292">The <abbr title="HyperText Markup Language">HTML</abbr> spec is defined by the <abbr title="World Wide Web Consortium">W3C</abbr>.</p>
+<h2 data-source-line="297" id="footnote">Footnote</h2>
+<p data-source-line="299">Here is a sentence with a footnote reference.<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup> And another using a named key.<sup id="fnref:named"><a class="footnote-ref" href="#fn:named">2</a></sup></p>
+<hr data-source-line="304" />
+<p data-source-line="306">End of sample.</p>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>First footnote — appears at the bottom of the rendered document.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:named">
+<p>Named footnotes keep the source readable.&#160;<a class="footnote-backref" href="#fnref:named" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+<div style='height: 80vh;'></div>
+</body>
+</html>

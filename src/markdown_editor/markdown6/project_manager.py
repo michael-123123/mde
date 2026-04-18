@@ -527,16 +527,10 @@ class ProjectExportDialog(QDialog):
         progress.setValue(0)
         QApplication.processEvents()
 
-        # Combine files
-        combined_content = []
-
-        if self.include_toc.isChecked():
-            combined_content.append("# Table of Contents\n")
-            for i, file_path in enumerate(files, 1):
-                name = file_path.stem.replace("-", " ").replace("_", " ").title()
-                combined_content.append(f"{i}. [{name}](#{name.lower().replace(' ', '-')})")
-            combined_content.append("\n---\n")
-
+        # Read all files with progress updates, then delegate to the
+        # shared combiner — TOC building and page-break insertion are
+        # the single source of truth in `export_service.combine_project_markdown`.
+        documents: list[tuple[Path, str]] = []
         for i, file_path in enumerate(files):
             if progress.wasCanceled():
                 return
@@ -545,20 +539,17 @@ class ProjectExportDialog(QDialog):
             progress.setValue(i)
             QApplication.processEvents()
 
-            content = file_path.read_text(encoding="utf-8")
-
-            if self.page_breaks.isChecked() and format_type == "html":
-                combined_content.append('<div style="page-break-before: always;"></div>\n')
-            elif self.page_breaks.isChecked() and format_type == "markdown":
-                combined_content.append("\n---\n\n")
-
-            combined_content.append(content)
-            combined_content.append("\n\n")
+            documents.append((file_path, file_path.read_text(encoding="utf-8")))
 
         if progress.wasCanceled():
             return
 
-        combined = "\n".join(combined_content)
+        combined = export_service.combine_project_markdown(
+            documents,
+            include_toc=self.include_toc.isChecked(),
+            page_breaks=self.page_breaks.isChecked(),
+            output_format=("html" if format_type == "html" else "markdown"),
+        )
         title = self.project_path.name
 
         # Final conversion step
@@ -572,7 +563,7 @@ class ProjectExportDialog(QDialog):
             if format_type == "markdown":
                 Path(output_path).write_text(combined, encoding="utf-8")
             elif format_type == "html":
-                export_service.export_html(combined, output_path, title)
+                export_service.export_html(combined, output_path, title, ctx=self.ctx)
             elif format_type == "pdf":
                 export_service.export_pdf(combined, output_path, title, use_pandoc)
             elif format_type == "docx":

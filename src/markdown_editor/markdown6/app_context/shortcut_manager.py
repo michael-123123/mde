@@ -1,4 +1,13 @@
-"""Keyboard shortcut management for the Markdown editor."""
+"""Keyboard shortcut management for the Markdown editor.
+
+NON-QT-APPLICATION-SAFE: This module must remain loadable in non-Qt-application
+environments (CLI exports use AppContext without a QApplication). QObject +
+Signal from PySide6.QtCore are allowed; PySide6.QtGui.QKeySequence is also
+allowed here (it's used for shortcut string formatting and falls back
+gracefully when no QApplication is present — see `_resolve_defaults`). Do
+NOT add PySide6.QtWidgets or QApplication-requiring code. See
+local/html-export-unify.md §4 decision A.
+"""
 
 import json
 from pathlib import Path

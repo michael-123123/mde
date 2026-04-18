@@ -376,3 +376,85 @@ class TestNestedCodeBlocksNotRendered:
         result = md.convert(source)
         assert "mermaid-diagram" in result
         mock_render.assert_called_once()
+
+
+class TestGraphvizDarkModeTextContrast:
+    """Dark-mode transform must not paint light text onto user-fillcolor nodes.
+
+    Regression: `_apply_dark_mode` used to inject `fill="#d4d4d4"` onto every
+    `<text>` without a fill, which produced light-on-light text whenever the
+    user's `.dot` source specified a pastel `fillcolor` (e.g. `#E3F2FD`).
+    Text sitting inside a user-filled node needs dark colour; text on the
+    default (unfilled) canvas needs light colour.
+    """
+
+    def test_text_inside_user_fillcolor_node_gets_dark_text(self):
+        from markdown_editor.markdown6.graphviz_service import \
+            _apply_dark_mode
+
+        svg = (
+            '<svg>'
+            '<g id="node1" class="node">'
+            '<title>Gateway</title>'
+            '<path fill="#e3f2fd" stroke="black" d="M0,0"/>'
+            '<text x="10" y="10">Gateway</text>'
+            '</g>'
+            '</svg>'
+        )
+        out = _apply_dark_mode(svg)
+        assert 'fill="#d4d4d4">Gateway' not in out, (
+            "Text on pastel user-fill got painted light-grey — invisible "
+            "against the pale node background."
+        )
+        assert 'fill="#000">Gateway' in out, (
+            "Text inside a user-filled node must be dark for contrast."
+        )
+
+    def test_text_outside_node_groups_still_gets_light_text(self):
+        from markdown_editor.markdown6.graphviz_service import \
+            _apply_dark_mode
+
+        # Edge labels and graph titles sit outside any <g class="node">.
+        svg = (
+            '<svg>'
+            '<g class="edge"><text x="0" y="0">edge-label</text></g>'
+            '</svg>'
+        )
+        out = _apply_dark_mode(svg)
+        assert 'fill="#d4d4d4">edge-label' in out, (
+            "Text on the dark canvas (edges, titles) must be light for contrast."
+        )
+
+    def test_text_inside_unfilled_node_gets_light_text(self):
+        from markdown_editor.markdown6.graphviz_service import \
+            _apply_dark_mode
+
+        # Default graphviz nodes emit fill="none" — no user fillcolor,
+        # so text should be light (sits on dark page background).
+        svg = (
+            '<svg>'
+            '<g class="node">'
+            '<path fill="none" stroke="black" d="M0,0"/>'
+            '<text x="0" y="0">plain</text>'
+            '</g>'
+            '</svg>'
+        )
+        out = _apply_dark_mode(svg)
+        assert 'fill="#d4d4d4">plain' in out
+
+    def test_existing_text_fill_preserved(self):
+        from markdown_editor.markdown6.graphviz_service import \
+            _apply_dark_mode
+
+        svg = (
+            '<svg>'
+            '<g class="node">'
+            '<path fill="#e3f2fd" d="M0,0"/>'
+            '<text fill="#ff0000">Explicit</text>'
+            '</g>'
+            '</svg>'
+        )
+        out = _apply_dark_mode(svg)
+        assert 'fill="#ff0000">Explicit' in out, (
+            "Explicit author-set text fill must not be overwritten."
+        )
