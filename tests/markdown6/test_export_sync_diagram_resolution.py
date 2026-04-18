@@ -101,7 +101,10 @@ class TestSyncPendingDiagramResolution:
             "placeholder — the browser would show 'Rendering...' forever."
         )
         # The pending-placeholder markup must NOT still be in the output.
-        assert "diagram-loading-spinner" not in html, (
+        # Matching on the div literal (not the bare class name) so we don't
+        # false-positive against the `.diagram-loading-spinner { ... }` CSS
+        # rule bundled in by `mermaid_service.get_mermaid_css()`.
+        assert '<div class="diagram-loading-spinner">' not in html, (
             "Placeholder's 'Rendering...' spinner div is still in the "
             "exported HTML — the sync replacement didn't happen."
         )
@@ -134,7 +137,7 @@ class TestSyncPendingDiagramResolution:
             "Sync resolver failed: graphviz placeholder was NOT replaced "
             "with rendered SVG."
         )
-        assert "diagram-loading-spinner" not in html
+        assert '<div class="diagram-loading-spinner">' not in html
         assert "Rendering..." not in html
         assert 'id="diagram-pending-' not in html
 

@@ -35,6 +35,7 @@ local/html-export-unify.md).
 
 from __future__ import annotations
 
+import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
@@ -316,42 +317,53 @@ def _resolve_pending_diagrams(body: str, pending: list) -> str:
     workers = min(len(pending), 4)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            idx: (kind, source, pool.submit(_render_diagram, kind, source, dark))
+            idx: pool.submit(_render_diagram, kind, source, dark)
             for idx, (kind, source, dark) in enumerate(pending)
         }
-        for idx, (kind, source, future) in futures.items():
-            svg_html, css_class = future.result()
-            body = _replace_diagram_placeholder(
-                body, idx, kind, source, svg_html, css_class,
-            )
+        for idx, future in futures.items():
+            svg_html, _css_class = future.result()
+            body = _replace_diagram_placeholder(body, idx, svg_html)
     return body
 
 
-def _replace_diagram_placeholder(
-    body: str, idx: int, kind: str, source: str,
-    svg_html: str, css_class: str,
-) -> str:
-    """Replace the pending-diagram placeholder div with the rendered SVG.
+# Outer-div-of-the-placeholder matcher. Anchored on the stable
+# `id="diagram-pending-N"` the preprocessor emits. The non-greedy
+# `[^>]*?` captures on either side of the id let extensions inject or
+# reorder any other attributes on this div — SourceLineExtension
+# prepends `data-source-line="N"`, and any future extension that
+# decorates block-level divs rides along the same way.
+_PENDING_PLACEHOLDER_RE = re.compile(
+    r'<div([^>]*?)\bid="diagram-pending-(\d+)"([^>]*?)>'
+    r'<div class="diagram-loading">'
+    r'<pre class="diagram-loading-source">[^<]*</pre>'
+    r'<div class="diagram-loading-spinner">Rendering\.\.\.</div>'
+    r'</div>'
+    r'</div>'
+)
 
-    Reconstructs the exact placeholder string emitted by
-    `MermaidPreprocessor` / `GraphvizPreprocessor` (so we don't need to
-    regex-parse it) and does a single literal `.replace()`. The
-    replacement mirrors the "cached diagram" shape those preprocessors
-    emit, so the resulting HTML is indistinguishable from what the
-    preview produces when a diagram is already in cache.
+
+def _replace_diagram_placeholder(body: str, idx: int, svg_html: str) -> str:
+    """Swap the pending-diagram placeholder's inner "Rendering..." block
+    for the rendered SVG, preserving the outer div and its attributes.
+
+    Finds the outer div by its stable `id="diagram-pending-N"` anchor
+    rather than reconstructing the whole placeholder literal. This
+    survives `SourceLineExtension` prepending `data-source-line` (and
+    any other attribute injection) onto the outer div. The outer div's
+    `class`, `data-source`, and `data-source-line` are preserved; only
+    the now-meaningless `id` is dropped.
+
+    The result is byte-equivalent (modulo attribute order) to what the
+    live preview emits for an already-cached diagram — both paths end
+    up with `<div class="X-diagram" data-source="..." data-source-line="N">{svg}</div>`.
     """
-    import html as html_mod
-    outer_class = 'mermaid-diagram' if kind == 'mermaid' else 'graphviz-diagram'
-    escaped_src = html_mod.escape(source).replace('"', '&quot;')
-    escaped = html_mod.escape(source)
-    placeholder = (
-        f'<div class="{outer_class}" data-source="{escaped_src}" id="diagram-pending-{idx}">'
-        f'<div class="diagram-loading">'
-        f'<pre class="diagram-loading-source">{escaped}</pre>'
-        f'<div class="diagram-loading-spinner">Rendering...</div>'
-        f'</div></div>'
-    )
-    replacement = (
-        f'<div class="{css_class}" data-source="{escaped_src}">{svg_html}</div>'
-    )
-    return body.replace(placeholder, replacement, 1)
+    def _sub(m):
+        # Scan matches all pending placeholders; only swap the one whose
+        # id matches our idx. Non-target matches return unchanged (identity).
+        # Can't use `count=1` because a different-idx match occurring first
+        # would consume our quota before we reach the target.
+        if int(m.group(2)) != idx:
+            return m.group(0)
+        return f'<div{m.group(1)}{m.group(3)}>{svg_html}</div>'
+
+    return _PENDING_PLACEHOLDER_RE.sub(_sub, body)
