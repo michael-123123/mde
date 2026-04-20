@@ -527,6 +527,24 @@ class TestCmdGraph:
         captured = capsys.readouterr()
         assert "Error" in captured.err
 
+    def test_graph_png_output_path_preserved(self, tmp_path):
+        """Output file is written to the exact path the user passed (regression)."""
+        pytest.importorskip("graphviz")
+        from shutil import which
+        if which("dot") is None:
+            pytest.skip("graphviz 'dot' binary not available")
+
+        (tmp_path / "doc1.md").write_text("# Doc 1\n\nLink to [[doc2]].")
+        (tmp_path / "doc2.md").write_text("# Doc 2")
+        output = tmp_path / "graph.png"
+
+        parser = create_parser()
+        args = parser.parse_args(["graph", "-p", str(tmp_path), "-f", "png", "-o", str(output)])
+        result = cmd_graph(args)
+
+        assert result == 0
+        assert output.exists(), f"expected {output} to exist; dir contents: {list(tmp_path.iterdir())}"
+
 
 class TestInstallDesktopDispatch:
     """Tests for platform dispatch in install/uninstall-desktop."""

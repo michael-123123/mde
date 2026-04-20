@@ -539,7 +539,7 @@ def cmd_graph(args: argparse.Namespace) -> int:
         g = graphviz.Source(dot_source, format=args.format, engine=args.engine)
         output_path = str(args.output)
         if output_path.endswith(f".{args.format}"):
-            output_path = output_path[:-len(f".{args.format}")-1]
+            output_path = output_path[:-len(f".{args.format}")]
         g.render(output_path, cleanup=True)
         if not args.quiet:
             print(f"Exported graph to {args.output}")
