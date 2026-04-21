@@ -104,12 +104,17 @@ cp "$LAUNCH_SRC" "$WIN_LAUNCH"
 
 sed -i \
     -e "s|^mode = .*|mode = $MODE|" \
-    -e "/^extra_args = /s|\$| --jobs=$JOBS|" \
+    -e "/^extra_args = /s|\$| --jobs=$JOBS --assume-yes-for-downloads|" \
     -e "s|^project_dir = .*|project_dir = $WIN_OUT_W|" \
     -e "s|^input_file = .*|input_file = $WIN_LAUNCH_W|" \
     -e "s|^exec_directory = .*|exec_directory = $WIN_OUT_W|" \
     -e "s|^icon = .*|icon = $WIN_ICON|" \
     "$WIN_SPEC"
+# --assume-yes-for-downloads: on first run Nuitka needs to download
+# depends.exe (for DLL dependency analysis). Without this flag it prompts
+# interactively on stdin and defaults to "no" in non-interactive contexts
+# like GHA runners. Wine build sidesteps this by invoking Nuitka directly
+# with the flag; on native Windows we have to bake it into the spec.
 
 echo "==> staged spec (at $WIN_SPEC):"
 grep -E "^mode|^extra_args|^input_file|^project_dir|^exec_directory|^icon" "$WIN_SPEC" | sed 's/^/    /'
