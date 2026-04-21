@@ -13,10 +13,24 @@ Usage:
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def _bundled_binary_path() -> Path | None:
+    """If running from a Nuitka-compiled binary, return the path users should
+    execute (the onefile wrapper, or the standalone main binary). Returns None
+    when running from a regular Python install.
+    """
+    onefile = os.environ.get("NUITKA_ONEFILE_BINARY")
+    if onefile:
+        return Path(onefile)
+    if "__compiled__" in globals():
+        return Path(sys.executable)
+    return None
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -813,12 +827,23 @@ def _install_desktop_linux() -> int:
     icons_dir = _icons_dir()
     data_home = _data_home()
 
-    # Install .desktop file
+    # Install .desktop file — rewrite Exec= to the absolute path of whatever
+    # mde entry point we can find, so the .desktop works regardless of PATH.
+    # Bundled binaries (Nuitka onefile/standalone) always get an absolute path;
+    # pip-installed mde resolves via shutil.which.
     apps_dir = data_home / "applications"
     apps_dir.mkdir(parents=True, exist_ok=True)
     src_desktop = icons_dir / "markdown-editor.desktop"
     dst_desktop = apps_dir / "markdown-editor.desktop"
-    shutil.copy2(src_desktop, dst_desktop)
+    src_text = src_desktop.read_text(encoding="utf-8")
+    mde_exe = _mde_executable()
+    if Path(mde_exe).is_absolute():
+        src_text = re.sub(
+            r"(?m)^Exec=.*$",
+            f"Exec={mde_exe} %F",
+            src_text,
+        )
+    dst_desktop.write_text(src_text, encoding="utf-8")
     print(f"Installed {dst_desktop}")
 
     # Install icons
@@ -893,6 +918,10 @@ def _windows_start_menu_dir() -> Path:
 
 def _mde_executable() -> str:
     """Return the path to the mde entry-point script/exe."""
+    # Nuitka-compiled binary: point at the onefile or standalone binary itself.
+    bundled = _bundled_binary_path()
+    if bundled:
+        return str(bundled)
     # pip installs entry points into Scripts/ on Windows, bin/ on Unix
     scripts_dir = Path(sys.executable).parent
     if sys.platform == "win32":
@@ -1068,6 +1097,17 @@ def _uninstall_desktop_macos() -> int:
 _COMPLETABLE_COMMANDS = ["mde", "markdown-editor"]
 
 
+def _completable_commands() -> list[str]:
+    """Command names to register shell completion for. Adds the bundled
+    binary's basename when running from a Nuitka onefile/standalone, so
+    completion works if the user puts mde.bin on PATH under its own name."""
+    commands = list(_COMPLETABLE_COMMANDS)
+    bundled = _bundled_binary_path()
+    if bundled and bundled.name not in commands:
+        commands.append(bundled.name)
+    return commands
+
+
 def cmd_install_autocomplete(args: argparse.Namespace) -> int:
     """Register argcomplete shell completion for mde and markdown-editor."""
     try:
@@ -1089,14 +1129,14 @@ def cmd_install_autocomplete(args: argparse.Namespace) -> int:
 
 def _install_autocomplete_bash():
     """Install bash completion via ~/.bash_completion.d/."""
+    import argcomplete
+
     comp_dir = Path.home() / ".bash_completion.d"
     comp_dir.mkdir(parents=True, exist_ok=True)
 
-    for cmd in _COMPLETABLE_COMMANDS:
+    for cmd in _completable_commands():
         comp_file = comp_dir / cmd
-        comp_file.write_text(
-            f'eval "$(register-python-argcomplete {cmd})"\n'
-        )
+        comp_file.write_text(argcomplete.shellcode([cmd], shell="bash"))
         print(f"Installed {comp_file}")
 
     # Ensure ~/.bash_completion.d/ is sourced
@@ -1110,20 +1150,15 @@ def _install_autocomplete_bash():
 
 def _install_autocomplete_zsh():
     """Install zsh completion."""
+    import argcomplete
+
     comp_dir = Path.home() / ".zfunc"
     comp_dir.mkdir(parents=True, exist_ok=True)
 
-    for cmd in _COMPLETABLE_COMMANDS:
+    for cmd in _completable_commands():
         comp_file = comp_dir / f"_{cmd}"
-        result = subprocess.run(
-            ["register-python-argcomplete", "--shell", "zsh", cmd],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            comp_file.write_text(result.stdout)
-            print(f"Installed {comp_file}")
-        else:
-            print(f"Failed to generate completion for {cmd}: {result.stderr}", file=sys.stderr)
+        comp_file.write_text(argcomplete.shellcode([cmd], shell="zsh"))
+        print(f"Installed {comp_file}")
 
     zshrc = Path.home() / ".zshrc"
     lines_needed = ['fpath=(~/.zfunc $fpath)', 'autoload -Uz compinit && compinit']
@@ -1138,20 +1173,15 @@ def _install_autocomplete_zsh():
 
 def _install_autocomplete_fish():
     """Install fish completion."""
+    import argcomplete
+
     comp_dir = Path.home() / ".config" / "fish" / "completions"
     comp_dir.mkdir(parents=True, exist_ok=True)
 
-    for cmd in _COMPLETABLE_COMMANDS:
-        result = subprocess.run(
-            ["register-python-argcomplete", "--shell", "fish", cmd],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            comp_file = comp_dir / f"{cmd}.fish"
-            comp_file.write_text(result.stdout)
-            print(f"Installed {comp_file}")
-        else:
-            print(f"Failed to generate completion for {cmd}: {result.stderr}", file=sys.stderr)
+    for cmd in _completable_commands():
+        comp_file = comp_dir / f"{cmd}.fish"
+        comp_file.write_text(argcomplete.shellcode([cmd], shell="fish"))
+        print(f"Installed {comp_file}")
 
     print("Completions will be active in new fish sessions.")
 
@@ -1160,9 +1190,11 @@ def cmd_uninstall_autocomplete(args: argparse.Namespace) -> int:
     """Remove argcomplete shell completions for mde and markdown-editor."""
     removed = []
 
+    commands = _completable_commands()
+
     # bash
     comp_dir = Path.home() / ".bash_completion.d"
-    for cmd in _COMPLETABLE_COMMANDS:
+    for cmd in commands:
         f = comp_dir / cmd
         if f.exists():
             f.unlink()
@@ -1170,7 +1202,7 @@ def cmd_uninstall_autocomplete(args: argparse.Namespace) -> int:
 
     # zsh
     zfunc_dir = Path.home() / ".zfunc"
-    for cmd in _COMPLETABLE_COMMANDS:
+    for cmd in commands:
         f = zfunc_dir / f"_{cmd}"
         if f.exists():
             f.unlink()
@@ -1178,7 +1210,7 @@ def cmd_uninstall_autocomplete(args: argparse.Namespace) -> int:
 
     # fish
     fish_dir = Path.home() / ".config" / "fish" / "completions"
-    for cmd in _COMPLETABLE_COMMANDS:
+    for cmd in commands:
         f = fish_dir / f"{cmd}.fish"
         if f.exists():
             f.unlink()
