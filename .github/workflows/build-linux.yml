@@ -45,6 +45,24 @@ jobs:
           key: pip-ubuntu-22.04-py3.12-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-ubuntu-22.04-py3.12-
 
+      # Qt6 / PySide6 links against EGL, OpenGL, XCB, Xkbcommon etc. at load time.
+      # GHA's ubuntu-22.04 image is a minimal/headless install and doesn't ship
+      # most of these. Without this step, either (a) pyside6-deploy's build-time
+      # `import PySide6` fails, or (b) the smoke test inside the AppImage fails
+      # with `libEGL.so.1: cannot open shared object file`. Installing them on
+      # the build machine also means pyside6-deploy bundles them into the
+      # AppImage, so end users on minimal Linux distros get a self-contained
+      # artifact. Full list distilled from Qt 6 runtime deps + what a headless
+      # GHA runner lacks by default.
+      - name: Install Qt6 runtime system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+            libfontconfig1 libdbus-1-3
+
       - name: Install project + build deps
         run: pip install -e ".[build]"
 
