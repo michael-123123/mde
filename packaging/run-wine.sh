@@ -9,6 +9,7 @@
 #   bash packaging/run-wine.sh stats README.md       # default exe, CLI subcommand
 #   bash packaging/run-wine.sh --exe=/path/to/mde.exe [args...]   # custom exe
 #   bash packaging/run-wine.sh --build-dir=/tmp/out [args...]      # custom bottle location
+#   bash packaging/run-wine.sh --stage-icu [args...]               # fix ICU for GHA-built exe
 #
 # Default exe, tried in order:
 #   $BUILD_DIR/win/deployment/mde_launch.dist/mde_launch.exe     (standalone)
@@ -18,20 +19,33 @@
 # (and some would weaken security). They live here, not in the .exe, so the
 # shipped binary stays clean for end users.
 #
+# --stage-icu (OFF by default): copy ICU 73.2 DLLs into the bottle's
+# drive_c/windows/system32/ so any Wine-launched app finds them via the
+# Windows DLL search path. Needed when running an .exe built on real Windows
+# (e.g. from the GHA pipeline) which assumes the OS provides icuuc.dll in
+# System32 — real Windows does, Wine does not. The bottle's build-script
+# staging of ICU only covers the specific PySide6/ dir used during the build
+# and doesn't help onefile .exe's that self-extract to a random temp dir.
+# Safe to pass repeatedly (idempotent) and has no effect on .exe's that
+# already have their ICU resolved.
+#
 # Prerequisite: `bash packaging/build-windows.sh` has been run at least once,
-# so the bottle at $BUILD_DIR/wine exists.
+# so the bottle at $BUILD_DIR/wine exists. For --stage-icu, the same script
+# also needs to have fetched ICU into $BUILD_DIR/.tools/icu73/bin64/.
 
 set -euo pipefail
 
 # -------- Args ---------------------------------------------------------------
 EXE=""
 BUILD_DIR=""
-# Pull --exe= and --build-dir= out of argv; everything else passes to the .exe.
+STAGE_ICU=0
+# Pull --exe= / --build-dir= / --stage-icu out of argv; everything else passes to the .exe.
 PASSTHRU=()
 for arg in "$@"; do
     case "$arg" in
         --exe=*)        EXE="${arg#--exe=}" ;;
         --build-dir=*)  BUILD_DIR="${arg#--build-dir=}" ;;
+        --stage-icu)    STAGE_ICU=1 ;;
         --wine-help)
             sed -n '1,/^set -euo/p' "$0" | head -n -1 | sed 's/^# \?//'
             exit 0 ;;
@@ -93,6 +107,26 @@ export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---single-proces
 
 # Silence Wine fixme/err noise by default. Override with WINEDEBUG=+loaddll etc.
 export WINEDEBUG="${WINEDEBUG:--all}"
+
+# -------- Optional ICU staging into System32 ---------------------------------
+if [ "$STAGE_ICU" -eq 1 ]; then
+    ICU_SRC="$BUILD_DIR/.tools/icu73/bin64"
+    SYS32="$BUILD_DIR/wine/drive_c/windows/system32"
+    if [ ! -d "$ICU_SRC" ]; then
+        echo "ERROR: ICU source not found at $ICU_SRC" >&2
+        echo "       Run 'bash packaging/build-windows.sh' first — it fetches ICU." >&2
+        exit 1
+    fi
+    if [ ! -f "$SYS32/icuuc.dll" ]; then
+        echo "==> staging ICU 73.2 into $SYS32"
+        for icu in icuuc icuin icudt icuio icutu; do
+            src="$ICU_SRC/${icu}73.dll"
+            [ -f "$src" ] || continue
+            cp "$src" "$SYS32/${icu}73.dll"
+            cp "$src" "$SYS32/${icu}.dll"
+        done
+    fi
+fi
 
 # -------- Run ----------------------------------------------------------------
 echo "==> wine $EXE ${PASSTHRU[*]:-}"
