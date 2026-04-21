@@ -38,6 +38,30 @@ Requires Python 3.11+.
 
 ## Install
 
+### Pre-built AppImage (Linux, no install required)
+
+Download `MarkdownEditor-<version>-x86_64.AppImage` from the releases page, make it executable, run it:
+
+```bash
+chmod +x MarkdownEditor-*-x86_64.AppImage
+./MarkdownEditor-*-x86_64.AppImage            # GUI
+./MarkdownEditor-*-x86_64.AppImage file.md    # GUI with file
+./MarkdownEditor-*-x86_64.AppImage stats file.md    # CLI subcommand
+./MarkdownEditor-*-x86_64.AppImage --help           # CLI help
+```
+
+The bundled runtime includes everything the app needs (Qt, WebEngine, Python, all Python deps) plus an embedded FUSE implementation, so there is **no system prerequisite** on mainstream Linux distributions — including Ubuntu 22.04, Ubuntu 24.04, Debian 12, Fedora 38+, etc.
+
+**If you see `Cannot mount AppImage, please check your FUSE setup`** (typically on WSL1, inside hardened containers, or a minimal chroot with no FUSE kernel support), run the AppImage with the extract-and-run fallback — it unpacks into a temp dir instead of mounting:
+
+```bash
+./MarkdownEditor-*-x86_64.AppImage --appimage-extract-and-run
+```
+
+Slightly slower cold-start, but works on any Linux that can execute a static ELF binary.
+
+### From source (pip)
+
 ```bash
 # Core install
 pip install -e .

@@ -5,8 +5,10 @@ __pycache__/
 *.egg
 *.egg-info/
 dist/
-build/
 *.whl
+
+# Deploy build output
+build/
 
 # Virtual environments
 .venv/

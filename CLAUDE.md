@@ -34,6 +34,69 @@ No linter, formatter, or CI pipeline is configured.
 
 **pytest rules:** Never use `-q` (quiet mode). Don't truncate output (no `| tail`, `| head`, etc.) unless you have a specific reason to.
 
+## Optional System Dependencies
+
+These are native binaries (not pip-installable) that the editor detects at runtime and uses for best quality. All have pip-installable fallbacks, so the editor works without them — just with reduced output quality.
+
+- **pandoc** — best-in-class HTML/PDF/DOCX export (esp. with LaTeX math via `texlive-xetex`). Fallback: `weasyprint` for PDF, `python-docx` for DOCX.
+  - Ubuntu/Debian: `sudo apt install pandoc texlive-xetex`
+  - macOS: `brew install pandoc`
+  - Windows: `choco install pandoc`
+- **graphviz** — server-side `dot` rendering for graph diagrams. Fallback: graph source is shown verbatim.
+  - Ubuntu/Debian: `sudo apt install graphviz`
+  - macOS: `brew install graphviz`
+  - Windows: `choco install graphviz`
+- **mmdc** (Mermaid CLI) — server-side mermaid diagram rendering. Fallback: client-side `mermaid.js` in the preview.
+  - All platforms: `npm install -g @mermaid-js/mermaid-cli` (requires Node.js)
+
+User-configured tool paths take precedence over `PATH`; see `tool_paths.py`.
+
+## Building a Standalone Binary
+
+The editor can be bundled into a single-file executable using `pyside6-deploy` (ships with PySide6, uses Nuitka under the hood). Build artifacts land under `build/` (gitignored).
+
+```bash
+# Install build dependencies (Nuitka + patchelf on Linux)
+pip install -e ".[build]"
+
+# Build via the bootstrap script (handles conda/jobs/appimage/env quirks):
+bash packaging/build.sh                        # onefile (default)
+bash packaging/build.sh --mode=standalone      # dist folder
+bash packaging/build.sh --appimage             # standalone + AppImage
+bash packaging/build.sh --build-dir=/tmp/out   # redirect output dir
+```
+
+Tracked inputs live in `packaging/` (`build.sh`, `pysidedeploy.spec`, `mde_launch.py`). All build output — intermediate, cached tools, final artifacts — lands in `$BUILD_DIR` (default `<repo>/build/`, gitignored). The script never mutates its own tracked inputs; it stages copies into `$BUILD_DIR` and patches those.
+
+**Notes:**
+- On conda/mamba envs, Nuitka requires either `conda install libpython-static` or `--static-libpython=no` in the spec's `extra_args`.
+- The build is **per-OS** — you must build on the target OS (or cross-build under Wine for Windows-from-Linux, which is fragile).
+- `mode = standalone` produces a dist folder; `mode = onefile` produces a single self-extracting binary.
+- External tools (pandoc, graphviz, mmdc) are **not** bundled — they remain optional runtime dependencies with pip-installable fallbacks.
+- Cap parallel compiler jobs at `floor(nproc / 2)` (pass `--jobs=N` in Nuitka `extra_args`) so the build doesn't clobber CPU for interactive work.
+
+### Verifying a bundled binary
+
+After any Nuitka/pyside6-deploy rebuild, **compare screenshots of the bundled binary against the equivalent source launch**. The source launch is the ground truth; a bundled binary can silently drop assets (icons, fonts, stylesheets, plugin-registered lexers) in ways only a visual diff catches.
+
+Minimal check:
+
+```bash
+# Capture source launch (reference)
+mde /path/to/some.md &  SRC_PID=$!
+sleep 5 && import -window root local/tmp/mde_source.png
+kill $SRC_PID
+
+# Capture bundled launch
+build/mde.dist/mde_launch.bin /path/to/some.md &  BIN_PID=$!
+sleep 5 && import -window root local/tmp/mde_bundled.png
+kill $BIN_PID
+
+# Then inspect both images (and diff if possible)
+```
+
+Any difference in icons, panel layout, theme, or syntax highlighting is a bundling miss — investigate before declaring the binary good.
+
 ## Architecture
 
 Widget-based architecture using Qt signal/slot for inter-component communication. No formal MVC — UI and logic are mixed in widget classes. Source lives under `src/markdown_editor/markdown6/` with subpackages `app_context/`, `components/`, `extensions/`, and `templates/`.
