@@ -85,10 +85,21 @@ SPEC_SRC="$PACKAGING_DIR/pysidedeploy.windows.spec"
 LAUNCH_SRC="$PACKAGING_DIR/mde_launch.py"
 
 # ICU 73.2 — same story as build-windows.sh; Qt 6.9/6.10/6.11 need ICU 73
-# and PySide6 wheels don't bundle it. icudt73.dll is intentionally excluded
-# because Nuitka's pyside6 plugin already bundles it (error on conflict).
+# and PySide6 wheels don't bundle it. Two separate lists because:
+#
+# ICU_DLLS_STAGE: copied into site-packages/PySide6/ so the build-time
+#   `from PySide6 import QtCore` check succeeds. INCLUDES icudt73 — without
+#   it icuuc73.dll fails to load (icuuc depends on icudt for its data tables),
+#   and Qt6Core.dll then fails with the misleading "The specified module
+#   could not be found".
+#
+# ICU_DLLS_BUNDLE: passed to Nuitka via --include-data-files so the DLLs
+#   land in the build artifact. EXCLUDES icudt73 — Nuitka's pyside6 plugin
+#   already bundles it automatically, and re-including it is a fatal
+#   "data file X conflicts with dll X" error.
 ICU_URL="https://github.com/unicode-org/icu/releases/download/release-73-2/icu4c-73_2-Win64-MSVC2019.zip"
-ICU_DLLS="icuuc icuin icuio icutu"
+ICU_DLLS_STAGE="icuuc icuin icudt icuio icutu"
+ICU_DLLS_BUNDLE="icuuc icuin icuio icutu"
 ICU_ZIP="$TOOLS_DIR/icu4c-73_2-Win64-MSVC2019.zip"
 ICU_EXTRACT="$TOOLS_DIR/icu73"
 ICU_STAGE="$TOOLS_DIR/icu-stage"
@@ -178,8 +189,9 @@ fi
 # zip into a destination dir. Fails loudly on any missing source or cp error.
 stage_icu_dlls() {
     local dest="$1"
+    local icus="$2"
     local icu src
-    for icu in $ICU_DLLS; do
+    for icu in $icus; do
         src="$ICU_EXTRACT/bin64/${icu}73.dll"
         if [ ! -f "$src" ]; then
             echo "ERROR: ICU source DLL missing: $src" >&2
@@ -191,10 +203,10 @@ stage_icu_dlls() {
     done
 }
 
-if [ ! -f "$PYSIDE6_DIR/icuuc73.dll" ]; then
-    echo "==> staging ICU 73.2 DLLs into $PYSIDE6_DIR"
-    stage_icu_dlls "$PYSIDE6_DIR"
-    if [ ! -f "$PYSIDE6_DIR/icuuc73.dll" ]; then
+if [ ! -f "$PYSIDE6_DIR/icudt73.dll" ]; then
+    echo "==> staging ICU 73.2 DLLs into $PYSIDE6_DIR (incl. icudt for build-time import)"
+    stage_icu_dlls "$PYSIDE6_DIR" "$ICU_DLLS_STAGE"
+    if [ ! -f "$PYSIDE6_DIR/icudt73.dll" ]; then
         echo "ERROR: ICU copy into $PYSIDE6_DIR reported success but file missing" >&2
         exit 1
     fi
@@ -238,11 +250,13 @@ PY
 fi
 
 # Stage dedicated dir for Nuitka's --include-data-files (puts ICU INSIDE the
-# bundle artifact — works for both standalone and onefile).
+# bundle artifact — works for both standalone and onefile). Excludes icudt73
+# (Nuitka's pyside6 plugin bundles it) to avoid the "data file conflicts
+# with dll" error.
 if [ ! -f "$ICU_STAGE/icuuc73.dll" ]; then
-    echo "==> staging ICU 73.2 DLLs into $ICU_STAGE (for --include-data-files)"
+    echo "==> staging ICU 73.2 DLLs into $ICU_STAGE (for --include-data-files, excl. icudt)"
     rm -rf "$ICU_STAGE" && mkdir -p "$ICU_STAGE"
-    stage_icu_dlls "$ICU_STAGE"
+    stage_icu_dlls "$ICU_STAGE" "$ICU_DLLS_BUNDLE"
 fi
 
 # ============================================================================
