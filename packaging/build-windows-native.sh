@@ -202,10 +202,38 @@ fi
 
 # Fail fast — if the import still breaks, don't waste 2 minutes inside
 # Nuitka before we see a confusing "PySide6 not installed" plugin error.
+# On failure, use ctypes.WinDLL to surface the SPECIFIC missing dependency
+# (Windows returns "Module XYZ.dll not found" in that path, whereas the
+# bare `import PySide6` only says "The specified module could not be found").
 if ! python -c "from PySide6 import QtCore" 2>/dev/null; then
-    echo "ERROR: 'from PySide6 import QtCore' still fails after ICU staging." >&2
-    echo "       Run: python -c 'from PySide6 import QtCore' to see the real error." >&2
-    python -c "from PySide6 import QtCore" || true
+    echo "ERROR: 'from PySide6 import QtCore' fails after ICU staging." >&2
+    echo "       Diagnostic (load Qt6Core.dll directly via ctypes):" >&2
+    python - <<'PY' || true
+import os, sys, pathlib, ctypes
+import PySide6
+pd = pathlib.Path(PySide6.__file__).parent
+print(f"    PySide6 dir: {pd}", file=sys.stderr)
+print(f"    contents with 'dll' in name:", file=sys.stderr)
+for p in sorted(pd.iterdir()):
+    if "dll" in p.suffix.lower() or p.suffix.lower() == ".pyd":
+        print(f"      {p.name}", file=sys.stderr)
+# Add PySide6 dir + any adjacent deps dir before load
+try:
+    os.add_dll_directory(str(pd))
+    root = pd.parent
+    for cand in ("shiboken6", "PySide6-Addons"):
+        if (root / cand).is_dir():
+            os.add_dll_directory(str(root / cand))
+except Exception as e:
+    print(f"    add_dll_directory err: {e}", file=sys.stderr)
+try:
+    ctypes.WinDLL(str(pd / "Qt6Core.dll"))
+    print("    Qt6Core.dll loaded OK with explicit add_dll_directory!", file=sys.stderr)
+except OSError as e:
+    print(f"    Qt6Core.dll load error: {e}", file=sys.stderr)
+PY
+    # The plain import one more time for the full traceback
+    python -c "from PySide6 import QtCore" >&2 || true
     exit 1
 fi
 
