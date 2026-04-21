@@ -124,12 +124,7 @@ grep -E "^mode|^extra_args|^input_file|^project_dir|^exec_directory|^icon" "$WIN
 # same import during its build-time scan, so a 15-minute Nuitka run that ends
 # with "PySide6 not installed" is a waste.
 python -c "from PySide6 import QtCore; import sys; sys.stderr.write(f'PySide6 {QtCore.__version__} ready\n')"
-# --keep-deployment-files preserves Nuitka's intermediate standalone dist at
-# $WIN_OUT/deployment/mde_launch.dist/. We need it to survive past the
-# onefile packaging step because the NSIS installer consumes it (see
-# make-installer-windows.sh). Default pyside6-deploy behavior is to delete
-# it after onefile wrap completes.
-pyside6-deploy -c "$(to_win "$WIN_SPEC")" -f --keep-deployment-files
+pyside6-deploy -c "$(to_win "$WIN_SPEC")" -f
 
 # -------- Report --------------------------------------------------------------
 # pyside6-deploy places its final output in $exec_directory (= $WIN_OUT),

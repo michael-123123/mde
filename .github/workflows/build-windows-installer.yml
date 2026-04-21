@@ -1,0 +1,125 @@
+name: Build Windows (installer + portable zip)
+
+# Builds two artifacts for end-user distribution:
+#   - MarkdownEditor-<v>-x86_64-setup.exe    NSIS installer (Start Menu,
+#                                            uninstaller, optional PATH +
+#                                            .md association)
+#   - MarkdownEditor-<v>-x86_64-portable.zip Zipped standalone dist,
+#                                            "unzip and run" portable
+#
+# Both are produced from the same Nuitka --mode=standalone build, so one
+# ~30-minute compile yields both. No onefile wrap step — that's what the
+# sibling build-windows.yml workflow is for.
+#
+# Triggers:
+#   - workflow_dispatch
+#   - push on v*.*.* tags — attaches both artifacts to the GitHub Release
+#
+# Sibling workflows on the same tag (all run in parallel):
+#   - release.yml                   sdist + wheel
+#   - build-linux.yml               Linux AppImage
+#   - build-windows.yml             Windows onefile portable .exe
+#
+# softprops/action-gh-release@v2 is idempotent across jobs when each
+# attaches different filenames, so all four workflows can add their
+# artifacts to the same Release without clobbering each other.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write   # needed to attach release assets on tag push
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash   # Git Bash; matches packaging/*.sh shebangs
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # setuptools-scm needs full tag history for version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-windows-py3.12-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-windows-py3.12-
+
+      - name: Install project + build deps
+        run: pip install -e ".[build]"
+
+      # NSIS is used to produce the .exe installer from the standalone
+      # dist. Chocolatey is preinstalled on windows-latest; ~15 s install.
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      # Standalone mode (not onefile): Nuitka outputs a directory tree
+      # (build/win/mde.dist/) containing mde_launch.exe + all DLLs + data
+      # files. That dir is what both the installer and the portable zip
+      # consume — no intermediate onefile wrap needed.
+      - name: Build Windows standalone dist
+        run: bash packaging/build-windows-native.sh --mode=standalone --jobs=$(nproc)
+
+      # Headless CLI smoke test against the dist's main exe, before we
+      # wrap it two different ways.
+      - name: Smoke test (CLI)
+        run: |
+          EXE="build/win/mde.dist/mde_launch.exe"
+          "$EXE" --version
+          "$EXE" --help | head -20
+          "$EXE" stats README.md
+
+      - name: Build Windows installer
+        run: bash packaging/make-installer-windows.sh --dist-dir=build/win/mde.dist
+
+      # Portable zip: zip the standalone dist dir with a user-friendly top-
+      # level directory name. Users extract and run mde_launch.exe inside.
+      # PowerShell's Compress-Archive ships with Windows; no tooling needed.
+      - name: Build portable zip
+        shell: pwsh
+        run: |
+          $VERSION = (python -c "from importlib.metadata import version; print(version('markdown-editor'))")
+          $DEST    = "build/MarkdownEditor-$VERSION-x86_64-portable.zip"
+          $STAGED  = "build/MarkdownEditor-$VERSION-x86_64-portable"
+          # Stage under a friendlier top-level name so the zip extracts
+          # to MarkdownEditor-.../ rather than mde.dist/.
+          Copy-Item -Recurse build/win/mde.dist $STAGED
+          Compress-Archive -Path $STAGED -DestinationPath $DEST -CompressionLevel Optimal
+          Remove-Item -Recurse $STAGED
+          Get-Item $DEST | Format-List Name, Length
+
+      - name: Collect release assets
+        run: |
+          VERSION=$(python -c "from importlib.metadata import version; print(version('markdown-editor'))")
+          mkdir -p release-assets
+          cp "build/MarkdownEditor-${VERSION}-x86_64-setup.exe"       "release-assets/"
+          cp "build/MarkdownEditor-${VERSION}-x86_64-portable.zip"    "release-assets/"
+          ls -la release-assets/
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mde-windows-installer-x86_64
+          path: |
+            release-assets/*.exe
+            release-assets/*.zip
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/*.exe
+            release-assets/*.zip

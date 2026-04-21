@@ -1,20 +1,22 @@
-name: Build Windows
+name: Build Windows (onefile portable)
 
+# Builds the single-file portable MarkdownEditor-<v>-x86_64.exe. Sibling
+# workflow build-windows-installer.yml builds the NSIS installer +
+# portable zip from a separate standalone build on a separate runner,
+# in parallel with this one.
+#
 # Triggers:
 #   - workflow_dispatch — manual button in the Actions tab
-#   - push on v*.*.* tags — attaches the .exe + installer to the Release
+#   - push on v*.*.* tags — attaches the .exe to the Release
 #
-# What this workflow is:
-#   A thin wrapper that rents a Windows VM and runs the standalone
-#   packaging/build-windows-native.sh (portable .exe) and then
-#   packaging/make-installer-windows.sh (NSIS installer). Both scripts are
-#   independent of GHA — any developer with Windows + Git Bash + Python
-#   3.12 + NSIS can reproduce both outputs locally.
+# Sibling workflows that fire on the same tag (all in parallel):
+#   - release.yml                   sdist + wheel
+#   - build-linux.yml               Linux AppImage
+#   - build-windows-installer.yml   Windows installer + portable zip
 #
-# Sibling workflow: release.yml builds sdist+wheel on the same tag.
-# All three workflows run in parallel and each attaches its own artifact to
-# the release (softprops/action-gh-release@v2 is idempotent with files:
-# when multiple jobs add different filenames).
+# softprops/action-gh-release@v2 is idempotent with files: when multiple
+# jobs add different filenames, each attaches its own artifact to the
+# shared release.
 
 on:
   workflow_dispatch:
@@ -53,12 +55,6 @@ jobs:
       - name: Install project + build deps
         run: pip install -e ".[build]"
 
-      # NSIS is used in a later step to wrap the Nuitka standalone dist into
-      # an installer .exe. Chocolatey is preinstalled on windows-latest, so
-      # this is a one-shot; cache lives in C:\ProgramData\chocolatey\.
-      - name: Install NSIS
-        run: choco install nsis -y --no-progress
-
       # nproc on GHA windows-latest returns 4 (full runner cores) — we want
       # ALL of them here, unlike the floor(nproc/2) default that protects a
       # dev's workstation from being clobbered during a build.
@@ -75,26 +71,13 @@ jobs:
           "$EXE" --help | head -20
           "$EXE" stats README.md
 
-      # Build the NSIS installer from the same Nuitka standalone dist that
-      # the onefile mode produced as its intermediate output (Nuitka keeps
-      # the dist folder by default — we use it as the installer source).
-      # Output lands next to the portable .exe in build/.
-      - name: Build Windows installer
-        run: |
-          bash packaging/make-installer-windows.sh \
-               --dist-dir=build/win/deployment/mde_launch.dist
-
-      # Rename the portable .exe to the release-asset convention and collect
-      # both artifacts (portable + installer) into release-assets/ for
-      # upload. The installer is already named MarkdownEditor-<ver>-x86_64-
-      # setup.exe by make-installer-windows.sh; the portable onefile needs
-      # the explicit rename (it comes out as mde.exe from pyside6-deploy).
-      - name: Collect release assets
+      # Rename the portable .exe to the release-asset convention before
+      # upload (it comes out as mde.exe from pyside6-deploy).
+      - name: Rename artifact
         run: |
           VERSION=$(python -c "from importlib.metadata import version; print(version('markdown-editor'))")
           mkdir -p release-assets
-          cp "build/win/mde.exe"                                   "release-assets/MarkdownEditor-${VERSION}-x86_64.exe"
-          cp "build/MarkdownEditor-${VERSION}-x86_64-setup.exe"    "release-assets/"
+          cp build/win/mde.exe "release-assets/MarkdownEditor-${VERSION}-x86_64.exe"
           ls -la release-assets/
 
       - name: Upload workflow artifact
