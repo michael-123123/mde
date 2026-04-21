@@ -53,27 +53,53 @@ User-configured tool paths take precedence over `PATH`; see `tool_paths.py`.
 
 ## Building a Standalone Binary
 
-The editor can be bundled into a single-file executable using `pyside6-deploy` (ships with PySide6, uses Nuitka under the hood). Build artifacts land under `build/` (gitignored).
+The editor can be bundled into distributable binaries via `pyside6-deploy` + Nuitka. Three build paths exist, one per target platform. All build output lands under `build/` (gitignored). Tracked inputs live in `packaging/` — build scripts, Nuitka spec files, launcher, installer script. Scripts never mutate their tracked inputs; they stage copies into `$BUILD_DIR` and patch those.
+
+### Python-side build dependencies (shared)
 
 ```bash
-# Install build dependencies (Nuitka + patchelf on Linux)
-pip install -e ".[build]"
-
-# Build via the bootstrap script (handles conda/jobs/appimage/env quirks):
-bash packaging/build.sh                        # onefile (default)
-bash packaging/build.sh --mode=standalone      # dist folder
-bash packaging/build.sh --appimage             # standalone + AppImage
-bash packaging/build.sh --build-dir=/tmp/out   # redirect output dir
+pip install -e ".[build]"   # Nuitka + patchelf (Linux-only via marker)
 ```
 
-Tracked inputs live in `packaging/` (`build.sh`, `pysidedeploy.spec`, `mde_launch.py`). All build output — intermediate, cached tools, final artifacts — lands in `$BUILD_DIR` (default `<repo>/build/`, gitignored). The script never mutates its own tracked inputs; it stages copies into `$BUILD_DIR` and patches those.
+### External dependencies per build path
+
+Each script's header is the authoritative list; the table here is a summary so newcomers know what they're getting into before running anything.
+
+| Path | Script | External tools (not auto-installed by script) | Tools auto-downloaded to `$BUILD_DIR/.tools/` |
+|---|---|---|---|
+| Linux → AppImage | `packaging/build.sh --appimage` | C toolchain (`build-essential`). Qt6 runtime libs at build time if the bundled AppImage should be fully self-contained (`libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libfontconfig1 libdbus-1-3`). | `appimagetool` + AppImage static `runtime-x86_64` |
+| Windows (real) | `packaging/build-windows-native.sh` | Python 3.12 + Git Bash (for running the script) + a C toolchain (GHA runners have MSVC 2022 preinstalled; dev boxes need it via Visual Studio Build Tools). | — (Nuitka auto-downloads `depends.exe`; we pass `--assume-yes-for-downloads`) |
+| Windows via Wine (Linux) | `packaging/build-windows.sh` | **Wine** (`apt install wine64`) + `curl`/`wget`. | `winetricks`, `python-3.12.7-amd64.exe` installer, `depends22_x86.zip` (Wine-specific depends.exe fix), `icu4c-73_2-Win64-MSVC2019.zip` |
+| Windows installer | `packaging/make-installer-windows.sh` | **NSIS** 3.x (`apt install nsis` on Linux; native Windows has `choco install nsis`). Works from either a Wine-built or native-built standalone dist. | — |
+
+### Commands
+
+```bash
+# --- Linux AppImage -------------------------------------------------
+bash packaging/build.sh --appimage             # standalone + AppImage
+bash packaging/build.sh                        # onefile .bin, no AppImage
+bash packaging/build.sh --build-dir=/tmp/out   # redirect output dir
+
+# --- Windows .exe (real Windows or GHA `windows-latest`) -----------
+bash packaging/build-windows-native.sh                  # onefile (default)
+bash packaging/build-windows-native.sh --mode=standalone
+
+# --- Windows .exe (Linux host via Wine, for fast local iteration) --
+bash packaging/build-windows.sh --mode=standalone       # then wrap with installer
+bash packaging/build-windows.sh                         # onefile, --smoke-test optional
+
+# --- Windows installer (wraps either Wine- or native-built dist) ---
+bash packaging/make-installer-windows.sh \
+    --dist-dir=build/win/deployment/mde_launch.dist   # or build/mde.dist from native
+```
+
+CI: `.github/workflows/build-linux.yml` (Ubuntu 22.04) and `.github/workflows/build-windows.yml` (Windows Server 2022) mirror these scripts.
 
 **Notes:**
 - On conda/mamba envs, Nuitka requires either `conda install libpython-static` or `--static-libpython=no` in the spec's `extra_args`.
-- The build is **per-OS** — you must build on the target OS (or cross-build under Wine for Windows-from-Linux, which is fragile).
-- `mode = standalone` produces a dist folder; `mode = onefile` produces a single self-extracting binary.
-- External tools (pandoc, graphviz, mmdc) are **not** bundled — they remain optional runtime dependencies with pip-installable fallbacks.
-- Cap parallel compiler jobs at `floor(nproc / 2)` (pass `--jobs=N` in Nuitka `extra_args`) so the build doesn't clobber CPU for interactive work.
+- `mode = standalone` produces a dist folder; `mode = onefile` produces a single self-extracting binary. The installer wraps standalone.
+- External **runtime** tools (pandoc, graphviz, mmdc) are **not** bundled — they remain optional runtime deps with pip-installable fallbacks (see "Optional System Dependencies" above).
+- Cap parallel compiler jobs at `floor(nproc / 2)` on dev machines (default in scripts) so the build doesn't clobber CPU for interactive work. CI workflows override to `--jobs=$(nproc)` since nothing else runs there.
 
 ### Verifying a bundled binary
 
