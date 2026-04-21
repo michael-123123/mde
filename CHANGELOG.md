@@ -3,6 +3,19 @@
 All notable changes to markdown-editor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.13] - 2026-04-21
+
+### Added
+- Pre-built binaries shipped on every GitHub release:
+  - `MarkdownEditor-<version>-x86_64.AppImage` — Linux AppImage (static runtime — no libfuse2 dependency on Ubuntu 24+)
+  - `MarkdownEditor-<version>-x86_64.exe` — Windows portable onefile
+  - `MarkdownEditor-<version>-x86_64-setup.exe` — Windows installer (Start Menu shortcut, uninstaller, optional "add to PATH" and ".md file association")
+  - `MarkdownEditor-<version>-x86_64-portable.zip` — Windows portable dist (unzip and run)
+- `install-desktop` / `install-autocomplete` CLI subcommands detect when invoked from a Nuitka-compiled binary and register the absolute bundled-binary path with the OS
+
+### Fixed
+- `mde graph -o output.svg` truncated one character from the output filename (off-by-one in extension stripping)
+
 ## [0.1.12] - 2026-04-19
 
 ### Added
