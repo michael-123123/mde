@@ -1,0 +1,91 @@
+name: Build Windows
+
+# Triggers:
+#   - workflow_dispatch — manual button in the Actions tab
+#   - push on v*.*.* tags — attaches the .exe to the GitHub Release
+#
+# What this workflow is:
+#   A thin wrapper that rents a Windows VM and runs the standalone
+#   packaging/build-windows-native.sh. The build itself is independent of
+#   GHA — any developer with Windows + Git Bash + Python 3.12 can reproduce
+#   it locally by running the same script.
+#
+# Sibling workflow: release.yml builds sdist+wheel on the same tag.
+# Both workflows run in parallel and each attaches its own artifact to the
+# release (softprops/action-gh-release@v2 is idempotent with files: when
+# multiple jobs add different filenames).
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write   # needed to attach release assets on tag push
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash   # Git Bash; matches build-windows-native.sh's shebang
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # setuptools-scm needs full tag history for version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # pip cache survives across runs; ~300 MB of wheels for PySide6 etc.
+      # Nuitka itself gets pip-installed by pyside6-deploy on first run too.
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-windows-py3.12-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-windows-py3.12-
+
+      - name: Install project + build deps
+        run: pip install -e ".[build]"
+
+      # nproc on GHA windows-latest returns 4 (full runner cores) — we want
+      # ALL of them here, unlike the floor(nproc/2) default that protects a
+      # dev's workstation from being clobbered during a build.
+      - name: Build Windows .exe
+        run: bash packaging/build-windows-native.sh --mode=onefile --jobs=$(nproc)
+
+      # Headless CLI smoke tests — GHA runners have no display server, so
+      # we can't verify the GUI. These at least confirm the .exe loads Qt,
+      # imports everything, and runs the CLI argparse + subcommand dispatch.
+      - name: Smoke test (CLI)
+        run: |
+          EXE="build/win/deployment/mde_launch.exe"
+          "$EXE" --version
+          "$EXE" --help | head -20
+          "$EXE" stats README.md
+
+      # Rename the artifact to the release-asset convention before upload
+      # so the downloaded file already has version + arch in the name.
+      - name: Rename artifact
+        run: |
+          VERSION=$(python -c "from importlib.metadata import version; print(version('markdown-editor'))")
+          mkdir -p release-assets
+          cp build/win/deployment/mde_launch.exe "release-assets/MarkdownEditor-${VERSION}-x86_64.exe"
+          ls -la release-assets/
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mde-windows-x86_64
+          path: release-assets/*.exe
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*.exe
