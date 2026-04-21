@@ -99,27 +99,39 @@ jobs:
           Remove-Item -Recurse $STAGED
           Get-Item $DEST | Format-List Name, Length
 
-      - name: Collect release assets
+      # Stash the version so downstream steps can reference it through
+      # environment without re-invoking python.
+      - name: Resolve version
         run: |
           VERSION=$(python -c "from importlib.metadata import version; print(version('markdown-editor'))")
-          mkdir -p release-assets
-          cp "build/MarkdownEditor-${VERSION}-x86_64-setup.exe"       "release-assets/"
-          cp "build/MarkdownEditor-${VERSION}-x86_64-portable.zip"    "release-assets/"
-          ls -la release-assets/
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          ls -la "build/MarkdownEditor-${VERSION}-x86_64-setup.exe" \
+                 "build/MarkdownEditor-${VERSION}-x86_64-portable.zip"
 
-      - name: Upload workflow artifact
+      # Two separate upload-artifact calls → two separate cards in the
+      # Actions UI, one file each. (GHA always wraps artifacts in a zip on
+      # download — we can't avoid the outer .zip, but this way the outer
+      # zip contains exactly ONE file instead of a mixed bundle.)
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mde-windows-installer-x86_64
-          path: |
-            release-assets/*.exe
-            release-assets/*.zip
+          name: MarkdownEditor-${{ env.VERSION }}-x86_64-setup.exe
+          path: build/MarkdownEditor-${{ env.VERSION }}-x86_64-setup.exe
           if-no-files-found: error
 
+      - name: Upload portable zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkdownEditor-${{ env.VERSION }}-x86_64-portable.zip
+          path: build/MarkdownEditor-${{ env.VERSION }}-x86_64-portable.zip
+          if-no-files-found: error
+
+      # On tag push, softprops unpacks the files glob and attaches each
+      # one directly as a release asset — no outer zip wrapping here.
       - name: Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-assets/*.exe
-            release-assets/*.zip
+            build/MarkdownEditor-*-x86_64-setup.exe
+            build/MarkdownEditor-*-x86_64-portable.zip
