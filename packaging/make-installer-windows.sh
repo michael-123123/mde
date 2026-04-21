@@ -70,7 +70,34 @@ ICON="$REPO_ROOT/src/markdown_editor/markdown6/icons/markdown-mark-solid-win10.i
 
 [ -f "$NSI_SCRIPT" ] || { echo "Missing $NSI_SCRIPT" >&2; exit 1; }
 [ -f "$ICON" ]       || { echo "Missing $ICON" >&2; exit 1; }
-command -v makensis >/dev/null || { echo "makensis not on PATH (apt install nsis)" >&2; exit 1; }
+
+# Find makensis. On Linux `apt install nsis` puts it on PATH directly. On
+# Windows after `choco install nsis`, PATH propagation into the current bash
+# step can be flaky — fall back to common install locations. Chocolatey's
+# NSIS installs under "Program Files (x86)\NSIS\" on 64-bit Windows.
+MAKENSIS=""
+if command -v makensis >/dev/null 2>&1; then
+    MAKENSIS=makensis
+else
+    for candidate in \
+        "/c/Program Files (x86)/NSIS/makensis.exe" \
+        "/c/Program Files/NSIS/makensis.exe"; do
+        [ -x "$candidate" ] && MAKENSIS="$candidate" && break
+    done
+fi
+if [ -z "$MAKENSIS" ]; then
+    echo "ERROR: makensis not found." >&2
+    echo "       apt install nsis   (Linux)" >&2
+    echo "       choco install nsis (Windows)" >&2
+    exit 1
+fi
+
+# NSIS on Windows is a Windows PE tool; forward-slash POSIX paths from
+# Git Bash (e.g. /d/a/mde/...) get fed through MSYS's argument-
+# translation layer, which is flaky for -D<name>=<value> forms. Convert
+# any paths we pass to makensis into Windows-friendly forward-slash paths
+# (D:/a/mde/...) via cygpath -m — same as build-windows-native.sh.
+to_win() { command -v cygpath >/dev/null && cygpath -m "$1" || echo "$1"; }
 
 # -------- Version -------------------------------------------------------------
 # Prefer mamba env 'algo' if present (matches build.sh pattern); else plain python.
@@ -92,13 +119,14 @@ echo "    output:  $OUTPUT"
 
 # -------- Run makensis --------------------------------------------------------
 # -V3 shows warnings + the final "Install size" summary but not every file
-# copied (-V4 would be noisy for a 527 MB dist).
-makensis -V3 \
-    -DSOURCE_DIR="$DIST_DIR" \
+# copied (-V4 would be noisy for a 527 MB dist). Paths are pre-converted to
+# Windows-style via to_win() so makensis.exe gets unambiguous inputs.
+"$MAKENSIS" -V3 \
+    -DSOURCE_DIR="$(to_win "$DIST_DIR")" \
     -DAPP_VERSION="$VERSION" \
-    -DAPP_ICON="$ICON" \
-    -DOUTPUT_FILE="$OUTPUT" \
-    "$NSI_SCRIPT"
+    -DAPP_ICON="$(to_win "$ICON")" \
+    -DOUTPUT_FILE="$(to_win "$OUTPUT")" \
+    "$(to_win "$NSI_SCRIPT")"
 
 # -------- Report --------------------------------------------------------------
 if [ -f "$OUTPUT" ]; then
