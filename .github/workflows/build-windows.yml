@@ -63,7 +63,7 @@ jobs:
       # imports everything, and runs the CLI argparse + subcommand dispatch.
       - name: Smoke test (CLI)
         run: |
-          EXE="build/win/deployment/mde_launch.exe"
+          EXE="build/win/mde.exe"
           "$EXE" --version
           "$EXE" --help | head -20
           "$EXE" stats README.md
@@ -74,7 +74,7 @@ jobs:
         run: |
           VERSION=$(python -c "from importlib.metadata import version; print(version('markdown-editor'))")
           mkdir -p release-assets
-          cp build/win/deployment/mde_launch.exe "release-assets/MarkdownEditor-${VERSION}-x86_64.exe"
+          cp build/win/mde.exe "release-assets/MarkdownEditor-${VERSION}-x86_64.exe"
           ls -la release-assets/
 
       - name: Upload workflow artifact

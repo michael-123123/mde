@@ -127,10 +127,14 @@ python -c "from PySide6 import QtCore; import sys; sys.stderr.write(f'PySide6 {Q
 pyside6-deploy -c "$(to_win "$WIN_SPEC")" -f
 
 # -------- Report --------------------------------------------------------------
+# pyside6-deploy places its final output in $exec_directory (= $WIN_OUT),
+# renamed from mde_launch.* to match the spec's `title = mde`. Nuitka's
+# intermediate output under $WIN_OUT/deployment/ is kept for inspection
+# but is NOT where the shipped artifact lives.
 if [ "$MODE" = "onefile" ]; then
-    OUT="$WIN_OUT/deployment/mde_launch.exe"
+    OUT="$WIN_OUT/mde.exe"
 else
-    OUT="$WIN_OUT/deployment/mde_launch.dist/mde_launch.exe"
+    OUT="$WIN_OUT/mde.dist/mde_launch.exe"
 fi
 if [ -f "$OUT" ]; then
     echo "==> built Windows binary: $OUT  ($(du -h "$OUT" | cut -f1))"
