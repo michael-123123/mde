@@ -124,14 +124,21 @@ mkdir -p "$TOOLS_DIR" "$WIN_OUT"
 # ============================================================================
 # Helpers
 # ============================================================================
-# Convert a Git-Bash POSIX path to a Windows-style path for tools that need it
-# (pyside6-deploy / Nuitka accept both, but Windows-style is unambiguous).
+# Convert a Git-Bash POSIX path to a forward-slash Windows path
+# (e.g. /d/a/mde -> D:/a/mde). Python and Nuitka both accept this on Windows.
+#
+# We deliberately use -m (mixed mode, forward slashes) rather than -w
+# (native Windows backslashes). Reason: pyside6-deploy reads the spec's
+# `extra_args` line and pipes it through Python's shlex.split() in POSIX
+# mode, which eats backslashes — turning `D:\a\mde\...icuin.dll` into the
+# nonsense `D:amde...icuin.dll` before Nuitka sees it. Forward slashes
+# survive shlex intact.
 to_win() {
     if command -v cygpath >/dev/null; then
-        cygpath -w "$1"
+        cygpath -m "$1"
     else
-        # Fallback: naive /c/foo -> C:\foo
-        echo "$1" | sed -E 's|^/([a-zA-Z])/|\U\1:\\\\|; s|/|\\\\|g'
+        # Fallback: naive /c/foo -> C:/foo (forward slashes, same reason)
+        echo "$1" | sed -E 's|^/([a-zA-Z])/|\U\1:/|'
     fi
 }
 
