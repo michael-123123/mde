@@ -170,7 +170,27 @@ grep -E "^mode|^extra_args|^input_file|^project_dir|^exec_directory|^icon" "$SPE
 # The launcher sets FONTCONFIG_PATH=/etc/fonts and neutralizes pygments'
 # entry-point plugin discovery.
 
-mamba run -n algo pyside6-deploy -c "$SPEC" -f
+# Resolve how to invoke pyside6-deploy + python:
+#   1. If `mamba` + `algo` env exist (dev's primary workflow) — use them.
+#   2. Else if pyside6-deploy is on PATH (GHA, activated venv, etc.) — use
+#      it directly, with `python` for helper calls.
+#   3. Else fail.
+if command -v mamba >/dev/null 2>&1 && mamba env list 2>/dev/null | awk '{print $1}' | grep -qx algo; then
+    DEPLOY_CMD=(mamba run -n algo pyside6-deploy)
+    PYTHON_CMD=(mamba run -n algo python)
+elif command -v pyside6-deploy >/dev/null 2>&1; then
+    DEPLOY_CMD=(pyside6-deploy)
+    PYTHON_CMD=(python)
+else
+    echo "ERROR: neither 'mamba run -n algo pyside6-deploy' nor 'pyside6-deploy' on PATH are available." >&2
+    echo "Install deps via one of:" >&2
+    echo "  mamba run -n algo pip install -e \".[build]\"   (dev)" >&2
+    echo "  pip install -e \".[build]\"                      (CI / activated env)" >&2
+    exit 1
+fi
+echo "==> using: ${DEPLOY_CMD[*]}"
+
+"${DEPLOY_CMD[@]}" -c "$SPEC" -f
 
 # -------- Post-build cleanup --------------------------------------------------
 # Belt-and-braces: Nuitka's pyside6 plugin sometimes re-adds libfontconfig
@@ -186,7 +206,7 @@ if [ "$APPIMAGE" -eq 1 ]; then
     echo ""
     echo "==> packaging AppImage"
 
-    VERSION=$(mamba run -n algo python -c \
+    VERSION=$("${PYTHON_CMD[@]}" -c \
         "from importlib.metadata import version; print(version('markdown-editor'))" \
         2>/dev/null || echo "0.0.0")
     APPIMAGE_OUT="$BUILD_DIR/MarkdownEditor-${VERSION}-x86_64.AppImage"
