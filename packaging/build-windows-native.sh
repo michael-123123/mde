@@ -158,28 +158,63 @@ if [ ! -d "$ICU_EXTRACT/bin64" ]; then
 fi
 
 # Stage into site-packages/PySide6/ so `python -c "from PySide6 import QtCore"`
-# works on this host. Find the PySide6 dir via the installed package.
+# works on this host (Nuitka's pyside6 plugin does this import during its
+# build-time scan, so it MUST work before we invoke pyside6-deploy).
+#
+# Python prints a Windows backslash path on GHA windows-latest
+# (C:\hostedtoolcache\...\PySide6). Mixed separators in Git Bash's cp
+# destination (`"$BS_PATH/foo.dll"`) are unreliable — copies can land in the
+# wrong place or no-op silently. Normalize to POSIX via cygpath first.
 PYSIDE6_DIR=$(python -c "import PySide6, pathlib; print(pathlib.Path(PySide6.__file__).parent)" 2>/dev/null || echo "")
-if [ -n "$PYSIDE6_DIR" ] && [ ! -f "$PYSIDE6_DIR/icuuc73.dll" ]; then
-    echo "==> staging ICU 73.2 DLLs into $PYSIDE6_DIR"
+if [ -z "$PYSIDE6_DIR" ]; then
+    echo "ERROR: could not resolve PySide6 install dir (is PySide6 installed?)" >&2
+    exit 1
+fi
+if command -v cygpath >/dev/null; then
+    PYSIDE6_DIR=$(cygpath -u "$PYSIDE6_DIR")
+fi
+
+# Helper: copy ICU DLLs (both versioned and unsuffixed) from the extracted
+# zip into a destination dir. Fails loudly on any missing source or cp error.
+stage_icu_dlls() {
+    local dest="$1"
+    local icu src
     for icu in $ICU_DLLS; do
         src="$ICU_EXTRACT/bin64/${icu}73.dll"
-        [ -f "$src" ] || continue
-        cp "$src" "$PYSIDE6_DIR/${icu}73.dll"
-        cp "$src" "$PYSIDE6_DIR/${icu}.dll"
+        if [ ! -f "$src" ]; then
+            echo "ERROR: ICU source DLL missing: $src" >&2
+            echo "       (extraction of $ICU_ZIP to $ICU_EXTRACT may have failed)" >&2
+            exit 1
+        fi
+        cp "$src" "$dest/${icu}73.dll"
+        cp "$src" "$dest/${icu}.dll"
     done
+}
+
+if [ ! -f "$PYSIDE6_DIR/icuuc73.dll" ]; then
+    echo "==> staging ICU 73.2 DLLs into $PYSIDE6_DIR"
+    stage_icu_dlls "$PYSIDE6_DIR"
+    if [ ! -f "$PYSIDE6_DIR/icuuc73.dll" ]; then
+        echo "ERROR: ICU copy into $PYSIDE6_DIR reported success but file missing" >&2
+        exit 1
+    fi
+fi
+
+# Fail fast — if the import still breaks, don't waste 2 minutes inside
+# Nuitka before we see a confusing "PySide6 not installed" plugin error.
+if ! python -c "from PySide6 import QtCore" 2>/dev/null; then
+    echo "ERROR: 'from PySide6 import QtCore' still fails after ICU staging." >&2
+    echo "       Run: python -c 'from PySide6 import QtCore' to see the real error." >&2
+    python -c "from PySide6 import QtCore" || true
+    exit 1
 fi
 
 # Stage dedicated dir for Nuitka's --include-data-files (puts ICU INSIDE the
 # bundle artifact — works for both standalone and onefile).
 if [ ! -f "$ICU_STAGE/icuuc73.dll" ]; then
+    echo "==> staging ICU 73.2 DLLs into $ICU_STAGE (for --include-data-files)"
     rm -rf "$ICU_STAGE" && mkdir -p "$ICU_STAGE"
-    for icu in $ICU_DLLS; do
-        src="$ICU_EXTRACT/bin64/${icu}73.dll"
-        [ -f "$src" ] || continue
-        cp "$src" "$ICU_STAGE/${icu}73.dll"
-        cp "$src" "$ICU_STAGE/${icu}.dll"
-    done
+    stage_icu_dlls "$ICU_STAGE"
 fi
 
 # ============================================================================
