@@ -164,6 +164,10 @@ class DocumentTab(QWidget):
         self.main_window = parent
         self.ctx = parent.ctx
         self.file_path: Path | None = None
+        # Dirty flag mirroring ``self.editor.document().isModified()``.
+        # Kept in sync via the ``modificationChanged`` signal wired in
+        # ``_connect_signals`` — see ``_on_modification_changed`` for the
+        # tech-debt note on making this a derived read-only property.
         self.unsaved_changes = False
         self._sync_scrolling = True
         self._pending_scroll_line: int | None = None
@@ -173,6 +177,10 @@ class DocumentTab(QWidget):
 
         self._init_ui()
         self._init_timer()
+        # Baseline the document as unmodified before wiring the
+        # modificationChanged signal so the initial (empty / just-loaded)
+        # state is the "clean" reference point.
+        self.editor.document().setModified(False)
         self._connect_signals()
 
     def _init_ui(self):
@@ -277,7 +285,22 @@ class DocumentTab(QWidget):
 
     def _connect_signals(self):
         """Connect signals."""
+        # ``textChanged`` is one-way (fires on every buffer mutation,
+        # including undo/redo) — we keep it only for side effects that
+        # should run on any content change: preview re-render and
+        # outline update scheduling.
         self.editor.textChanged.connect(self._on_text_changed)
+        # Dirty tracking uses ``modificationChanged`` instead because
+        # it is bidirectional: emits ``True`` when the document leaves
+        # its last ``setModified(False)`` baseline, and ``False`` when
+        # it returns to that baseline (e.g. user undoes every edit).
+        # Without this, the dirty flag would ratchet to ``True`` on
+        # the first keystroke and never turn off until an explicit
+        # save or reload — even if the buffer is byte-identical to
+        # the saved state.
+        self.editor.document().modificationChanged.connect(
+            self._on_modification_changed
+        )
         self.editor.file_externally_modified.connect(self._on_file_externally_modified)
         self.ctx.settings_changed.connect(self._on_setting_changed)
 
@@ -467,14 +490,33 @@ class DocumentTab(QWidget):
 
     def _on_text_changed(self):
         """Handle text changes in the editor."""
-        if not self.unsaved_changes:
-            self.unsaved_changes = True
-            self.main_window.update_tab_title(self)
-            self.main_window.update_window_title()
         self.render_timer.start(300)
         # Schedule debounced outline panel update
         if hasattr(self.main_window, '_schedule_outline_update'):
             self.main_window._schedule_outline_update()
+
+    def _on_modification_changed(self, modified: bool):
+        """Mirror ``self.editor.document().isModified()`` onto ``unsaved_changes``.
+
+        Also refreshes the tab title (the leading ``*`` marker) and the
+        window title.
+
+        Tech debt: ``unsaved_changes`` is still a mutable attribute kept
+        in sync with the document's modified flag by convention — every
+        call site that resets content pairs ``setPlainText`` with
+        ``setModified(False)`` so this handler fires. The cleaner design
+        is a read-only ``@property`` deriving ``unsaved_changes``
+        directly from ``self.editor.document().isModified()``, which
+        would make the sync structural rather than discipline-based.
+        That refactor is deferred: plugin-side code writes this
+        attribute directly (``DocumentHandle.is_dirty`` snapshot and
+        restore on the ``feature/plugin-system`` branch), so converting
+        it to a read-only property is a coordinated change across the
+        plugin API and should wait until the plugin API stabilizes.
+        """
+        self.unsaved_changes = modified
+        self.main_window.update_tab_title(self)
+        self.main_window.update_window_title()
 
     def _on_file_externally_modified(self):
         """Handle external file modification with non-modal notification."""
@@ -638,7 +680,9 @@ class DocumentTab(QWidget):
         if self.file_path and self.file_path.exists():
             content = self.file_path.read_text(encoding="utf-8")
             self.editor.setPlainText(content)
-            self.unsaved_changes = False
+            # Reset the modification baseline to the just-loaded state;
+            # modificationChanged(False) will propagate to unsaved_changes.
+            self.editor.document().setModified(False)
             self.main_window.update_tab_title(self)
 
     def get_tab_title(self) -> str:
