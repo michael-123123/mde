@@ -27,7 +27,8 @@ monkeypatch the specific method back to a custom stub in the test body
 from __future__ import annotations
 
 import pytest
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 
 @pytest.fixture(autouse=True)
@@ -47,3 +48,33 @@ def _auto_dismiss_qmessagebox(monkeypatch):
 
     for method_name, return_button in defaults.items():
         monkeypatch.setattr(QMessageBox, method_name, _make_stub(return_button))
+
+
+@pytest.fixture(autouse=True)
+def _stop_leaked_qtimers():
+    """Stop any QTimer that is still active at the end of a test.
+
+    pytest-qt's ``pytest_runtest_setup`` is registered with
+    ``tryfirst=True`` as a wrapper, so its post-yield ``_process_events()``
+    call runs *after* pytest's ``LogCaptureHandler`` has closed the
+    previous test's capture buffer. A ``QTimer`` that was armed during
+    test N and expires during that window therefore fires while log
+    capture is in an inconsistent state: any ``logger.*`` call inside
+    the timer callback propagates to the root handler and writes to a
+    closed ``StringIO``, surfacing as
+    ``ValueError: I/O operation on closed file`` in pytest output.
+
+    Fix (a) in ``DocumentTab`` covers the specific case of the debounced
+    render timer, but this fixture is a defensive net: any QTimer
+    parented anywhere in the widget tree that's still active at
+    teardown gets stopped here, so it cannot leak into the next test's
+    setup-phase event dispatch.
+    """
+    yield
+    app = QApplication.instance()
+    if app is None:
+        return
+    for widget in app.topLevelWidgets():
+        for timer in widget.findChildren(QTimer):
+            if timer.isActive():
+                timer.stop()

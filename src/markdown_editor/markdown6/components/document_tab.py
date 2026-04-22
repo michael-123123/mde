@@ -337,6 +337,12 @@ class DocumentTab(QWidget):
         self.render_timer = QTimer(self)
         self.render_timer.setSingleShot(True)
         self.render_timer.timeout.connect(self.render_markdown)
+        # A destroyed tab must not leave a live render_timer behind: if it
+        # does, the timer fires during a later test's pytest-qt
+        # processEvents window — after pytest's LogCaptureHandler has been
+        # closed for the previous test — and render_markdown's logger
+        # call writes to a closed StringIO.
+        self.destroyed.connect(self.render_timer.stop)
 
     def _connect_signals(self):
         """Connect signals."""
