@@ -60,6 +60,22 @@ def test_bell_text_shows_count_when_unread(qtbot) -> None:
     assert "2" in bell.text()
 
 
+def test_bell_icon_differs_between_read_and_unread(qtbot) -> None:
+    """Unread state must visibly change the icon glyph (not only the
+    count text) so the bell looks like it's "ringing" at a glance."""
+    center = NotificationCenter()
+    bell = NotificationBellButton(center)
+    qtbot.addWidget(bell)
+
+    read_text = bell.text()
+    center.post(Notification(title="x", message=""))
+    unread_text = bell.text()
+    # The leading glyph in the unread state is NOT the same as in the
+    # read state — we want the user to see the change with peripheral
+    # vision, not just by reading the count.
+    assert read_text[0] != unread_text[0]
+
+
 def test_bell_has_unread_visual_indicator(qtbot) -> None:
     """Bell should have some visible indication when there are unread
     items beyond just the count text — exposed as a queryable property

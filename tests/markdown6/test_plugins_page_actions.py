@@ -133,23 +133,6 @@ def test_open_folder_button_present_with_plugins(qtbot, ctx) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_reload_plugins_button_exists(qtbot, ctx) -> None:
-    page = PluginsSettingsPage(ctx)
-    qtbot.addWidget(page)
-    assert page.reload_button is not None
-    assert page.reload_button.isEnabled() is True
-
-
-def test_reload_button_emits_reload_requested_signal(qtbot, ctx) -> None:
-    page = PluginsSettingsPage(ctx)
-    qtbot.addWidget(page)
-
-    received: list[bool] = []
-    page.reload_requested.connect(lambda: received.append(True))
-    page.reload_button.click()
-    assert received == [True]
-
-
 def test_palette_has_reload_plugins_command() -> None:
     """The PALETTE_ONLY registry must include a reload-plugins entry
     so users can find it via Ctrl+Shift+P without opening Settings."""

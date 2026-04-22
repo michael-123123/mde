@@ -312,17 +312,27 @@ class MarkdownEditor(QMainWindow):
         self.status_bar.showMessage("Ready")
 
     def _show_notification_drawer(self):
-        """Pop the drawer up under the bell. Marks all notifications read."""
+        """Pop the drawer up so its bottom edge sits just above the
+        status bar (the bell's top edge). Preserves the user's current
+        drawer size across opens — no ``adjustSize()`` call, because
+        that would fight the user's drag-resize via the size grip.
+        Marks all notifications read.
+        """
         bell = self.notification_bell
         drawer = self.notification_drawer
-        # Position the drawer so its top-right aligns with the bell's
-        # top-right (bell sits at the right edge of the status bar).
         global_top_right = bell.mapToGlobal(bell.rect().topRight())
-        drawer.adjustSize()
-        # Open above the status bar (drawer flows upward from the bell).
+
+        # Clamp the drawer's height so it can't extend above the top of
+        # the app window — otherwise a user who resized it tall on a
+        # small screen would see it spill off the top.
+        win_top_y = self.mapToGlobal(self.rect().topLeft()).y()
+        max_height = max(220, global_top_right.y() - win_top_y)
+        if drawer.height() > max_height:
+            drawer.resize(drawer.width(), max_height)
+
         drawer.move(
             global_top_right.x() - drawer.width(),
-            global_top_right.y() - drawer.sizeHint().height(),
+            global_top_right.y() - drawer.height(),
         )
         drawer.show_drawer()
 
@@ -727,11 +737,12 @@ class MarkdownEditor(QMainWindow):
 
     def _show_settings(self):
         dialog = SettingsDialog(ctx=self.ctx, parent=self)
-        # Wire the Plugins page's Reload button through to our reload
-        # handler. The page emits a signal so it doesn't have to know
-        # the plugin roots — the editor owns that.
-        if hasattr(dialog, "plugins_page"):
-            dialog.plugins_page.reload_requested.connect(self._reload_plugins)
+        # The Plugins page runs its own discover-only reload via the
+        # ``plugin_roots_provider`` injected in SettingsDialog so the
+        # user gets inline feedback (the bell in the status bar is
+        # invisible while the dialog is modal). The command palette
+        # entry ("Reload Plugins") still goes through
+        # :meth:`_reload_plugins` for non-dialog reloads.
         dialog.exec()
 
     # Format menu actions

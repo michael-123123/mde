@@ -18,7 +18,8 @@ from datetime import datetime
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
-                               QScrollArea, QToolButton, QVBoxLayout, QWidget)
+                               QScrollArea, QSizeGrip, QToolButton,
+                               QVBoxLayout, QWidget)
 
 from markdown_editor.markdown6.notifications import (Notification,
                                                      NotificationCenter,
@@ -62,11 +63,16 @@ class NotificationBellButton(QToolButton):
         return self._center.unread_count()
 
     def _refresh_appearance(self, unread: int) -> None:
+        # Two distinct glyphs so the state change is obvious at a
+        # glance, not just a count number:
+        #   🛎  U+1F6CE BELLHOP BELL — static, "idle" read state.
+        #   🔔  U+1F514 BELL — most fonts render with motion lines,
+        #       i.e. a "ringing" bell for the unread state.
         if unread > 0:
             self.setText(f"🔔 {unread}")
             self.setProperty("hasUnread", True)
         else:
-            self.setText("🔔")
+            self.setText("🛎")
             self.setProperty("hasUnread", False)
         # Re-polish so QSS [hasUnread="true"] picks up the new state
         self.style().unpolish(self)
@@ -195,16 +201,34 @@ class NotificationDrawer(QWidget):
 
     def _init_ui(self) -> None:
         self.setWindowFlags(Qt.WindowType.Popup)
-        self.setMinimumWidth(360)
-        self.setMaximumWidth(520)
+        self.setMinimumSize(360, 220)
+        # Default opening size — user can drag the top-left grip to
+        # grow the drawer (bottom-right is anchored to the bell, so
+        # growing naturally happens upward + leftward). No hard
+        # maximum so long messages get a fair shake.
+        self.resize(460, 360)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
+        # Top-left size grip. Placed before the header row so it sits
+        # in the top-left corner. Qt.Popup windows have no native
+        # resize frame, so a grip is the only way to drag-resize;
+        # putting it top-left matches the bottom-right anchor —
+        # dragging up/left enlarges the drawer without moving the
+        # bottom edge off its pinned spot.
+        grip_row = QHBoxLayout()
+        grip_row.setContentsMargins(0, 0, 0, 0)
+        grip_row.setSpacing(0)
+        tl_grip = QSizeGrip(self)
+        grip_row.addWidget(tl_grip, 0, Qt.AlignmentFlag.AlignTop)
+        grip_row.addStretch()
+        outer.addLayout(grip_row)
+
         # Header with title + Clear button
         header = QHBoxLayout()
-        header.setContentsMargins(10, 8, 10, 8)
+        header.setContentsMargins(10, 0, 10, 8)
         header_label = QLabel("<b>Notifications</b>")
         header.addWidget(header_label)
         header.addStretch()

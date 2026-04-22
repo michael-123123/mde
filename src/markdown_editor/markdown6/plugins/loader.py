@@ -170,21 +170,16 @@ def discover_plugins(
     return plugins
 
 
-def load_plugin(plugin: Plugin, *, user_disabled: set[str]) -> Plugin:
-    """Finish loading a single discovered plugin.
+def validate_plugin(plugin: Plugin) -> Plugin:
+    """Run every load-time check EXCEPT the actual module import.
 
-    Mutates ``plugin`` in place. Never raises — every failure mode is
-    recorded in :attr:`Plugin.status` and :attr:`Plugin.detail`.
-
-    A plugin in ``user_disabled`` is still imported and has its code
-    loaded into memory — only its status is set to
-    :attr:`PluginStatus.DISABLED_BY_USER` after a successful import.
-    This is what allows the editor to re-enable a previously-disabled
-    plugin without a restart: its ``QAction`` is already created, just
-    hidden, so toggling visibility flips it back on instantly.
+    Catches layout errors (already set by :func:`discover_plugins`),
+    ``API_MISMATCH``, and ``MISSING_DEPS``. Does **not** call
+    ``exec_module`` so nothing registers into the live plugin
+    registry — safe to call from UI preview paths.
     """
     # If discovery already marked it as errored (bad layout, bad
-    # metadata), don't try to import.
+    # metadata), pass it through unchanged.
     if plugin.is_errored:
         return plugin
 
@@ -215,6 +210,26 @@ def load_plugin(plugin: Plugin, *, user_disabled: set[str]) -> Plugin:
         plugin.status = PluginStatus.MISSING_DEPS
         plugin.detail = "missing python modules: " + ", ".join(missing)
         plugin.missing_deps = tuple(missing)
+        return plugin
+
+    return plugin
+
+
+def load_plugin(plugin: Plugin, *, user_disabled: set[str]) -> Plugin:
+    """Finish loading a single discovered plugin.
+
+    Mutates ``plugin`` in place. Never raises — every failure mode is
+    recorded in :attr:`Plugin.status` and :attr:`Plugin.detail`.
+
+    A plugin in ``user_disabled`` is still imported and has its code
+    loaded into memory — only its status is set to
+    :attr:`PluginStatus.DISABLED_BY_USER` after a successful import.
+    This is what allows the editor to re-enable a previously-disabled
+    plugin without a restart: its ``QAction`` is already created, just
+    hidden, so toggling visibility flips it back on instantly.
+    """
+    validate_plugin(plugin)
+    if plugin.is_errored:
         return plugin
 
     # --- Import ---------------------------------------------------------------

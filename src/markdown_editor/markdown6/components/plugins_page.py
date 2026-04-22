@@ -78,16 +78,20 @@ class _PluginRow:
 class PluginsSettingsPage(QWidget):
     """Settings page that lists plugins with enable/disable toggles."""
 
-    # Emitted when the user clicks "Reload plugins". The editor
-    # listens and routes to ``plugins.reload.reload_plugins`` with
-    # the right roots — the page itself doesn't know the roots.
-    reload_requested = Signal()
-
-    def __init__(self, ctx: Any, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        ctx: Any,
+        parent: QWidget | None = None,
+    ) -> None:
+        """Create the Plugins settings page."""
         super().__init__(parent)
         self._ctx = ctx
         self._rows: list[_PluginRow] = []
         self.open_folder_button: QPushButton | None = None
+        # Kept as a ``None`` attribute so callers and tests can still
+        # reference it even though the button is gone — the add/remove
+        # handlers now auto-run discovery, so a separate Reload click
+        # was redundant.
         self.reload_button: QPushButton | None = None
         # Extra plugin directories the user has added on top of the
         # default user dir. Stored as plain strings (not Path) because
@@ -95,7 +99,12 @@ class PluginsSettingsPage(QWidget):
         self._pending_extra_dirs: list[str] = [
             str(p) for p in (ctx.get("plugins.extra_dirs", []) or [])
         ]
+        # Snapshot of the dirs at page-open time so apply() can detect
+        # an actual change (and avoid posting a warning on no-op
+        # applies where the user just toggled a plugin checkbox).
+        self._initial_extra_dirs: list[str] = list(self._pending_extra_dirs)
         self._extra_dirs_list: QListWidget | None = None
+        self._reload_status_label: QLabel | None = None
         self._empty_message = (
             "No plugins installed. Drop a plugin directory into "
             f"{self._user_plugin_dir_display()} and restart the editor."
@@ -134,9 +143,18 @@ class PluginsSettingsPage(QWidget):
         return disabled
 
     def apply(self) -> None:
-        """Persist the current toggle state and extra-dirs list."""
+        """Persist the current toggle state and extra-dirs list.
+
+        If the extra-dirs list actually changed, post a WARNING-level
+        notification to the drawer so the user sees a bold
+        ⚠-prefixed reminder that restarting is required — the bell
+        keeps the history after the dialog closes.
+        """
         self._ctx.set("plugins.disabled", sorted(self.pending_disabled_set()))
         self._ctx.set("plugins.extra_dirs", list(self._pending_extra_dirs))
+        if self._pending_extra_dirs != self._initial_extra_dirs:
+            self._post_restart_warning()
+            self._initial_extra_dirs = list(self._pending_extra_dirs)
 
     # ------------------------------------------------------------------
     # Extra plugin directories (additional discovery roots on top of the
@@ -149,18 +167,30 @@ class PluginsSettingsPage(QWidget):
         return list(self._pending_extra_dirs)
 
     def add_extra_dir(self, path) -> None:
-        """Add ``path`` to the pending list if it isn't already there."""
+        """Add ``path`` to the pending list if it isn't already there.
+
+        Immediately re-runs a discover preview against the new pending
+        set and writes a summary into the inline status label so the
+        user sees what the new directory contains before clicking
+        Apply.
+        """
         s = str(path)
         if s not in self._pending_extra_dirs:
             self._pending_extra_dirs.append(s)
             self._refresh_extra_dirs_list()
+            self._update_discovery_preview()
 
     def remove_extra_dir(self, path) -> None:
-        """Remove ``path`` from the pending list (no-op if absent)."""
+        """Remove ``path`` from the pending list (no-op if absent).
+
+        Re-runs the discover preview after the change — mirror of
+        :meth:`add_extra_dir`.
+        """
         s = str(path)
         if s in self._pending_extra_dirs:
             self._pending_extra_dirs.remove(s)
             self._refresh_extra_dirs_list()
+            self._update_discovery_preview()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -194,14 +224,6 @@ class PluginsSettingsPage(QWidget):
         self.open_folder_button.clicked.connect(self._open_user_plugin_folder)
         action_row.addWidget(self.open_folder_button)
 
-        self.reload_button = QPushButton("Reload plugins")
-        self.reload_button.setToolTip(
-            "Re-discover plugin directories on disk and report what's "
-            "new or removed. Restart the editor to actually load any "
-            "newly-discovered plugins."
-        )
-        self.reload_button.clicked.connect(self.reload_requested.emit)
-        action_row.addWidget(self.reload_button)
         action_row.addStretch()
         body_layout.addLayout(action_row)
 
@@ -401,7 +423,10 @@ class PluginsSettingsPage(QWidget):
         layout.addWidget(intro)
 
         self._extra_dirs_list = QListWidget()
-        self._extra_dirs_list.setMinimumHeight(80)
+        # Cap the list's height so it doesn't dominate the page — the
+        # installed-plugin list below is the main content. ~100px is
+        # four rows; the list scrolls for more.
+        self._extra_dirs_list.setMaximumHeight(100)
         layout.addWidget(self._extra_dirs_list)
         self._refresh_extra_dirs_list()
 
@@ -414,6 +439,15 @@ class PluginsSettingsPage(QWidget):
         button_row.addWidget(remove_btn)
         button_row.addStretch()
         layout.addLayout(button_row)
+
+        # Inline status line for reload/apply feedback. The Settings
+        # dialog is modal, so the notification-drawer bell in the
+        # status bar is hidden — without this label the user sees the
+        # dialog do nothing in response to Add + Apply.
+        self._reload_status_label = QLabel("")
+        self._reload_status_label.setWordWrap(True)
+        self._reload_status_label.setObjectName("MutedLabel")
+        layout.addWidget(self._reload_status_label)
 
         return frame
 
@@ -438,3 +472,158 @@ class PluginsSettingsPage(QWidget):
         if item is None:
             return
         self.remove_extra_dir(item.text())
+
+    # ------------------------------------------------------------------
+    # Discovery preview — inline feedback on add/remove
+    # ------------------------------------------------------------------
+
+    def reload_status_text(self) -> str:
+        """Current inline status-label text. Exposed for tests."""
+        return self._reload_status_label.text() if self._reload_status_label else ""
+
+    def _compute_preview_diff(self):
+        """Discover against both the initial (page-open) roots and the
+        current pending roots, return ``(added, removed, errored)``
+        name sets / plugin lists."""
+        from markdown_editor.markdown6.plugins.loader import (
+            discover_plugins,
+            validate_plugin,
+        )
+
+        initial_roots = self._build_roots(self._initial_extra_dirs)
+        pending_roots = self._build_roots(self._pending_extra_dirs)
+
+        initial_discovered = discover_plugins(initial_roots)
+        pending_discovered = discover_plugins(pending_roots)
+        for p in pending_discovered:
+            validate_plugin(p)
+
+        initial_names = {p.name for p in initial_discovered}
+        pending_names = {p.name for p in pending_discovered}
+
+        added = sorted(pending_names - initial_names)
+        removed = sorted(initial_names - pending_names)
+        errored = [p for p in pending_discovered if p.is_errored]
+        return added, removed, errored
+
+    def _update_discovery_preview(self) -> None:
+        """Discover against the pending roots and write a summary to
+        the inline label. Diff is relative to the page-open state, so
+        what the user sees is exactly the changeset their current
+        edits will produce on Apply.
+        """
+        if self._reload_status_label is None:
+            return
+
+        added, removed, errored = self._compute_preview_diff()
+
+        if not (added or removed or errored):
+            self._reload_status_label.setText(
+                "No changes vs. currently-loaded plugins."
+            )
+            self._reload_status_label.setTextFormat(Qt.TextFormat.RichText)
+            return
+
+        # Yellow/amber color from the active theme so the notice
+        # reads as a warning in both light and dark mode.
+        from markdown_editor.markdown6.theme import get_theme_from_ctx
+        theme = get_theme_from_ctx(self._ctx)
+        yellow = theme.warning
+
+        def _ul(items_html: list[str]) -> str:
+            return "<ul style='margin:2px 0; padding-left:18px;'>" + "".join(
+                f"<li>{item}</li>" for item in items_html
+            ) + "</ul>"
+
+        sections: list[str] = []
+        sections.append(
+            f"<div style='color:{yellow};'>"
+            "<b>⚠ Plugin directory changes — restart required ⚠</b>"
+            "</div><br>"
+        )
+        if added:
+            sections.append(
+                "<b>Would be added:</b>"
+                + _ul([f"<code>{n}</code>" for n in added])
+            )
+        if removed:
+            sections.append(
+                "<b>Would be removed:</b>"
+                + _ul([f"<code>{n}</code>" for n in removed])
+            )
+        if errored:
+            sections.append(
+                f"<b><span style='color:{theme.error};'>Errored:</span></b>"
+                + _ul([
+                    f"<span style='color:{theme.error};'>"
+                    f"<code>{p.name}</code> "
+                    f"({p.status.value}: {p.detail})</span>"
+                    for p in errored
+                ])
+            )
+        sections.append(
+            f"<div style='color:{yellow};'>"
+            "<b>⚠ Restart the editor to apply plugin-directory "
+            "changes. ⚠</b>"
+            "</div>"
+        )
+
+        self._reload_status_label.setText("".join(sections))
+        self._reload_status_label.setTextFormat(Qt.TextFormat.RichText)
+
+    def _build_roots(self, extra_dirs: list[str]):
+        """Compose the scan-root list for ``extra_dirs`` on top of the
+        default builtin + user roots. Used for both initial-state and
+        pending-state discovery in the preview."""
+        from pathlib import Path as _P
+
+        import markdown_editor.markdown6 as pkg
+        from markdown_editor.markdown6.plugins.plugin import PluginSource
+
+        builtin_root = _P(pkg.__file__).resolve().parent / "builtin_plugins"
+        user_root = _P(self._ctx.config_dir) / "plugins"
+        roots = [
+            (builtin_root, PluginSource.BUILTIN),
+            (user_root, PluginSource.USER),
+        ]
+        for raw in extra_dirs:
+            roots.append((_P(raw), PluginSource.USER))
+        return roots
+
+    def _post_restart_warning(self) -> None:
+        """Post a WARNING-severity notification to the drawer with
+        the full list of plugins that will be added/removed/errored,
+        so the user can still review the details after the Settings
+        dialog closes. Called from :meth:`apply` when ``extra_dirs``
+        actually changed."""
+        if not hasattr(self._ctx, "notifications"):
+            return
+
+        added, removed, errored = self._compute_preview_diff()
+
+        lines: list[str] = []
+        if added:
+            lines.append("Would be added:")
+            lines.extend(f"  • {n}" for n in added)
+        if removed:
+            if lines:
+                lines.append("")
+            lines.append("Would be removed:")
+            lines.extend(f"  • {n}" for n in removed)
+        if errored:
+            if lines:
+                lines.append("")
+            lines.append("Errored:")
+            lines.extend(
+                f"  • {p.name} ({p.status.value}: {p.detail})"
+                for p in errored
+            )
+        if lines:
+            lines.append("")
+        lines.append("Restart the editor to apply plugin-directory changes.")
+
+        self._ctx.notifications.post_warning(
+            title="⚠ Plugin directories changed",
+            message="\n".join(lines),
+            source="settings",
+        )
