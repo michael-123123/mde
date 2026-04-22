@@ -330,11 +330,20 @@ def test_multiple_before_anchors_cluster_in_load_order(qtbot) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Anchor failure: nonexistent anchor → loud failure
+# Anchor failure: nonexistent anchor → forgiving fallback to Plugins menu
 # ---------------------------------------------------------------------------
 
 
-def test_unknown_anchor_id_logs_and_skips(qtbot, caplog) -> None:
+def test_unknown_anchor_id_falls_back_to_plugins_menu(qtbot, caplog) -> None:
+    """An unknown ``place=`` anchor is forgiving: the action still
+    surfaces in the top-level Plugins menu (not the originally-
+    requested escape-hatch menu). A log line explains why.
+
+    Previously the action was orphaned — QAction existed, shortcut
+    worked, palette entry worked, but the user never saw it in any
+    menu. Falling back to the default Plugins namespace gives the
+    action a visible, discoverable home.
+    """
     win = _make_window(qtbot, pre_menus=[("&Edit", ["edit.find"])])
     registry = PluginRegistry()
     registry.register_action(PluginAction(
@@ -344,14 +353,35 @@ def test_unknown_anchor_id_logs_and_skips(qtbot, caplog) -> None:
     ))
     inject_plugin_actions(win, registry, [])
 
-    titles = _menu_action_texts(win._test_menus["Edit"])
-    # Action should not have been inserted
-    assert "P-Action" not in titles
-    # And we should see a clear log message about the unknown anchor
+    # Not in the Edit menu (the originally-requested target).
+    assert "P-Action" not in _menu_action_texts(win._test_menus["Edit"])
+
+    # But present in the Plugins menu as a fallback.
+    plugins_menu = _find_menu(win.menuBar(), "Plugins")
+    assert plugins_menu is not None
+    assert "P-Action" in _menu_action_texts(plugins_menu)
+
+    # And we should see a clear log message about the unknown anchor.
     assert any(
         "edit.does_not_exist" in r.getMessage()
         for r in caplog.records
     )
+
+
+def test_unknown_anchor_transform_also_falls_back(qtbot) -> None:
+    """Same fallback applies to text transforms with a broken ``place=``."""
+    win = _make_window(qtbot, pre_menus=[("&Edit", ["edit.find"])])
+    registry = PluginRegistry()
+    registry.register_text_transform(PluginTextTransform(
+        id="p.t", label="P-Transform", plugin_name="p",
+        menu="/Edit", place="after:edit.does_not_exist",
+        transform=lambda s: s,
+    ))
+    inject_plugin_actions(win, registry, [])
+
+    plugins_menu = _find_menu(win.menuBar(), "Plugins")
+    assert plugins_menu is not None
+    assert "P-Transform" in _menu_action_texts(plugins_menu)
 
 
 # ---------------------------------------------------------------------------

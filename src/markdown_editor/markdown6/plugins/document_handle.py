@@ -142,9 +142,28 @@ class DocumentHandle:
         except BaseException:
             cursor.endEditBlock()
             if self._editor.toPlainText() != snapshot:
-                # Hard restore via setPlainText — emits one textChanged
-                # but guarantees byte-identical content.
-                self._editor.setPlainText(snapshot)
+                # Restore via the cursor (not ``setPlainText``). Qt's
+                # ``QPlainTextEdit.setPlainText`` emits
+                # ``modificationChanged(True)`` but silently drops the
+                # subsequent True→False transition, which leaves any UI
+                # subscribed to that signal (tab-title ``*`` marker,
+                # window title) out of sync with the document's actual
+                # modified state. The cursor-based path emits both
+                # edges correctly.
+                restore = QTextCursor(self._editor.document())
+                restore.beginEditBlock()
+                try:
+                    restore.select(QTextCursor.SelectionType.Document)
+                    restore.removeSelectedText()
+                    restore.insertText(snapshot)
+                finally:
+                    restore.endEditBlock()
+            # Drive the dirty flag via the document's modification state
+            # so the DocumentTab's modificationChanged handler refreshes
+            # ``unsaved_changes`` and the tab title together. Direct
+            # attribute fallback keeps unit tests with SimpleNamespace
+            # tab stand-ins working.
+            self._editor.document().setModified(snapshot_dirty)
             if hasattr(self._tab, "unsaved_changes"):
                 self._tab.unsaved_changes = snapshot_dirty
             raise

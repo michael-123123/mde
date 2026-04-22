@@ -18,6 +18,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from PySide6.QtWidgets import QLabel
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_info_dialog import (
@@ -95,7 +96,8 @@ def test_e2e_plugin_import_raises(qtbot, ctx, tmp_path: Path) -> None:
 
     info = PluginInfoDialog(p)
     qtbot.addWidget(info)
-    assert "intentional bad import" in info.body_text()
+    all_text = "\n".join(lbl.text() for lbl in info.findChildren(QLabel))
+    assert "intentional bad import" in all_text
 
 
 def test_e2e_plugin_missing_dependency(qtbot, ctx, tmp_path: Path) -> None:

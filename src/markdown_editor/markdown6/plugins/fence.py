@@ -28,13 +28,19 @@ from markdown_editor.markdown6.logger import getLogger
 logger = getLogger(__name__)
 
 
+# The character set a plugin fence name is allowed to use. Shared
+# with ``api.register_fence`` validation so registration and matching
+# can't drift from each other.
+FENCE_NAME_CHARS = r"[A-Za-z0-9_-]"
+
+
 # Match a fenced code block whose language tag is just the bare
 # alphanumeric name (no extra args). Language captured as group 1,
 # body as group 2. Supports both ``` and ~~~ fences but we keep it
 # tight on the opening to avoid eating regular code blocks that
 # happen to start with the plugin's tag.
 _FENCE_RE = re.compile(
-    r'^(?P<fence>`{3,}|~{3,})(?P<lang>[A-Za-z0-9_-]+)\s*\n'
+    rf'^(?P<fence>`{{3,}}|~{{3,}})(?P<lang>{FENCE_NAME_CHARS}+)\s*\n'
     r'(?P<body>.*?)\n'
     r'(?P=fence)\s*$',
     re.MULTILINE | re.DOTALL,

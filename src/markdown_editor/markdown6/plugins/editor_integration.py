@@ -36,6 +36,7 @@ from PySide6.QtWidgets import QMainWindow, QMenu, QMenuBar
 from markdown_editor.markdown6.components.command_palette import Command
 from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.plugins.api import (
+    _current_plugin,
     get_active_document,
     invoke_text_transform,
 )
@@ -226,11 +227,13 @@ def _inject_action(
     qa.triggered.connect(lambda *_args, _cb=callback: _cb())
 
     if not _insert_with_placement(menu, qa, action.place):
-        # Placement failed (unknown anchor). Logged inside the helper.
-        # Still register the palette command — the palette doesn't care
-        # about menu position, and the user can still find the action
-        # via Ctrl+Shift+P.
-        pass
+        # Placement failed (unknown anchor, etc. — already logged).
+        # Forgiving fallback: attach to the top-level Plugins menu so
+        # the action still has a visible home. The alternative of
+        # leaving the QAction orphaned (in the window but in no menu)
+        # hides the action from users even though it's still wired up
+        # for shortcut + palette.
+        resolve_menu_path(window, "").addAction(qa)
     cmd = Command(
         id=action.id,
         name=action.label,
@@ -307,7 +310,8 @@ def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
         if not path_str:
             return   # user cancelled
         try:
-            fn(doc, Path(path_str))
+            with _current_plugin(exporter.plugin_name):
+                fn(doc, Path(path_str))
         except BaseException as exc:   # noqa: BLE001 — plugin code
             logger.warning(
                 "Plugin exporter %r raised: %s", exporter.id, exc,
@@ -338,7 +342,10 @@ def _inject_transform(
     qa.triggered.connect(lambda *_args, _cb=callback: _cb())
 
     if not _insert_with_placement(menu, qa, transform.place):
-        pass
+        # Forgiving fallback: attach to the top-level Plugins menu so
+        # the transform still has a visible home. See ``_inject_action``
+        # above for the rationale.
+        resolve_menu_path(window, "").addAction(qa)
     cmd = Command(
         id=transform.id,
         name=transform.label,
@@ -603,7 +610,8 @@ def _wrap_action_callback(action: PluginAction):
         if cb is None:
             return
         try:
-            cb()
+            with _current_plugin(action.plugin_name):
+                cb()
         except BaseException as exc:   # noqa: BLE001 — plugin code
             logger.warning(
                 "Plugin action %r raised: %s", action.id, exc,
@@ -628,7 +636,8 @@ def _wrap_transform_callback(transform: PluginTextTransform):
                 transform.id,
             )
             return
-        result = invoke_text_transform(transform, doc)
+        with _current_plugin(transform.plugin_name):
+            result = invoke_text_transform(transform, doc)
         if not result.ok:
             logger.warning(
                 "Text transform %r failed: %s",

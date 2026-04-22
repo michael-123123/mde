@@ -73,7 +73,8 @@ def dispatch(
         if h.plugin_name and h.plugin_name in disabled:
             continue
         try:
-            h.callback(doc)
+            with _api._current_plugin(h.plugin_name):
+                h.callback(doc)
         except BaseException as exc:    # noqa: BLE001 — plugin code
             handler_name = getattr(h.callback, "__name__", repr(h.callback))
             logger.warning(

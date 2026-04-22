@@ -20,11 +20,18 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from PySide6.QtWidgets import QLabel, QWidget
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_info_dialog import (
     PluginInfoDialog,
 )
+
+
+def _visible_text(widget: QWidget) -> str:
+    """All QLabel text in the widget tree, concatenated. Mirrors what a
+    reader of the dialog would see."""
+    return "\n".join(lbl.text() for lbl in widget.findChildren(QLabel))
 from markdown_editor.markdown6.components.plugins_page import PluginsSettingsPage
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.metadata import PluginMetadata
@@ -105,7 +112,7 @@ def test_info_dialog_shows_metadata(qtbot, ctx) -> None:
     )
     dialog = PluginInfoDialog(p)
     qtbot.addWidget(dialog)
-    text = dialog.body_text()
+    text = _visible_text(dialog)
     assert "test_plug" in text
     assert "2.5" in text
     assert "Someone" in text
@@ -120,7 +127,7 @@ def test_info_dialog_shows_status_and_detail_for_errored(qtbot, ctx) -> None:
     )
     dialog = PluginInfoDialog(p)
     qtbot.addWidget(dialog)
-    text = dialog.body_text()
+    text = _visible_text(dialog)
     assert "Error" in text or "load_failure" in text or "Failure" in text
     assert "missing module xyz" in text
 
@@ -153,8 +160,8 @@ def test_info_dialog_shows_source_label(qtbot, ctx) -> None:
     d_u = PluginInfoDialog(p_u)
     qtbot.addWidget(d_b)
     qtbot.addWidget(d_u)
-    assert "builtin" in d_b.body_text().lower()
-    assert "user" in d_u.body_text().lower()
+    assert "builtin" in _visible_text(d_b).lower()
+    assert "user" in _visible_text(d_u).lower()
 
 
 # ---------------------------------------------------------------------------

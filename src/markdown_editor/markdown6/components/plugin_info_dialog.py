@@ -37,7 +37,6 @@ class PluginInfoDialog(QDialog):
         self._plugin = plugin
         self._readme_text: str = ""
         self._has_readme = False
-        self._body_text_cache = ""
 
         self.setWindowTitle(f"Plugin info: {plugin.name}")
         self.setMinimumSize(520, 420)
@@ -54,10 +53,6 @@ class PluginInfoDialog(QDialog):
     # ------------------------------------------------------------------
     # Public API used by tests
     # ------------------------------------------------------------------
-
-    def body_text(self) -> str:
-        """All metadata-section text concatenated, for assertion convenience."""
-        return self._body_text_cache
 
     def readme_text(self) -> str:
         return self._readme_text
@@ -87,7 +82,6 @@ class PluginInfoDialog(QDialog):
         meta_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         meta_label.setWordWrap(True)
         body_layout.addWidget(meta_label)
-        self._body_text_cache = "\n".join(meta_lines)
 
         # Optional description block
         if self._plugin.metadata and self._plugin.metadata.description:
@@ -118,7 +112,6 @@ class PluginInfoDialog(QDialog):
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
-        buttons.accepted.connect(self.accept)
         outer.addWidget(buttons)
 
     @staticmethod
@@ -137,7 +130,4 @@ class PluginInfoDialog(QDialog):
         lines.append(f"Status:  {_STATUS_DISPLAY.get(plugin.status, str(plugin.status))}")
         if plugin.detail:
             lines.append(f"Detail:  {plugin.detail}")
-        if m and m.description:
-            lines.append("")
-            lines.append(m.description)
         return lines

@@ -18,6 +18,8 @@ The implementation keeps two pieces of module-level state:
 
 from __future__ import annotations
 
+import re
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable
 
@@ -83,6 +85,22 @@ def _set_current_plugin_name(name: str) -> None:
     """
     global _CURRENT_PLUGIN_NAME
     _CURRENT_PLUGIN_NAME = name
+
+
+@contextmanager
+def _current_plugin(name: str):
+    """Scoped set of :data:`_CURRENT_PLUGIN_NAME` so callback wrappers
+    can stamp attribution during runtime invocations (``notify_*``
+    called from an action handler, a signal handler, etc.). Nested
+    calls restore the outer value on exit.
+    """
+    global _CURRENT_PLUGIN_NAME
+    previous = _CURRENT_PLUGIN_NAME
+    _CURRENT_PLUGIN_NAME = name or ""
+    try:
+        yield
+    finally:
+        _CURRENT_PLUGIN_NAME = previous
 
 
 def get_registry() -> PluginRegistry:
@@ -310,6 +328,11 @@ def register_panel(
 # --- Fenced code blocks ------------------------------------------------------
 
 
+from markdown_editor.markdown6.plugins.fence import FENCE_NAME_CHARS
+
+_FENCE_NAME_RE = re.compile(rf"^{FENCE_NAME_CHARS}+$")
+
+
 def register_fence(
     name: str,
     *,
@@ -324,10 +347,18 @@ def register_fence(
 
     Args:
         name: The language tag the fence will match (e.g. ``"plantuml"``).
-            Must be non-empty and globally unique across plugins.
+            Must be non-empty, globally unique across plugins, and
+            composed only of ``[A-Za-z0-9_-]`` — the same character
+            set the fence preprocessor matches. Any other character
+            would make the fence silently never fire.
     """
     if not name:
         raise ValueError("register_fence: name must be non-empty")
+    if not _FENCE_NAME_RE.match(name):
+        raise ValueError(
+            f"register_fence: name={name!r} contains characters outside "
+            "[A-Za-z0-9_-]; the fence preprocessor would never match it."
+        )
 
     actual_name = _plugin_name if _plugin_name is not None else _CURRENT_PLUGIN_NAME
 
