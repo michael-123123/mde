@@ -6,7 +6,7 @@ the drawer. The drawer is a popup widget listing the full notification
 history newest-first; opening it marks all currently-unread items as
 read so the bell's indicator clears.
 
-Both widgets are driven by a :class:`NotificationCenter` — they observe
+Both widgets are driven by a :class:`NotificationCenter` - they observe
 its ``notification_added`` and ``unread_count_changed`` signals and
 update reactively.
 """
@@ -50,7 +50,7 @@ _SEVERITY_GLYPH = {
 class NotificationBellButton(QToolButton):
     """Small status-bar button showing unread notification count.
 
-    Plays no role in *opening* the drawer — that's the parent widget's
+    Plays no role in *opening* the drawer - that's the parent widget's
     job. We just expose a Qt-style ``clicked`` signal (inherited from
     QToolButton); wire it to whatever dialog/drawer you want to show.
     """
@@ -74,8 +74,8 @@ class NotificationBellButton(QToolButton):
     def _refresh_appearance(self, unread: int) -> None:
         # Two distinct glyphs so the state change is obvious at a
         # glance, not just a count number:
-        #   🛎  U+1F6CE BELLHOP BELL — static, "idle" read state.
-        #   🔔  U+1F514 BELL — most fonts render with motion lines,
+        #   🛎  U+1F6CE BELLHOP BELL - static, "idle" read state.
+        #   🔔  U+1F514 BELL - most fonts render with motion lines,
         #       i.e. a "ringing" bell for the unread state.
         if unread > 0:
             self.setText(f"🔔 {unread}")
@@ -211,7 +211,7 @@ class NotificationDrawer(QWidget):
     def _init_ui(self) -> None:
         self.setWindowFlags(Qt.WindowType.Popup)
         self.setMinimumSize(360, 220)
-        # Default opening size — user can drag the top-left grip to
+        # Default opening size - user can drag the top-left grip to
         # grow the drawer (bottom-right is anchored to the bell, so
         # growing naturally happens upward + leftward). No hard
         # maximum so long messages get a fair shake.
@@ -224,7 +224,7 @@ class NotificationDrawer(QWidget):
         # Top-left size grip. Placed before the header row so it sits
         # in the top-left corner. Qt.Popup windows have no native
         # resize frame, so a grip is the only way to drag-resize;
-        # putting it top-left matches the bottom-right anchor —
+        # putting it top-left matches the bottom-right anchor -
         # dragging up/left enlarges the drawer without moving the
         # bottom edge off its pinned spot.
         grip_row = QHBoxLayout()

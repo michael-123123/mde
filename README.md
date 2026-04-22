@@ -1,4 +1,4 @@
-# mde — Markdown Editor
+# mde - Markdown Editor
 
 A feature-rich desktop Markdown editor built with Qt6 (PySide6). Live preview, wiki links, diagrams, project management, and export to HTML/PDF/DOCX.
 
@@ -8,34 +8,34 @@ Requires Python 3.11+.
 
 - **Live preview** with bidirectional synchronized scrolling
 - **Multi-tab** editing with quick switching (Alt+1–9) and session persistence (tabs and project restored across restarts)
-- **Wiki links** — `[[target]]` or `[[target|display]]` with autocomplete and Ctrl+click navigation
-- **Diagrams** — Mermaid and Graphviz rendering in fenced code blocks (cached; falls back to browser rendering)
-- **Math** — LaTeX via KaTeX / MathJax (`$inline$` and `$$block$$`)
-- **Callouts** — both GitHub `> [!NOTE]` and admonition `!!! note` syntaxes
-- **Task lists** — `- [x]` checkbox rendering
-- **Code highlighting** — syntax-highlighted fenced code blocks
-- **Export** — HTML, PDF, DOCX (via Pandoc or built-in weasyprint/python-docx fallbacks)
-- **Project sidebar** — file explorer, document outline, backlink references, project-wide regex search
-- **Command palette** — Ctrl+Shift+P access to all commands
-- **Document graph** — visualize link structure across project files, export to SVG/PNG/PDF
-- **Link validation** — check for broken wiki links and references
-- **File statistics** — word count, heading count, link count
-- **Logseq mode** — read and render Logseq-flavored markdown
-- **Snippets** — expandable templates (Ctrl+J) with searchable popup
-- **Visual table editor** — Ctrl+Shift+T for a grid-based table builder
+- **Wiki links** - `[[target]]` or `[[target|display]]` with autocomplete and Ctrl+click navigation
+- **Diagrams** - Mermaid and Graphviz rendering in fenced code blocks (cached; falls back to browser rendering)
+- **Math** - LaTeX via KaTeX / MathJax (`$inline$` and `$$block$$`)
+- **Callouts** - both GitHub `> [!NOTE]` and admonition `!!! note` syntaxes
+- **Task lists** - `- [x]` checkbox rendering
+- **Code highlighting** - syntax-highlighted fenced code blocks
+- **Export** - HTML, PDF, DOCX (via Pandoc or built-in weasyprint/python-docx fallbacks)
+- **Project sidebar** - file explorer, document outline, backlink references, project-wide regex search
+- **Command palette** - Ctrl+Shift+P access to all commands
+- **Document graph** - visualize link structure across project files, export to SVG/PNG/PDF
+- **Link validation** - check for broken wiki links and references
+- **File statistics** - word count, heading count, link count
+- **Logseq mode** - read and render Logseq-flavored markdown
+- **Snippets** - expandable templates (Ctrl+J) with searchable popup
+- **Visual table editor** - Ctrl+Shift+T for a grid-based table builder
 - **Find & replace** with regex support across editor and preview
 - **Auto-pairs**, auto-indent, code folding, line numbers, word wrap, whitespace display
-- **Image paste** — paste images from clipboard directly into the document
+- **Image paste** - paste images from clipboard directly into the document
 - **Autosave** (optional) and **external file-change detection** with non-modal reload bar
 - **Preview pane copy / select-all** (Ctrl+C, Ctrl+A when preview is focused)
-- **Preview typography** — per-element font control (Appearance settings tab)
+- **Preview typography** - per-element font control (Appearance settings tab)
 - **Scroll-past-end** and **zoom** support in the editor
 - **Recent files** menu
 - **Customizable keyboard shortcuts** (all shortcuts remappable)
 - **Light and dark themes**
 - **Fullscreen** and **read-only** modes
-- **Cross-platform desktop integration** — Linux `.desktop`, Windows `.lnk`, macOS `.app`
-- **Plugin system** — drop-in Python plugins extend the editor with menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-rendered config dialogs. See [`docs/plugins.md`](docs/plugins.md) for the authoring guide and [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md) for the stability contract.
+- **Cross-platform desktop integration** - Linux `.desktop`, Windows `.lnk`, macOS `.app`
+- **Plugin system** - drop-in Python plugins extend the editor with menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-rendered config dialogs. See [`docs/plugins.md`](docs/plugins.md) for the authoring guide and [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md) for the stability contract.
 
 ## Install
 
@@ -51,9 +51,9 @@ chmod +x MarkdownEditor-*-x86_64.AppImage
 ./MarkdownEditor-*-x86_64.AppImage --help           # CLI help
 ```
 
-The bundled runtime includes everything the app needs (Qt, WebEngine, Python, all Python deps) plus an embedded FUSE implementation, so there is **no system prerequisite** on mainstream Linux distributions — including Ubuntu 22.04, Ubuntu 24.04, Debian 12, Fedora 38+, etc.
+The bundled runtime includes everything the app needs (Qt, WebEngine, Python, all Python deps) plus an embedded FUSE implementation, so there is **no system prerequisite** on mainstream Linux distributions - including Ubuntu 22.04, Ubuntu 24.04, Debian 12, Fedora 38+, etc.
 
-**If you see `Cannot mount AppImage, please check your FUSE setup`** (typically on WSL1, inside hardened containers, or a minimal chroot with no FUSE kernel support), run the AppImage with the extract-and-run fallback — it unpacks into a temp dir instead of mounting:
+**If you see `Cannot mount AppImage, please check your FUSE setup`** (typically on WSL1, inside hardened containers, or a minimal chroot with no FUSE kernel support), run the AppImage with the extract-and-run fallback - it unpacks into a temp dir instead of mounting:
 
 ```bash
 ./MarkdownEditor-*-x86_64.AppImage --appimage-extract-and-run
@@ -75,14 +75,14 @@ pip install -e ".[dev]"
 
 Installed automatically via pip:
 
-- `PySide6`, `PySide6-Addons` — Qt6 bindings + QtWebEngine for the preview
-- `markdown` — Markdown parsing
-- `Pygments` — syntax highlighting
-- `graphviz` — Python bindings for Graphviz
-- `weasyprint` — PDF export fallback
-- `python-docx` — DOCX export fallback
-- `pydantic`, `email-validator` — data models / validation
-- `argcomplete` — shell tab-completion for `mde`
+- `PySide6`, `PySide6-Addons` - Qt6 bindings + QtWebEngine for the preview
+- `markdown` - Markdown parsing
+- `Pygments` - syntax highlighting
+- `graphviz` - Python bindings for Graphviz
+- `weasyprint` - PDF export fallback
+- `python-docx` - DOCX export fallback
+- `pydantic`, `email-validator` - data models / validation
+- `argcomplete` - shell tab-completion for `mde`
 
 Dev extras (`pip install -e ".[dev]"`):
 
@@ -101,7 +101,7 @@ These system tools enable additional rendering features. The editor works withou
 Quick install commands:
 
 ```bash
-# Ubuntu/Debian — all tools at once
+# Ubuntu/Debian - all tools at once
 sudo apt install pandoc texlive-xetex graphviz
 npm install -g @mermaid-js/mermaid-cli
 
@@ -183,7 +183,7 @@ In addition to `mde export` on the command line, multiple files can be exported 
 
 1. Open a project folder (Ctrl+Shift+O, or from the Project panel).
 2. In the Project panel, click **Export**.
-3. Tick the files to include — drag to reorder.
+3. Tick the files to include - drag to reorder.
 4. Choose a format (HTML, PDF, DOCX, Markdown).
 5. Options: Include Table of Contents, Insert page breaks between files, Use Pandoc (for LaTeX PDF).
 
@@ -267,7 +267,7 @@ Defaults shown below. Every shortcut is remappable in **Settings → Shortcuts**
 
 **Callouts** (both syntaxes are supported):
 
-GitHub syntax — supports `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`:
+GitHub syntax - supports `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`:
 
 ```markdown
 > [!NOTE]
@@ -277,7 +277,7 @@ GitHub syntax — supports `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`:
 > Something to watch out for.
 ```
 
-Admonition syntax — supports `note`, `info`, `tip`, `success`, `example`, `important`, `abstract`, `question`, `warning`, `quote`, `caution`, `danger`, `failure`, `bug`:
+Admonition syntax - supports `note`, `info`, `tip`, `success`, `example`, `important`, `abstract`, `question`, `warning`, `quote`, `caution`, `danger`, `failure`, `bug`:
 
 ```markdown
 !!! note "Optional Title"
@@ -325,7 +325,7 @@ $$
 
 ## Plugins
 
-Plugins are Python directories you drop into a known location. They register menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-generated configuration UIs — all through a small, mostly Qt-free API surface.
+Plugins are Python directories you drop into a known location. They register menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-generated configuration UIs - all through a small, mostly Qt-free API surface.
 
 A minimum plugin is a directory with a `<name>.py` and `<name>.toml`:
 
@@ -358,7 +358,7 @@ Restart the editor and the action shows up under **Plugins → Insert greeting**
 
 **Settings → Plugins** lists every discovered plugin with status, enable/disable toggles, an **ℹ Info** dialog (metadata + your README), an **Open plugins folder** button, and a **Reload plugins** button. Plugin runtime errors surface in the **🔔 notifications drawer** (status bar) so the editor never silently fails.
 
-Read [`docs/plugins.md`](docs/plugins.md) for the full authoring guide with worked examples for every extension point. Three reference plugins live under [`docs/plugins-examples/`](docs/plugins-examples/) — `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), and `stamp` (action + every settings-schema field type). They are not bundled with the editor; copy any of them into your user plugins folder to install.
+Read [`docs/plugins.md`](docs/plugins.md) for the full authoring guide with worked examples for every extension point. Three reference plugins live under [`docs/plugins-examples/`](docs/plugins-examples/) - `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), and `stamp` (action + every settings-schema field type). They are not bundled with the editor; copy any of them into your user plugins folder to install.
 
 For the API stability promise (what won't break across versions), see [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md).
 
@@ -366,19 +366,19 @@ For the API stability promise (what won't break across versions), see [`docs/plu
 
 Settings live under `~/.config/markdown-editor/`:
 
-- `settings.json` — editor preferences
-- `shortcuts.json` — customised keyboard shortcuts (only deviations from defaults are saved)
+- `settings.json` - editor preferences
+- `shortcuts.json` - customised keyboard shortcuts (only deviations from defaults are saved)
 - Session state (open tabs, last project, sidebar state)
 
 The **Settings** dialog (accessible from the Edit menu or the command palette) has these tabs:
 
-- **Editor** — font, tab size/indentation, line numbers, word wrap, current-line highlight, whitespace display, auto-pairs, auto-indent, autosave, scroll-past-end
-- **View** — theme (light/dark), scroll sync, show/hide editor or preview pane, Logseq mode
-- **Appearance** — per-element preview font overrides (body, headings, inline code, line height)
-- **Files** — show hidden (dotfile) files, external file-change detection
-- **Tools** — custom paths to `pandoc`, `dot`, `mmdc`
-- **Shortcuts** — remap any keyboard shortcut
-- **Plugins** — list of discovered plugins with enable/disable, Configure dialogs (for plugins with settings schemas), Info dialogs, and Open Folder / Reload buttons
+- **Editor** - font, tab size/indentation, line numbers, word wrap, current-line highlight, whitespace display, auto-pairs, auto-indent, autosave, scroll-past-end
+- **View** - theme (light/dark), scroll sync, show/hide editor or preview pane, Logseq mode
+- **Appearance** - per-element preview font overrides (body, headings, inline code, line height)
+- **Files** - show hidden (dotfile) files, external file-change detection
+- **Tools** - custom paths to `pandoc`, `dot`, `mmdc`
+- **Shortcuts** - remap any keyboard shortcut
+- **Plugins** - list of discovered plugins with enable/disable, Configure dialogs (for plugins with settings schemas), Info dialogs, and Open Folder / Reload buttons
 
 Pass `--config DIR` to use an alternate config directory, `--new-session` to keep settings in memory only, or `--reset` to wipe config and start clean.
 
@@ -416,7 +416,7 @@ src/markdown_editor/
 docs/                          # User-facing documentation
 ├── plugins.md                 # Plugin authoring guide
 ├── plugin-api-versioning.md   # Plugin API stability contract
-└── plugins-examples/          # Reference plugins (not bundled — opt-in install)
+└── plugins-examples/          # Reference plugins (not bundled - opt-in install)
 ```
 
 See `src/markdown_editor/markdown6/DEVELOPMENT.md` for a full module reference, and `docs/plugins.md` for plugin authoring.

@@ -3,7 +3,7 @@
 Re-runs discovery on the same plugin roots, diffs against the
 in-process plugin list, and posts a NotificationCenter entry listing
 what's new on disk vs. what's been removed. Does NOT hot-reload
-existing plugins (their code stays as-is in memory) — that's why the
+existing plugins (their code stays as-is in memory) - that's why the
 notification recommends a restart for changes to take effect.
 
 This v1 scope honestly reflects what we can safely do without

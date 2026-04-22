@@ -68,14 +68,14 @@ def test_bell_icon_differs_between_read_and_unread(qtbot) -> None:
     center.post(Notification(title="x", message=""))
     unread_text = bell.text()
     # The leading glyph in the unread state is NOT the same as in the
-    # read state — we want the user to see the change with peripheral
+    # read state - we want the user to see the change with peripheral
     # vision, not just by reading the count.
     assert read_text[0] != unread_text[0]
 
 
 def test_bell_has_unread_visual_indicator(qtbot) -> None:
     """Bell should have some visible indication when there are unread
-    items beyond just the count text — exposed as a queryable property
+    items beyond just the count text - exposed as a queryable property
     so themes can hook on it via QSS [hasUnread="true"]."""
     center = NotificationCenter()
     bell = NotificationBellButton(center)
@@ -113,7 +113,7 @@ def test_drawer_lists_one_row_per_notification(qtbot) -> None:
 
 
 def test_drawer_orders_newest_first(qtbot) -> None:
-    """Most recent notification at the top of the drawer — that's where
+    """Most recent notification at the top of the drawer - that's where
     the user expects to see "what just happened."""
     center = NotificationCenter()
     center.post(Notification(title="first", message=""))

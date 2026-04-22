@@ -26,7 +26,7 @@ class PluginAction:
     menu: str = ""                  # see resolve_menu_path docstring; default lands under top-level "Plugins"
     shortcut: str = ""              # QKeySequence string, optional
     palette_category: str = ""      # category in the command palette
-    callback: Callable | None = None   # receives () or (ctx,) — we call w/o args and let plugin call get_active_document()
+    callback: Callable | None = None   # receives () or (ctx,) - we call w/o args and let plugin call get_active_document()
     plugin_name: str = ""           # owning plugin's name; stamped by the loader so the editor can toggle it live without a restart
     place: str = ""                 # required when menu starts with '/'; one of "after:ID", "before:ID", "start", "end"
 

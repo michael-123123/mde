@@ -134,7 +134,7 @@ def test_enabled_plugin_checkbox_checked_and_enabled(qtbot, ctx) -> None:
 
 def test_user_disabled_plugin_checkbox_unchecked_and_enabled(qtbot, ctx) -> None:
     """Checkbox state is driven by the live plugins.disabled setting,
-    not by the captured Plugin.status — that's what keeps the checkbox
+    not by the captured Plugin.status - that's what keeps the checkbox
     in sync with the menu when Settings is re-opened after a toggle."""
     ctx.set_plugins([_plugin("a", status=PluginStatus.ENABLED)])
     ctx.set("plugins.disabled", ["a"], save=False)
@@ -177,14 +177,14 @@ def test_errored_plugin_checkbox_grayed_out(qtbot, ctx, status) -> None:
     page = PluginsSettingsPage(ctx)
     qtbot.addWidget(page)
     row = page.row_for("bad")
-    assert row.checkbox.isEnabled() is False   # grayed — can't re-enable
+    assert row.checkbox.isEnabled() is False   # grayed - can't re-enable
     # Status text should mention the error reason somewhere visible
     assert "the reason" in row.status_label.text() or \
            "the reason" in row.detail_label.text()
 
 
 # ---------------------------------------------------------------------------
-# Apply — writing the disabled set back
+# Apply - writing the disabled set back
 # ---------------------------------------------------------------------------
 
 
@@ -251,7 +251,7 @@ def test_configure_button_present_when_schema_registered(qtbot, ctx) -> None:
 
 def test_no_configure_button_when_no_schema(qtbot, ctx) -> None:
     """Plugins without a schema don't have a Configure… button at all
-    — empty Configure dialogs would be confusing."""
+    - empty Configure dialogs would be confusing."""
     ctx.set_plugins([_plugin("plain")])
     page = PluginsSettingsPage(ctx)
     qtbot.addWidget(page)
@@ -277,7 +277,7 @@ def test_configure_button_disabled_when_plugin_errored(qtbot, ctx) -> None:
 
 
 def test_apply_errored_plugins_not_added_to_disabled_set(qtbot, ctx) -> None:
-    """An errored plugin is already unavailable — don't also write it
+    """An errored plugin is already unavailable - don't also write it
     into plugins.disabled (that'd stick even after fixing the error)."""
     ctx.set_plugins([
         _plugin("broken", status=PluginStatus.LOAD_FAILURE, detail="x"),

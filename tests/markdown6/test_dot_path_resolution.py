@@ -3,7 +3,7 @@
 Covers F3 (source_path plumbing so single-file exports resolve
 relative `.dot` refs) and F8 Part 2 (pre-concatenation path
 absolutization so multi-file / project exports resolve correctly
-across files from different directories). Also locks R1 — the
+across files from different directories). Also locks R1 - the
 `_DOT_IMAGE_RE` regex is case-insensitive, matching the renderer's
 postprocessor behavior.
 
@@ -58,7 +58,7 @@ class TestAbsolutizeDotImagePaths:
             assert url in out, f"url not preserved: {out!r}"
 
     def test_case_insensitive_uppercase_DOT(self, tmp_path):
-        """R1 coverage — uppercase `.DOT` must be absolutized too."""
+        """R1 coverage - uppercase `.DOT` must be absolutized too."""
         (tmp_path / "src.md").touch()
         out = self._sub("![g](./Graph.DOT)", tmp_path / "src.md")
         expected = str((tmp_path / "Graph.DOT").resolve())
@@ -117,7 +117,7 @@ class TestCombineProjectMarkdownAbsolutizesDotPaths:
         a_md = a_dir / "a.md"
         b_md = b_dir / "b.md"
 
-        # Each file references `./graph.dot` — same relative path but
+        # Each file references `./graph.dot` - same relative path but
         # anchored to different parent dirs.
         documents = [
             (a_md, "# A\n\n![graph](./graph.dot)\n"),
@@ -128,7 +128,7 @@ class TestCombineProjectMarkdownAbsolutizesDotPaths:
         # The combined string must contain each file's RESOLVED
         # absolute path, not the literal `./graph.dot` (which would
         # resolve to whichever parent graphviz_base_path happened to
-        # point at — i.e. wrong for at least one file).
+        # point at - i.e. wrong for at least one file).
         abs_a = str((a_dir / "graph.dot").resolve())
         abs_b = str((b_dir / "graph.dot").resolve())
         assert abs_a in combined, (
@@ -251,7 +251,7 @@ class TestCLIMultiFileExportAbsolutizesDotPaths:
         rc = cmd_export(args)
         assert rc == 0
 
-        # Both files' .dot refs should have been resolved — each
+        # Both files' .dot refs should have been resolved - each
         # against ITS OWN parent dir.
         assert len(called_with) == 2, (
             f"expected 2 render_dot_file calls, got {len(called_with)}: "

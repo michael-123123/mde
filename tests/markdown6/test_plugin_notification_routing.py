@@ -3,7 +3,7 @@
 Each kind of plugin callback that the framework wraps with try/except
 (action, text-transform, exporter, signal handler) must additionally
 post a notification on failure so the user sees the issue surfaced
-in the bell/drawer UI — not just buried in the log.
+in the bell/drawer UI - not just buried in the log.
 """
 
 from __future__ import annotations
@@ -210,7 +210,7 @@ def test_signal_handler_raise_posts_error_notification(qtbot, ctx) -> None:
 
 def test_signal_handler_no_plugin_name_still_posts(qtbot, ctx) -> None:
     """Handlers registered outside the loader (tests, dev REPL) have an
-    empty plugin_name. They should still be reported when they fail —
+    empty plugin_name. They should still be reported when they fail -
     just with a generic source label.
     """
     @plugin_api.on_content_changed

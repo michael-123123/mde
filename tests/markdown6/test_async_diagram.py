@@ -118,10 +118,10 @@ class TestCallbackMechanism:
         future.add_done_callback(
             lambda f: QTimer.singleShot(0, lambda: timer_fired.append(True))
         )
-        # Give it plenty of time — it still won't fire reliably
+        # Give it plenty of time - it still won't fire reliably
         qtbot.wait(2000)
         QApplication.processEvents()
-        # Don't assert either way — it's timing-dependent. The point is
+        # Don't assert either way - it's timing-dependent. The point is
         # that this approach is unreliable and we shouldn't depend on it.
         executor.shutdown(wait=False)
 
@@ -251,7 +251,7 @@ class TestAsyncDiagramWebEngine:
         executor = ThreadPoolExecutor(max_workers=1)
         injected = []
 
-        # setHtml (async) + start polling immediately — just like render_markdown does
+        # setHtml (async) + start polling immediately - just like render_markdown does
         view.setHtml(self.PLACEHOLDER_HTML)
         future = executor.submit(_render_fake_slow, "mermaid", "graph TD", False)
 

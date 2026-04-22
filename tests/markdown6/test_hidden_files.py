@@ -99,7 +99,7 @@ class TestGetProjectMarkdownFiles:
         # Level 1: readme.md; Level 2: guide.md
         assert "readme.md" in names
         assert "guide.md" in names
-        # Level 3: nested.markdown — should be excluded
+        # Level 3: nested.markdown - should be excluded
         assert "nested.markdown" not in names
 
     def test_max_depth_excludes_hidden(self, project_tree):

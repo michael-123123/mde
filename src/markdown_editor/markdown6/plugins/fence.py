@@ -63,12 +63,12 @@ class _PluginFencePreprocessor(Preprocessor):
             lang = m.group("lang")
             fence = _api._REGISTRY.get_fence(lang)
             if fence is None:
-                return m.group(0)   # unknown fence — leave alone
+                return m.group(0)   # unknown fence - leave alone
             if fence.plugin_name and fence.plugin_name in self._disabled:
-                return m.group(0)   # disabled plugin — leave alone
+                return m.group(0)   # disabled plugin - leave alone
             try:
                 html = fence.callback(m.group("body"))
-            except BaseException as exc:   # noqa: BLE001 — plugin code
+            except BaseException as exc:   # noqa: BLE001 - plugin code
                 logger.warning(
                     "Plugin fence %r raised: %s", lang, exc, exc_info=True,
                 )

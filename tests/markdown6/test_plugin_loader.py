@@ -248,7 +248,7 @@ def test_load_plugin_import_raises(tmp_path: Path) -> None:
 
 
 def test_load_plugin_user_disabled_still_imports(tmp_path: Path) -> None:
-    """A disabled plugin is imported like any other — but flagged
+    """A disabled plugin is imported like any other - but flagged
     DISABLED_BY_USER so the editor hides its actions. Keeping it in
     memory is what makes live re-enable possible without a restart.
     """
@@ -266,7 +266,7 @@ def test_load_plugin_user_disabled_still_imports(tmp_path: Path) -> None:
 
 def test_load_plugin_user_disabled_but_raising_becomes_load_failure(tmp_path: Path) -> None:
     """If a disabled plugin's import raises, user_disabled doesn't shield
-    the user from the error — they still see it in Settings → Plugins
+    the user from the error - they still see it in Settings → Plugins
     so they know something's wrong with that plugin."""
     _make_plugin_dir(
         tmp_path,
@@ -384,13 +384,13 @@ def test_load_all_combines_discover_and_load(tmp_path: Path) -> None:
     assert by_name["good"].status == PluginStatus.ENABLED
     assert by_name["bad"].status == PluginStatus.LOAD_FAILURE
     assert by_name["offlimits"].status == PluginStatus.MISSING_DEPS
-    # load_all never raises — errors only appear as statuses
+    # load_all never raises - errors only appear as statuses
     assert all(isinstance(p, Plugin) for p in plugins)
 
 
 def test_load_all_disabled_clean_plugin_keeps_module(tmp_path: Path) -> None:
     """User-disabled plugins with clean imports stay loaded in memory
-    — that's the prerequisite for live re-enable. Only their status
+    - that's the prerequisite for live re-enable. Only their status
     becomes DISABLED_BY_USER.
     """
     _make_plugin_dir(tmp_path, "nope", py_body='# cleanly imports\n')

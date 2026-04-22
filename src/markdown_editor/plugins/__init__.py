@@ -34,22 +34,22 @@ Stability promise:
 
 If you find yourself needing something not exported here, that thing
 is either an internal helper (which may change without notice) or a
-gap in the public API — please file an issue.
+gap in the public API - please file an issue.
 
 Documentation:
 
-* ``docs/plugins.md`` — tutorial-style plugin authoring guide with
+* ``docs/plugins.md`` - tutorial-style plugin authoring guide with
   worked examples for every extension point.
-* ``docs/plugin-api-versioning.md`` — full API stability contract
+* ``docs/plugin-api-versioning.md`` - full API stability contract
   (what's stable, what's not, deprecation policy, ``mde_api_version``
   semantics).
 
-Reference example plugins (read these for working code) — not
+Reference example plugins (read these for working code) - not
 bundled, available under ``docs/plugins-examples/``:
 
-* ``em_dash_to_hyphen/`` — minimal text transform.
-* ``wordcount/`` — sidebar panel + signals + plugin settings.
-* ``stamp/`` — action + schema-driven Configure dialog (every
+* ``em_dash_to_hyphen/`` - minimal text transform.
+* ``wordcount/`` - sidebar panel + signals + plugin settings.
+* ``stamp/`` - action + schema-driven Configure dialog (every
   supported field type).
 """
 

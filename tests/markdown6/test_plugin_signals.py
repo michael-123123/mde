@@ -89,7 +89,7 @@ def test_decorators_return_original_function() -> None:
 
 def test_handlers_stamped_with_plugin_name(tmp_path: Path) -> None:
     """The loader's _CURRENT_PLUGIN_NAME context applies to signal
-    decorators too — needed so live disable can skip handlers from
+    decorators too - needed so live disable can skip handlers from
     disabled plugins."""
     (tmp_path / "p1").mkdir()
     (tmp_path / "p1" / "p1.toml").write_text(textwrap.dedent("""

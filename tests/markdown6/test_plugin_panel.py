@@ -8,7 +8,7 @@ sidebar via ``Sidebar.addPanel``, and tracks the index so disable can
 hide both the activity-bar tab and the panel itself.
 
 Unlike actions/transforms, plugin panels DO require Qt code (the
-factory must return a QWidget) — building UI is intrinsically
+factory must return a QWidget) - building UI is intrinsically
 Qt-tied. The framework still keeps the plugin's *registration* API
 Qt-free (no Qt types in `register_panel(...)`), but the factory's
 return value crosses into Qt. This trade-off is documented in
@@ -108,7 +108,7 @@ def test_register_panel_duplicate_id_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# install_plugin_panels — wires registered panels into a Sidebar
+# install_plugin_panels - wires registered panels into a Sidebar
 # ---------------------------------------------------------------------------
 
 
@@ -157,7 +157,7 @@ def test_install_factory_exception_logged_and_skipped(qtbot, ctx, caplog) -> Non
 
     install_plugin_panels(sidebar, plugin_api._REGISTRY, disabled=set())
 
-    # Panel was NOT installed (factory failed) — no new tab.
+    # Panel was NOT installed (factory failed) - no new tab.
     assert sidebar.activity_bar.tabCount() == initial
     assert any("plugin panel factory failed" in r.getMessage() for r in caplog.records)
 

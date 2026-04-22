@@ -2,10 +2,10 @@
 
 The plugin exercises three Phase 2 extension points at once:
 
-* ``register_panel`` — the sidebar Word Count panel.
-* ``@on_content_changed`` / ``@on_file_opened`` — keep the panel
+* ``register_panel`` - the sidebar Word Count panel.
+* ``@on_content_changed`` / ``@on_file_opened`` - keep the panel
   in sync as the user edits or opens a different document.
-* ``plugin_settings`` — remember the user's target word count
+* ``plugin_settings`` - remember the user's target word count
   across editor restarts.
 
 The reference implementation lives under ``docs/plugins-examples/``;
@@ -15,7 +15,7 @@ so the test suite never reaches outside the test tree.
 This test covers loader discovery + registration end-to-end and
 exercises the panel widget with a stand-in document handle (the
 full editor isn't constructed here to keep tests fast and
-dependency-light — the plugin itself doesn't touch QtWebEngine).
+dependency-light - the plugin itself doesn't touch QtWebEngine).
 """
 
 from __future__ import annotations
@@ -171,7 +171,7 @@ def test_panel_responds_to_file_opened_signal(qtbot, ctx) -> None:
 
 
 def test_signal_handler_with_no_active_document_is_safe(qtbot, ctx) -> None:
-    """Handler is called when there's no active document — must not raise."""
+    """Handler is called when there's no active document - must not raise."""
     _build_panel(qtbot, ctx)
     plugin_api._set_active_document_provider(lambda: None)
 
@@ -180,4 +180,4 @@ def test_signal_handler_with_no_active_document_is_safe(qtbot, ctx) -> None:
     # and reads via get_active_document).
     fake = _make_doc(qtbot, "anything")
     dispatch(SignalKind.CONTENT_CHANGED, fake, disabled=set())
-    # No assertion needed — just verify no exception.
+    # No assertion needed - just verify no exception.

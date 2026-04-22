@@ -216,7 +216,7 @@ class ActivityBar(QFrame):
             self._tabs[index].setVisible(visible)
 
     def isTabVisible(self, index: int) -> bool:
-        # Use `not isHidden()` rather than `isVisible()` — the latter
+        # Use `not isHidden()` rather than `isVisible()` - the latter
         # requires the parent widget to be shown, but we want to query
         # the explicit visibility intent regardless of whether the
         # window is currently rendered.

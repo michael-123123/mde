@@ -193,7 +193,7 @@ def test_empty_plugin_id_rejected(ctx) -> None:
 
 
 def test_plugin_id_with_dot_rejected(ctx) -> None:
-    """Plugin ids must not contain '.' — that's our namespace separator
+    """Plugin ids must not contain '.' - that's our namespace separator
     and would let one plugin write into another's namespace."""
     with pytest.raises(ValueError, match="\\."):
         ctx.plugin_settings("foo.bar")

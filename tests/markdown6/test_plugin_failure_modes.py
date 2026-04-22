@@ -2,8 +2,8 @@
 
 The individual failure modes are unit-tested in their respective
 modules (loader, registry, signals, etc.). This file walks the full
-chain — loader → AppContext.set_plugins → PluginsSettingsPage row →
-Info dialog — for each failure mode so a regression in any link
+chain - loader → AppContext.set_plugins → PluginsSettingsPage row →
+Info dialog - for each failure mode so a regression in any link
 surfaces here. Also covers a few cross-cutting cases that don't fit
 cleanly into any single per-module test:
 
@@ -80,7 +80,7 @@ def _e2e_settings_row(qtbot, ctx, plugins) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# 1. End-to-end broken plugin sad path — each load-failure mode walks the
+# 1. End-to-end broken plugin sad path - each load-failure mode walks the
 # full chain (loader → settings page → Info dialog) without crashing.
 # ---------------------------------------------------------------------------
 
@@ -184,7 +184,7 @@ def test_e2e_one_broken_one_healthy_coexist(qtbot, ctx, tmp_path: Path) -> None:
 def test_orphan_disabled_name_does_not_crash(tmp_path: Path) -> None:
     """User had plugin X installed and disabled; later removed it from
     disk. The orphan name in plugins.disabled should be silently
-    ignored — not crash, not error any other plugin."""
+    ignored - not crash, not error any other plugin."""
     _make_plugin(tmp_path, "still_here")
     plugins = load_all(
         [(tmp_path, PluginSource.USER)],
@@ -193,7 +193,7 @@ def test_orphan_disabled_name_does_not_crash(tmp_path: Path) -> None:
     by_name = {p.name: p for p in plugins}
     # The plugin that exists is correctly marked disabled
     assert by_name["still_here"].status is PluginStatus.DISABLED_BY_USER
-    # The orphans are simply absent — no entries created for them
+    # The orphans are simply absent - no entries created for them
     assert "removed_long_ago" not in by_name
     assert "another_orphan" not in by_name
 
@@ -215,7 +215,7 @@ def test_orphan_disabled_does_not_block_healthy_plugin(tmp_path: Path) -> None:
 
 
 def test_toml_name_must_match_directory_name(tmp_path: Path) -> None:
-    """The TOML [tool.mde.plugin].name field must match the directory name —
+    """The TOML [tool.mde.plugin].name field must match the directory name -
     otherwise plugin authors can publish a plugin whose internal name
     silently disagrees with how it's referenced in plugins.disabled,
     plugin_settings, etc."""

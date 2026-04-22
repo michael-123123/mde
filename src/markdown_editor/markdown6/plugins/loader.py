@@ -8,24 +8,24 @@ whether it loaded successfully.
 
 Pipeline, per plugin directory ``<root>/<name>/``:
 
-1. **Discovery** — require ``<name>/<name>.py`` and ``<name>/<name>.toml``.
+1. **Discovery** - require ``<name>/<name>.py`` and ``<name>/<name>.toml``.
    Missing or mismatched filenames yield a :class:`PluginStatus.LOAD_FAILURE`
    or :class:`PluginStatus.METADATA_ERROR` record; the loader does not
    raise.
-2. **Metadata** — parse the TOML. Any :class:`MetadataError` becomes a
+2. **Metadata** - parse the TOML. Any :class:`MetadataError` becomes a
    :class:`PluginStatus.METADATA_ERROR` record.
-3. **User disable check** — if the plugin's name is in ``user_disabled``,
+3. **User disable check** - if the plugin's name is in ``user_disabled``,
    mark it :class:`PluginStatus.DISABLED_BY_USER` and skip import. This is
    also how we guarantee an errored plugin that the user already toggled
    off doesn't keep raising on startup.
-4. **API version check** — post-1.0, reject plugins whose major API
+4. **API version check** - post-1.0, reject plugins whose major API
    version differs from :data:`MDE_API_VERSION`. Pre-1.0 (current), the
    check is skipped (the API is explicitly unstable).
-5. **Dependency check** — for each declared python dependency, try
+5. **Dependency check** - for each declared python dependency, try
    :func:`importlib.util.find_spec`. Any miss records
    :class:`PluginStatus.MISSING_DEPS` with the missing module names and
    skips import.
-6. **Import** — finally, :func:`importlib.util.spec_from_file_location`
+6. **Import** - finally, :func:`importlib.util.spec_from_file_location`
    + :meth:`exec_module` to run the plugin's top-level code. Any
    exception becomes :class:`PluginStatus.LOAD_FAILURE`. The plugin's
    registration calls (``register_action`` etc.) run as side-effects of
@@ -81,7 +81,7 @@ def discover_plugins(
     """Scan each ``(root, source)`` pair and return one :class:`Plugin`
     record per subdirectory of ``root``.
 
-    Non-existent or non-directory ``root`` paths are silently skipped —
+    Non-existent or non-directory ``root`` paths are silently skipped -
     on a fresh install the user plugin dir may not exist yet, and that's
     fine.
 
@@ -131,7 +131,7 @@ def discover_plugins(
                 # directory name. Otherwise the plugin's internal
                 # identity disagrees silently with how it's referenced
                 # in plugins.disabled, plugin_settings(id), the schema
-                # registry, etc. — a recipe for hard-to-debug bugs.
+                # registry, etc. - a recipe for hard-to-debug bugs.
                 if (
                     plugin.metadata is not None
                     and plugin.metadata.name != plugin.name
@@ -176,7 +176,7 @@ def validate_plugin(plugin: Plugin) -> Plugin:
     Catches layout errors (already set by :func:`discover_plugins`),
     ``API_MISMATCH``, and ``MISSING_DEPS``. Does **not** call
     ``exec_module`` so nothing registers into the live plugin
-    registry — safe to call from UI preview paths.
+    registry - safe to call from UI preview paths.
     """
     # If discovery already marked it as errored (bad layout, bad
     # metadata), pass it through unchanged.
@@ -218,11 +218,11 @@ def validate_plugin(plugin: Plugin) -> Plugin:
 def load_plugin(plugin: Plugin, *, user_disabled: set[str]) -> Plugin:
     """Finish loading a single discovered plugin.
 
-    Mutates ``plugin`` in place. Never raises — every failure mode is
+    Mutates ``plugin`` in place. Never raises - every failure mode is
     recorded in :attr:`Plugin.status` and :attr:`Plugin.detail`.
 
     A plugin in ``user_disabled`` is still imported and has its code
-    loaded into memory — only its status is set to
+    loaded into memory - only its status is set to
     :attr:`PluginStatus.DISABLED_BY_USER` after a successful import.
     This is what allows the editor to re-enable a previously-disabled
     plugin without a restart: its ``QAction`` is already created, just
@@ -252,7 +252,7 @@ def load_plugin(plugin: Plugin, *, user_disabled: set[str]) -> Plugin:
     _api._set_current_plugin_name(plugin.name)
     try:
         spec.loader.exec_module(module)
-    except BaseException as exc:   # noqa: BLE001 — plugin code runs arbitrary Python
+    except BaseException as exc:   # noqa: BLE001 - plugin code runs arbitrary Python
         # Remove the half-initialized module so a later "Reload plugins"
         # doesn't find a ghost entry.
         sys.modules.pop(mod_qualname, None)

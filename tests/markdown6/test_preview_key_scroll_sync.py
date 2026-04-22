@@ -1,7 +1,7 @@
 """Preview keyboard scrolling syncs back to the editor (Gap 1).
 
 Before the fix, the preview pane swallowed keyboard scroll input
-(arrow keys, PageUp/Down, Home/End, Space) — it scrolled itself but
+(arrow keys, PageUp/Down, Home/End, Space) - it scrolled itself but
 never told the editor. Only the mouse wheel was forwarded to the
 editor via ``_PreviewWheelFilter``.
 
@@ -25,7 +25,7 @@ from markdown_editor.markdown6.components.document_tab import _PreviewKeyFilter
 
 
 class _FakeTab(QObject):
-    """Minimal QObject stand-in for ``DocumentTab`` — enough shape for
+    """Minimal QObject stand-in for ``DocumentTab`` - enough shape for
     ``_PreviewKeyFilter`` to read ``editor``, ``_sync_scrolling``, and
     be parented to us. Avoids dragging the full ``MarkdownEditor`` (and
     ``QWebEngineView``) into tests that are about the filter's
@@ -186,7 +186,7 @@ def test_end_scrolls_to_bottom(tab_with_long_content) -> None:
     [Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_A, Qt.Key.Key_Tab],
 )
 def test_non_scroll_keys_pass_through(tab_with_long_content, key) -> None:
-    """Keys that aren't vertical scroll operations must not be consumed —
+    """Keys that aren't vertical scroll operations must not be consumed -
     the preview (or whatever is focused) should still receive them.
     """
     tab = tab_with_long_content
@@ -205,7 +205,7 @@ def test_non_scroll_keys_pass_through(tab_with_long_content, key) -> None:
 @pytest.mark.timeout(15, method="thread")
 def test_sync_disabled_skips_filter(tab_with_long_content) -> None:
     """When ``_sync_scrolling`` is off (view.sync_scrolling setting
-    disabled), the filter must not intercept — users who disabled sync
+    disabled), the filter must not intercept - users who disabled sync
     shouldn't have preview keys silently rerouted.
     """
     tab = tab_with_long_content

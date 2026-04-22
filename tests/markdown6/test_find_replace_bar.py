@@ -1,4 +1,4 @@
-"""Tests for FindReplaceBar — cross-pane find/replace functionality.
+"""Tests for FindReplaceBar - cross-pane find/replace functionality.
 
 Covers:
 - Bar spans both editor and preview (layout)
@@ -165,7 +165,7 @@ class TestEditorSearch:
         """find_next advances through matches."""
         bar.show_find()
         bar.find_input.setText("hello")
-        # Case insensitive by default — should find "Hello", "hello", "HELLO"
+        # Case insensitive by default - should find "Hello", "hello", "HELLO"
         bar._find("hello", forward=True, wrap=True, from_start=True)
         pos1 = editor.textCursor().position()
         bar.find_next()
@@ -222,7 +222,7 @@ class TestFindOptions:
         bar.find_input.setText("hello")
         bar._find("hello", forward=True, wrap=True, from_start=True)
         old_pos = editor.textCursor().position()
-        # Toggle case sensitive — should re-run from start
+        # Toggle case sensitive - should re-run from start
         bar.case_checkbox.setChecked(True)
         new_pos = editor.textCursor().position()
         # Position may change since case-sensitive skips "Hello"
@@ -371,7 +371,7 @@ class TestReplace:
         assert "Replaced" in bar.match_label.text()
 
     def test_replace_all_case_sensitive(self, bar, editor):
-        """Replace all with case sensitivity — only exact case matches."""
+        """Replace all with case sensitivity - only exact case matches."""
         bar.show_replace()
         bar.case_checkbox.setChecked(True)
         bar.find_input.setText("Hello")
@@ -634,7 +634,7 @@ class TestPreviewScrollPreservation:
             " ? window.scrollY / (document.body.scrollHeight - window.innerHeight)"
             " : 0;"
         )
-        view.resize(1000, 400)  # widen — content reflows shorter
+        view.resize(1000, 400)  # widen - content reflows shorter
         qtbot.wait(100)
         view.page().runJavaScript(
             "var m = document.body.scrollHeight - window.innerHeight;"
@@ -679,7 +679,7 @@ class TestPreviewScrollPreservation:
         qtbot.wait(100)
 
         scroll_after = self._js(qtbot, view.page(), "window.scrollY")
-        # Content is now wider so shorter — scroll value will differ,
+        # Content is now wider so shorter - scroll value will differ,
         # but the ratio should be roughly preserved (~50% ± 10%)
         max_scroll = self._js(qtbot, view.page(),
                               "document.body.scrollHeight - window.innerHeight")

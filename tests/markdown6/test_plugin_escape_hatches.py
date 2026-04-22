@@ -3,12 +3,12 @@
 The plugin API is Qt-free by default, but four explicit opt-in
 hatches let advanced plugins reach Qt when they need it:
 
-* ``get_active_document()`` — already covered elsewhere; sanity-checked here.
-* ``get_all_documents()`` — every open tab as a list of DocumentHandles.
-* ``get_app_context()`` — the AppContext (QObject; signals + settings).
-* ``get_main_window()`` — the editor's QMainWindow.
-* ``DocumentHandle.editor`` — the underlying QPlainTextEdit.
-* ``DocumentHandle.preview`` — the underlying QWebEngineView.
+* ``get_active_document()`` - already covered elsewhere; sanity-checked here.
+* ``get_all_documents()`` - every open tab as a list of DocumentHandles.
+* ``get_app_context()`` - the AppContext (QObject; signals + settings).
+* ``get_main_window()`` - the editor's QMainWindow.
+* ``DocumentHandle.editor`` - the underlying QPlainTextEdit.
+* ``DocumentHandle.preview`` - the underlying QWebEngineView.
 
 These are *opt-in*: the plugin author has to write the import or
 attribute access. They're documented as "not guaranteed stable" so we
@@ -122,7 +122,7 @@ def test_get_main_window_returns_provider_result(qtbot) -> None:
 
 def test_document_handle_editor_property_exposes_qplaintext(qtbot) -> None:
     """Power-user plugins can reach the underlying QPlainTextEdit via
-    `doc.editor` — explicitly documented as an unstable escape hatch."""
+    `doc.editor` - explicitly documented as an unstable escape hatch."""
     doc = _make_doc(qtbot, "body")
     assert isinstance(doc.editor, QPlainTextEdit)
     # Same object as the wrapped tab's editor

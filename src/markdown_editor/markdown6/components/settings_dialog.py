@@ -829,7 +829,7 @@ class SettingsDialog(QDialog):
 
         self.pending_shortcuts.clear()
 
-        # Plugins — persist enable/disable toggles from the Plugins page
+        # Plugins - persist enable/disable toggles from the Plugins page
         if hasattr(self, "plugins_page"):
             self.plugins_page.apply()
 

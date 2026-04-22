@@ -52,7 +52,7 @@ def test_shim_exports_notify_helpers(name: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Direct calls (no loader context) — explicit source required
+# Direct calls (no loader context) - explicit source required
 # ---------------------------------------------------------------------------
 
 
@@ -115,7 +115,7 @@ def test_explicit_source_overrides_auto_stamp(ctx) -> None:
 
 def test_notify_outside_loader_with_no_source_uses_generic_label(ctx) -> None:
     """Code calling notify_* outside any loader context AND without an
-    explicit source still posts — just with an empty source string."""
+    explicit source still posts - just with an empty source string."""
     shim.notify_info("Hello")
     [n] = ctx.notifications.all()
     assert n.title == "Hello"

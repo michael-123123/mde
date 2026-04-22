@@ -1,7 +1,7 @@
 """Tests for live enable/disable of loaded plugins.
 
 When the user toggles a plugin in Settings → Plugins and clicks Apply,
-the change must take effect immediately for in-memory plugins — the
+the change must take effect immediately for in-memory plugins - the
 menu entries should be hidden and the palette commands should vanish,
 without requiring an editor restart.
 
@@ -301,7 +301,7 @@ def test_startup_disabled_plugin_can_be_reenabled_live(qtbot, tmp_path: Path) ->
 
 def test_disable_hides_empty_plugin_submenu(qtbot) -> None:
     """When all actions under a plugin-created submenu are hidden,
-    the submenu node itself should also be hidden — no empty dropdowns.
+    the submenu node itself should also be hidden - no empty dropdowns.
     Tests the plain (Plugins-namespaced) path here; the same logic
     handles ``/Edit/Transform`` escape-hatch submenus identically.
     """
@@ -359,7 +359,7 @@ def test_disable_does_not_hide_editor_builtin_submenu(qtbot) -> None:
     assert edit_action_on_bar.isVisible() is True
 
     apply_disabled_set(win, {"p"})
-    # Edit must remain visible — it's a pre-existing menu, not plugin-created.
+    # Edit must remain visible - it's a pre-existing menu, not plugin-created.
     assert edit_action_on_bar.isVisible() is True
 
 

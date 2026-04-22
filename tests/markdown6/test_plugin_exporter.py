@@ -5,7 +5,7 @@ the framework adds a menu entry under ``Plugins/Export/<label>``, opens
 a save dialog filtered by the declared file extensions, and invokes
 the callback with the chosen path.
 
-The plugin never sees Qt — the dialog is the framework's
+The plugin never sees Qt - the dialog is the framework's
 responsibility. The callback gets a ``DocumentHandle`` and a
 ``pathlib.Path``.
 """

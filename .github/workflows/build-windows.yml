@@ -6,8 +6,8 @@ name: Build Windows (onefile portable)
 # in parallel with this one.
 #
 # Triggers:
-#   - workflow_dispatch — manual button in the Actions tab
-#   - push on v*.*.* tags — attaches the .exe to the Release
+#   - workflow_dispatch - manual button in the Actions tab
+#   - push on v*.*.* tags - attaches the .exe to the Release
 #
 # Sibling workflows that fire on the same tag (all in parallel):
 #   - release.yml                   sdist + wheel
@@ -55,13 +55,13 @@ jobs:
       - name: Install project + build deps
         run: pip install -e ".[build]"
 
-      # nproc on GHA windows-latest returns 4 (full runner cores) — we want
+      # nproc on GHA windows-latest returns 4 (full runner cores) - we want
       # ALL of them here, unlike the floor(nproc/2) default that protects a
       # dev's workstation from being clobbered during a build.
       - name: Build Windows .exe
         run: bash packaging/build-windows-native.sh --mode=onefile --jobs=$(nproc)
 
-      # Headless CLI smoke tests — GHA runners have no display server, so
+      # Headless CLI smoke tests - GHA runners have no display server, so
       # we can't verify the GUI. These at least confirm the .exe loads Qt,
       # imports everything, and runs the CLI argparse + subcommand dispatch.
       - name: Smoke test (CLI)

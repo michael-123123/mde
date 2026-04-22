@@ -338,7 +338,7 @@ class TestMermaidAndGraphvizTogether:
 
 class TestNestedCodeBlocksNotRendered:
     """Diagram blocks nested inside outer fenced code blocks must NOT be
-    rendered as diagrams — they should be treated as literal code text."""
+    rendered as diagrams - they should be treated as literal code text."""
 
     def _make_md(self):
         from markdown.extensions.fenced_code import FencedCodeExtension
@@ -432,7 +432,7 @@ class TestGraphvizDarkModeTextContrast:
     def test_text_inside_unfilled_node_gets_light_text(self):
         from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
-        # Default graphviz nodes emit fill="none" — no user fillcolor,
+        # Default graphviz nodes emit fill="none" - no user fillcolor,
         # so text should be light (sits on dark page background).
         svg = (
             '<svg>'

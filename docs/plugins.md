@@ -1,6 +1,6 @@
 # Writing plugins for `mde`
 
-`mde` plugins are Python directories you drop into a known location. They register menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and configuration UIs — all through a small, Qt-free API surface.
+`mde` plugins are Python directories you drop into a known location. They register menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and configuration UIs - all through a small, Qt-free API surface.
 
 This guide walks through the basics. For the stability promise (what's guaranteed not to break across versions) see [`plugin-api-versioning.md`](plugin-api-versioning.md). For the project README and overall feature overview, see [`../README.md`](../README.md). For internal architecture (if you're modifying the editor itself), see [`../src/markdown_editor/markdown6/DEVELOPMENT.md`](../src/markdown_editor/markdown6/DEVELOPMENT.md).
 
@@ -10,10 +10,10 @@ This guide walks through the basics. For the stability promise (what's guarantee
 |---|---|
 | **User plugins** | `~/.config/markdown-editor/plugins/<name>/` on Linux. The exact path is the value of `QStandardPaths.GenericConfigLocation`, which is `~/Library/Application Support/markdown-editor/plugins/` on macOS and `%APPDATA%\markdown-editor\plugins\` on Windows. |
 | **Built-in plugins** | `markdown_editor/markdown6/builtin_plugins/`. Reserved for plugins shipped with the editor; **currently empty**. |
-| **Extra dirs (CLI)** | one or more `--plugins-dir DIR` flags. Stacks on top of the user dir — useful for per-project plugin sets without polluting your user config. |
+| **Extra dirs (CLI)** | one or more `--plugins-dir DIR` flags. Stacks on top of the user dir - useful for per-project plugin sets without polluting your user config. |
 | **Extra dirs (settings)** | the `plugins.extra_dirs` list. Manage it from **Settings → Plugins → Extra plugin directories** with the *Add directory…* / *Remove selected* buttons. Persists across launches. |
 
-All four sources are additive — none replaces another. Inside Settings → Plugins, the **"Open plugins folder"** button reveals the user dir in your file manager and creates it if missing.
+All four sources are additive - none replaces another. Inside Settings → Plugins, the **"Open plugins folder"** button reveals the user dir in your file manager and creates it if missing.
 
 The reference example plugins (`em_dash_to_hyphen`, `wordcount`, `stamp`) live under [`../docs/plugins-examples/`](plugins-examples/). They are not bundled with the editor; copy any of them into your user dir to install.
 
@@ -29,7 +29,7 @@ my_plugin/
   assets/             # optional; whatever your plugin needs
 ```
 
-If the names don't line up, or if the `.py` raises during import, the editor catches the error and shows the plugin in Settings → Plugins with an error status — it never crashes the editor.
+If the names don't line up, or if the `.py` raises during import, the editor catches the error and shows the plugin in Settings → Plugins with an error status - it never crashes the editor.
 
 ## The minimum plugin
 
@@ -63,13 +63,13 @@ from markdown_editor.plugins import register_action, get_active_document
 def greet():
     doc = get_active_document()
     if doc is None:
-        return                   # no open tab — silently no-op
+        return                   # no open tab - silently no-op
     doc.insert_at_cursor("Hello, world!")
 ```
 
 The framework adds an entry under **Plugins → Insert greeting**, binds the shortcut, and shows it in the command palette (`Ctrl+Shift+P`).
 
-If the plugin raises, the action's exception is caught, logged, and surfaced in the **🔔 notifications drawer** (status bar, right) — the editor stays running.
+If the plugin raises, the action's exception is caught, logged, and surfaced in the **🔔 notifications drawer** (status bar, right) - the editor stays running.
 
 ## A pure-text transform
 
@@ -89,7 +89,7 @@ def upper(text: str) -> str:
     )
 ```
 
-Text transforms are atomic by construction — your `(str) -> str` function can't observe the live document, so it can't leave it half-modified.
+Text transforms are atomic by construction - your `(str) -> str` function can't observe the live document, so it can't leave it half-modified.
 
 ## Imperative actions with atomic edits
 
@@ -113,7 +113,7 @@ def bold():
 
 ## Custom fenced-code renderer
 
-Render any fence language as inline HTML — same mechanism as the built-in `mermaid` and `graphviz` blocks:
+Render any fence language as inline HTML - same mechanism as the built-in `mermaid` and `graphviz` blocks:
 
 ```python
 from markdown_editor.plugins import register_fence
@@ -159,7 +159,7 @@ def _on_change(_doc):
         _PANEL.update_count(len(doc.text))
 ```
 
-This is the one extension point that necessarily exposes Qt — building a UI requires Qt widgets. The plugin's *registration* surface is still Qt-free; only the factory's return value (the `QWidget`) crosses into Qt.
+This is the one extension point that necessarily exposes Qt - building a UI requires Qt widgets. The plugin's *registration* surface is still Qt-free; only the factory's return value (the `QWidget`) crosses into Qt.
 
 ## Custom export format
 
@@ -215,15 +215,15 @@ def _on_open(doc):
     print(f"Opened: {doc.file_path}")
 ```
 
-Handlers receive a `DocumentHandle` — Qt-free wrapper exposing `text`, `file_path`, `has_selection`, `is_dirty`, and the mutator methods. `on_content_changed` fires after every keystroke; debounce inside your handler if you do anything expensive.
+Handlers receive a `DocumentHandle` - Qt-free wrapper exposing `text`, `file_path`, `has_selection`, `is_dirty`, and the mutator methods. `on_content_changed` fires after every keystroke; debounce inside your handler if you do anything expensive.
 
-If your handler raises, it's caught, logged, and surfaced in the notifications drawer — other handlers still run.
+If your handler raises, it's caught, logged, and surfaced in the notifications drawer - other handlers still run.
 
 ## Plugin settings
 
 Two layers, both backed by the same storage (`plugins.<your_id>.<key>` in the editor's main settings file):
 
-**Programmatic** — your plugin reads/writes its own state:
+**Programmatic** - your plugin reads/writes its own state:
 
 ```python
 from markdown_editor.plugins import plugin_settings
@@ -233,7 +233,7 @@ s["last_run"] = "2026-04-22T10:00"
 last = s.get("last_run", "")
 ```
 
-**User-facing config** — the framework auto-renders a Configure dialog from your schema:
+**User-facing config** - the framework auto-renders a Configure dialog from your schema:
 
 ```python
 from markdown_editor.plugins import register_settings_schema, Field
@@ -273,20 +273,20 @@ python = ["requests", "openai>=1.0"]
 
 The loader checks each module is importable before running your `.py`. Missing → plugin disabled with status "Error (missing deps)" and a clear message in Settings → Plugins; nothing crashes.
 
-Note: the version spec (`>=1.0`) is currently advisory — only the bare module name is checked.
+Note: the version spec (`>=1.0`) is currently advisory - only the bare module name is checked.
 
 ## Debugging
 
 When something goes wrong:
 
-1. **Settings → Plugins** — shows the status of every discovered plugin. Errored plugins have a grayed checkbox and the error reason in the row.
-2. **ℹ Info button** on the plugin's row — opens a dialog with full status detail + your README.md.
-3. **🔔 Notifications drawer** (status bar) — runtime errors during action / transform / signal handler execution land here.
-4. **Editor logs** — every plugin error is also logged via `mde.markdown_editor.markdown6.plugins.*`. Run mde from a terminal to see them live.
+1. **Settings → Plugins** - shows the status of every discovered plugin. Errored plugins have a grayed checkbox and the error reason in the row.
+2. **ℹ Info button** on the plugin's row - opens a dialog with full status detail + your README.md.
+3. **🔔 Notifications drawer** (status bar) - runtime errors during action / transform / signal handler execution land here.
+4. **Editor logs** - every plugin error is also logged via `mde.markdown_editor.markdown6.plugins.*`. Run mde from a terminal to see them live.
 
 ## Disabling and re-enabling
 
-Settings → Plugins lets the user toggle each plugin's enable checkbox. Toggle takes effect immediately for plugins that were loaded at startup — menu entries hide/show, sidebar panels disappear/reappear, fences/extensions are removed/added from the live preview.
+Settings → Plugins lets the user toggle each plugin's enable checkbox. Toggle takes effect immediately for plugins that were loaded at startup - menu entries hide/show, sidebar panels disappear/reappear, fences/extensions are removed/added from the live preview.
 
 Re-enabling a plugin that was disabled at startup time still requires a restart, because its `.py` was never imported (its registrations don't exist in memory).
 
@@ -294,7 +294,7 @@ Re-enabling a plugin that was disabled at startup time still requires a restart,
 
 - **Loaded** once at editor startup.
 - **No hot reload.** "Reload Plugins" (in the command palette + Settings → Plugins button) re-runs *discovery* and tells you what's new on disk; restart for new plugins to actually load.
-- **Disabled plugins** are still imported (so live re-enable works) — only their actions/panels/etc. are hidden.
+- **Disabled plugins** are still imported (so live re-enable works) - only their actions/panels/etc. are hidden.
 - **Errored plugins** are not re-invoked until you fix them and restart.
 
 ## API stability
@@ -311,4 +311,4 @@ The example plugins under [`plugins-examples/`](plugins-examples/) are the best 
 | [`wordcount`](plugins-examples/wordcount/) | `register_panel` + `@on_content_changed` + `@on_file_opened` + `plugin_settings`. |
 | [`stamp`](plugins-examples/stamp/) | `register_action` + `register_settings_schema` (every supported field type). |
 
-To install one, copy the directory into your user plugin folder (see [`plugins-examples/README.md`](plugins-examples/README.md) for paste-ready commands per OS) and restart the editor — or point at the source directly with `mde --plugins-dir docs/plugins-examples`.
+To install one, copy the directory into your user plugin folder (see [`plugins-examples/README.md`](plugins-examples/README.md) for paste-ready commands per OS) and restart the editor - or point at the source directly with `mde --plugins-dir docs/plugins-examples`.

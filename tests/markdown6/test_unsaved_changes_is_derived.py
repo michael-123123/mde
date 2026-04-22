@@ -4,7 +4,7 @@ from ``self.editor.document().isModified()``.
 The previous design kept ``unsaved_changes`` as a mutable attribute
 synced by convention: every site that reset content had to also call
 ``document().setModified(False)`` so the modificationChanged signal
-would propagate to the attribute. That's discipline-based sync — a
+would propagate to the attribute. That's discipline-based sync - a
 missed call site would leave the flag and the document's actual
 modification state inconsistent with no compiler / type help.
 
@@ -46,7 +46,7 @@ def test_unsaved_changes_tracks_document_isModified(qtbot) -> None:
 
 @pytest.mark.timeout(15, method="thread")
 def test_unsaved_changes_is_read_only(qtbot) -> None:
-    """Direct assignment must raise — the property has no setter."""
+    """Direct assignment must raise - the property has no setter."""
     editor = MarkdownEditor()
     qtbot.addWidget(editor)
     editor.new_tab()

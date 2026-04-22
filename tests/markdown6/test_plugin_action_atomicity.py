@@ -2,7 +2,7 @@
 raises → document text is unchanged after the dust settles.
 
 This is the contract the plan promises for "imperative" plugin actions
-(the ``with doc.atomic_edit():`` style — counterpart to the pure-
+(the ``with doc.atomic_edit():`` style - counterpart to the pure-
 transform style which is atomic by construction).
 
 Also covers the *non*-atomic case (plugin mutates without
@@ -112,7 +112,7 @@ def test_action_mutates_in_atomic_edit_then_raises_text_unchanged(qtbot, ctx) ->
 
 def test_action_in_atomic_edit_with_multiple_mutations_then_raises_all_rolled_back(qtbot, ctx) -> None:
     """All mutations inside the same ``atomic_edit`` block are reverted
-    as one — there's no "first edit applied, second edit rolled back"
+    as one - there's no "first edit applied, second edit rolled back"
     half-state."""
     win, editor, tab, _ = _setup(qtbot, "START")
 
@@ -212,7 +212,7 @@ def test_action_mutates_without_atomic_edit_then_raises_partial_persists(qtbot, 
 
     _trigger(win, "PartialMut")
 
-    # The mutation IS visible — the framework can't undo what the
+    # The mutation IS visible - the framework can't undo what the
     # plugin did outside an atomic_edit.
     assert editor.toPlainText() == "PARTIAL"
     # And the user still sees the failure surfaced in notifications.

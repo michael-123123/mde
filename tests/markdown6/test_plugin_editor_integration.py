@@ -118,7 +118,7 @@ def test_resolve_menu_path_empty_defaults_to_plugins(qtbot) -> None:
 
 
 # ---------------------------------------------------------------------------
-# inject_plugin_actions — PluginAction
+# inject_plugin_actions - PluginAction
 # ---------------------------------------------------------------------------
 
 
@@ -137,7 +137,7 @@ def test_inject_action_adds_menu_entry_under_default_plugins_menu(qtbot) -> None
 
 
 def test_inject_action_respects_namespaced_menu_path(qtbot) -> None:
-    """Plain `Edit/Transform` lands at Plugins/Edit/Transform — namespaced
+    """Plain `Edit/Transform` lands at Plugins/Edit/Transform - namespaced
     under the top-level Plugins menu, not in the editor's real Edit."""
     win = _make_window(qtbot, pre_menus=["&Edit"])
 
@@ -231,7 +231,7 @@ def test_inject_action_swallows_callback_exceptions(qtbot) -> None:
 
 
 # ---------------------------------------------------------------------------
-# inject_plugin_actions — PluginTextTransform
+# inject_plugin_actions - PluginTextTransform
 # ---------------------------------------------------------------------------
 
 
@@ -286,7 +286,7 @@ def test_inject_transform_noop_if_no_active_document(qtbot) -> None:
 
     action = _action_by_text(_menu_by_title(win.menuBar(), "Plugins"), "Noop")
     action.trigger()
-    # Transform must NOT have been called — no document was available.
+    # Transform must NOT have been called - no document was available.
     assert calls == []
 
 

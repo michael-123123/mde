@@ -4,7 +4,7 @@ Modal showing a plugin's metadata, status detail (especially useful
 for errored plugins where the inline label may be truncated), and
 its README.md if the plugin shipped one.
 
-Design intentionally simple — no Markdown rendering for v1: README is
+Design intentionally simple - no Markdown rendering for v1: README is
 shown via :meth:`QTextBrowser.setMarkdown` which Qt6 supports natively
 out of the box, no extra dependency. Plain plugins without a README
 just see the metadata section.

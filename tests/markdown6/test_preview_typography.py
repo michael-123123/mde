@@ -6,7 +6,7 @@ from markdown_editor.markdown6.app_context import get_app_context
 
 
 class _Ctx:
-    """Minimal stand-in for MarkdownEditor — just enough for get_html_template."""
+    """Minimal stand-in for MarkdownEditor - just enough for get_html_template."""
 
     def __init__(self):
         from markdown_editor.markdown6.markdown_editor import MarkdownEditor

@@ -1,7 +1,7 @@
 """Session state persistence for the Markdown editor.
 
 Manages ephemeral application state that is remembered between sessions
-but is not a user preference — recent files, last project, open tabs,
+but is not a user preference - recent files, last project, open tabs,
 sidebar state, etc.
 
 NON-QT-APPLICATION-SAFE: This module must remain loadable in non-Qt-application
@@ -21,7 +21,7 @@ from markdown_editor.markdown6.logger import getLogger
 logger = getLogger(__name__)
 
 
-# Keys and their defaults — these are "what was open last time" state,
+# Keys and their defaults - these are "what was open last time" state,
 # not user preferences.
 DEFAULT_SESSION_STATE = {
     "files.recent_files": [],

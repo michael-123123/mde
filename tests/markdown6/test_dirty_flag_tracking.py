@@ -131,7 +131,7 @@ def test_edit_then_undo_after_save_clears_dirty(qtbot, tmp_path) -> None:
     """After save, editing once and undoing that single edit should bring
     the tab back to the post-save baseline (buffer + clean flag).
 
-    Note: ``save_file`` does not clear the undo stack — if the user undoes
+    Note: ``save_file`` does not clear the undo stack - if the user undoes
     past the save point the document is modified again (in the reverse
     direction) which is correct behavior. The scenario this test guards
     is the common one: user makes one more edit after saving, changes

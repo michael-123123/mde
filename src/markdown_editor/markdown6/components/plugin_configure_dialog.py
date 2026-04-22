@@ -15,7 +15,7 @@ Field-to-widget mapping:
 * ``float`` → :class:`QDoubleSpinBox`
 * ``bool`` → :class:`QCheckBox`
 
-The dialog is intentionally simple — no validators beyond bounds,
+The dialog is intentionally simple - no validators beyond bounds,
 no async, no conditional fields. The plan calls these out as future
 extensions if a plugin needs them; for now this covers the common
 "API key + a few toggles + a count" cases.

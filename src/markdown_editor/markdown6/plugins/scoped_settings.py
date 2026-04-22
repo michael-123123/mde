@@ -12,7 +12,7 @@ file, so plugin storage:
 * never leaks into the editor's own settings (a plugin writing
   ``"editor.font_size"`` actually writes ``"plugins.<id>.editor.font_size"``).
 
-This is the **internal/programmatic** layer — plugins use it to remember
+This is the **internal/programmatic** layer - plugins use it to remember
 state across runs (last-used path, cached tokens, counters). A separate
 schema-driven layer (planned, not yet built) sits on top and auto-renders
 a user-facing config UI from a plugin-supplied field list.

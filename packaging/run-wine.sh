@@ -23,7 +23,7 @@
 # drive_c/windows/system32/ so any Wine-launched app finds them via the
 # Windows DLL search path. Needed when running an .exe built on real Windows
 # (e.g. from the GHA pipeline) which assumes the OS provides icuuc.dll in
-# System32 — real Windows does, Wine does not. The bottle's build-script
+# System32 - real Windows does, Wine does not. The bottle's build-script
 # staging of ICU only covers the specific PySide6/ dir used during the build
 # and doesn't help onefile .exe's that self-extract to a random temp dir.
 # Safe to pass repeatedly (idempotent) and has no effect on .exe's that
@@ -96,7 +96,7 @@ export XDG_CONFIG_HOME="$BUILD_DIR/wine-xdg/config"
 export XDG_CACHE_HOME="$BUILD_DIR/wine-xdg/cache"
 mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
 
-# LANG/LC_ALL — Wine returns LOCALE_NEUTRAL (0x1000) without this, which .NET
+# LANG/LC_ALL - Wine returns LOCALE_NEUTRAL (0x1000) without this, which .NET
 # and some Qt code paths reject. Harmless if already set.
 export LANG="${LANG:-en_US.UTF-8}"
 export LC_ALL="${LC_ALL:-en_US.UTF-8}"
@@ -114,7 +114,7 @@ if [ "$STAGE_ICU" -eq 1 ]; then
     SYS32="$BUILD_DIR/wine/drive_c/windows/system32"
     if [ ! -d "$ICU_SRC" ]; then
         echo "ERROR: ICU source not found at $ICU_SRC" >&2
-        echo "       Run 'bash packaging/build-windows.sh' first — it fetches ICU." >&2
+        echo "       Run 'bash packaging/build-windows.sh' first - it fetches ICU." >&2
         exit 1
     fi
     if [ ! -f "$SYS32/icuuc.dll" ]; then

@@ -135,7 +135,7 @@ def test_nested_path_namespaced_under_plugins(qtbot) -> None:
 
 def test_emdash_style_path_lands_under_plugins_not_real_edit(qtbot) -> None:
     """Reproduces the behaviour change: ``Edit/Transform`` no longer
-    means the editor's real Edit menu — it means ``Plugins/Edit/Transform``.
+    means the editor's real Edit menu - it means ``Plugins/Edit/Transform``.
     """
     win = _make_window(qtbot, pre_menus=[("&Edit", ["edit.find"])])
     menu = resolve_menu_path(win, "Edit/Transform")
@@ -336,7 +336,7 @@ def test_unknown_anchor_id_falls_back_to_plugins_menu(qtbot, caplog) -> None:
     surfaces in the top-level Plugins menu (not the originally-
     requested escape-hatch menu). A log line explains why.
 
-    Previously the action was orphaned — QAction existed, shortcut
+    Previously the action was orphaned - QAction existed, shortcut
     worked, palette entry worked, but the user never saw it in any
     menu. Falling back to the default Plugins namespace gives the
     action a visible, discoverable home.

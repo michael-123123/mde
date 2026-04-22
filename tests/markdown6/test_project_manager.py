@@ -521,7 +521,7 @@ class TestTreeStatePersistence:
         assert str(dir_c) in saved
         assert str(dir_b) in saved
 
-        # --- Phase 2: new panel, same project — dirs should restore ---
+        # --- Phase 2: new panel, same project - dirs should restore ---
         panel2 = ProjectPanel(get_app_context())
         qtbot.addWidget(panel2)
         panel2.show()
@@ -580,7 +580,7 @@ class TestTreeStatePersistence:
         # Save dirs from project A
         ctx.set("project.expanded_dirs", [str(d)])
 
-        # Open project B — should not try to expand proj_a/sub
+        # Open project B - should not try to expand proj_a/sub
         panel = ProjectPanel(get_app_context())
         qtbot.addWidget(panel)
         panel.set_project_path(proj_b)

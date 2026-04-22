@@ -1,11 +1,11 @@
-# Diagram stress test — 20 interleaved diagrams
+# Diagram stress test - 20 interleaved diagrams
 
 Ten Mermaid and ten Graphviz diagrams, interleaved. Every diagram is distinct
 in both topic and syntax, and none is a toy one-liner.
 
 ---
 
-## 1. Mermaid — release pipeline
+## 1. Mermaid - release pipeline
 
 ```mermaid
 flowchart TD
@@ -25,7 +25,7 @@ flowchart TD
     K --> M[Update status page]
 ```
 
-## 2. Graphviz — microservices dependency graph
+## 2. Graphviz - microservices dependency graph
 
 ```dot
 digraph services {
@@ -50,7 +50,7 @@ digraph services {
 }
 ```
 
-## 3. Mermaid — OAuth2 authorization code flow
+## 3. Mermaid - OAuth2 authorization code flow
 
 ```mermaid
 sequenceDiagram
@@ -72,12 +72,12 @@ sequenceDiagram
     A->>R: GET /api/me (Bearer token)
     R-->>A: 200 {profile}
     A-->>U: Render dashboard
-    Note over A,I: Later — refresh flow
+    Note over A,I: Later - refresh flow
     A->>I: POST /token {refresh_token}
     I-->>A: new access_token
 ```
 
-## 4. Graphviz — vending-machine finite state machine
+## 4. Graphviz - vending-machine finite state machine
 
 ```dot
 digraph vending {
@@ -99,7 +99,7 @@ digraph vending {
 }
 ```
 
-## 5. Mermaid — e-commerce domain class diagram
+## 5. Mermaid - e-commerce domain class diagram
 
 ```mermaid
 classDiagram
@@ -148,7 +148,7 @@ classDiagram
     Order "*" --> "*" Product : line items
 ```
 
-## 6. Graphviz — compiler pipeline
+## 6. Graphviz - compiler pipeline
 
 ```dot
 digraph compiler {
@@ -171,7 +171,7 @@ digraph compiler {
 }
 ```
 
-## 7. Mermaid — TCP connection state diagram
+## 7. Mermaid - TCP connection state diagram
 
 ```mermaid
 stateDiagram-v2
@@ -191,7 +191,7 @@ stateDiagram-v2
     TIME_WAIT --> Closed: 2*MSL elapsed
 ```
 
-## 8. Graphviz — organization chart
+## 8. Graphviz - organization chart
 
 ```dot
 digraph org {
@@ -212,7 +212,7 @@ digraph org {
 }
 ```
 
-## 9. Mermaid — library ER diagram
+## 9. Mermaid - library ER diagram
 
 ```mermaid
 erDiagram
@@ -265,7 +265,7 @@ erDiagram
     }
 ```
 
-## 10. Graphviz — C build dependency tree
+## 10. Graphviz - C build dependency tree
 
 ```dot
 digraph build {
@@ -296,11 +296,11 @@ digraph build {
 }
 ```
 
-## 11. Mermaid — product launch Gantt
+## 11. Mermaid - product launch Gantt
 
 ```mermaid
 gantt
-    title Product launch — Q2 2026
+    title Product launch - Q2 2026
     dateFormat  YYYY-MM-DD
     section Design
     Research & spec        :done, d1, 2026-04-01, 14d
@@ -321,7 +321,7 @@ gantt
     GA cutover             :milestone, l3, after l2, 0d
 ```
 
-## 12. Graphviz — datacenter network topology
+## 12. Graphviz - datacenter network topology
 
 ```dot
 digraph network {
@@ -358,7 +358,7 @@ digraph network {
 }
 ```
 
-## 13. Mermaid — source LOC pie chart
+## 13. Mermaid - source LOC pie chart
 
 ```mermaid
 pie title Project source breakdown (LOC)
@@ -371,7 +371,7 @@ pie title Project source breakdown (LOC)
     "Markdown" : 430
 ```
 
-## 14. Graphviz — loan-approval decision tree
+## 14. Graphviz - loan-approval decision tree
 
 ```dot
 digraph decision {
@@ -401,11 +401,11 @@ digraph decision {
 }
 ```
 
-## 15. Mermaid — user onboarding journey
+## 15. Mermaid - user onboarding journey
 
 ```mermaid
 journey
-    title New user onboarding — first 7 days
+    title New user onboarding - first 7 days
     section Day 0 (sign-up)
       Land on homepage: 5: Visitor
       Create account: 3: Visitor
@@ -422,7 +422,7 @@ journey
       Upgrade to paid: 5: User
 ```
 
-## 16. Graphviz — ETL data flow diagram
+## 16. Graphviz - ETL data flow diagram
 
 ```dot
 digraph etl {
@@ -453,7 +453,7 @@ digraph etl {
 }
 ```
 
-## 17. Mermaid — git branching + hotfix
+## 17. Mermaid - git branching + hotfix
 
 ```mermaid
 gitGraph
@@ -486,7 +486,7 @@ gitGraph
     commit id: "b3"
 ```
 
-## 18. Graphviz — class inheritance hierarchy
+## 18. Graphviz - class inheritance hierarchy
 
 ```dot
 digraph inheritance {
@@ -516,7 +516,7 @@ digraph inheritance {
 }
 ```
 
-## 19. Mermaid — HTTP error handling flow
+## 19. Mermaid - HTTP error handling flow
 
 ```mermaid
 flowchart LR
@@ -539,7 +539,7 @@ flowchart LR
     T --> LOG
 ```
 
-## 20. Graphviz — PID control feedback loop
+## 20. Graphviz - PID control feedback loop
 
 ```dot
 digraph pid {

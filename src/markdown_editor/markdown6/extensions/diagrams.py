@@ -95,7 +95,7 @@ class MermaidPreprocessor(Preprocessor):
                     return svg
                 return f'<div class="mermaid-diagram" data-source="{escaped_src}">{svg}</div>'
 
-            # Not cached — emit placeholder, schedule async render
+            # Not cached - emit placeholder, schedule async render
             idx = len(pending)
             pending.append(('mermaid', content, dark_mode))
             escaped = html_mod.escape(content)
@@ -186,7 +186,7 @@ class GraphvizPreprocessor(Preprocessor):
                     return svg
                 return f'<div class="graphviz-diagram" data-source="{escaped_src}">{svg}</div>'
 
-            # Not cached — emit placeholder, schedule async render
+            # Not cached - emit placeholder, schedule async render
             idx = len(pending)
             pending.append(('graphviz', source, dark_mode))
             escaped = html_mod.escape(source)

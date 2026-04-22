@@ -3,26 +3,26 @@
 # title of your application
 title = mde
 
-# project directory — REWRITTEN by packaging/build.sh to point at $BUILD_DIR
+# project directory - REWRITTEN by packaging/build.sh to point at $BUILD_DIR
 # where a staged copy of this spec and mde_launch.py live for the build.
 project_dir = @BUILD_DIR@
 
-# source file path — REWRITTEN by packaging/build.sh
+# source file path - REWRITTEN by packaging/build.sh
 input_file = @BUILD_DIR@/mde_launch.py
 
-# directory where the executable output is generated — REWRITTEN
+# directory where the executable output is generated - REWRITTEN
 exec_directory = @BUILD_DIR@
 
 # path to .pyproject project file
 project_file =
 
-# application icon — REWRITTEN by packaging/build.sh to the absolute path of
+# application icon - REWRITTEN by packaging/build.sh to the absolute path of
 # src/markdown_editor/markdown6/icons/markdown-editor-256.png in the repo.
 icon = @ICON@
 
 [python]
 
-# python path — left empty; pyside6-deploy picks up whichever python is invoking it
+# python path - left empty; pyside6-deploy picks up whichever python is invoking it
 # (under `mamba run -n algo pyside6-deploy`, that's the conda env's python).
 python_path =
 

@@ -28,7 +28,7 @@
 #                                                        # with Wine-compat Chromium flags and
 #                                                        # capture a screenshot to local/tmp/
 #
-# Sibling script: packaging/run-wine.sh — launches an already-built .exe
+# Sibling script: packaging/run-wine.sh - launches an already-built .exe
 # under Wine with the same isolation env + Chromium flags. Useful for
 # ad-hoc testing without a full rebuild.
 #
@@ -114,7 +114,7 @@ DEPENDS_X86_URL="https://dependencywalker.com/depends22_x86.zip"
 # bundling ICU DLLs (they assume Windows 10 1703+ provides ICU in System32,
 # which Wine doesn't). We must stage ICU 73 ourselves. qt6core.dll imports
 # the unsuffixed name `icuuc.dll`, so we place both suffixed and unsuffixed
-# copies next to qt6core.dll — both in the bottle (so pip-installed PySide6
+# copies next to qt6core.dll - both in the bottle (so pip-installed PySide6
 # works) and in the Nuitka dist dir (so the packaged .exe works).
 ICU_URL="https://github.com/unicode-org/icu/releases/download/release-73-2/icu4c-73_2-Win64-MSVC2019.zip"
 # Note: icudt is already bundled by Nuitka's pyside6 plugin (as icudt73.dll),
@@ -192,7 +192,7 @@ if [ ! -f "$PY_EXE" ]; then
 fi
 
 # ============================================================================
-# Fix 1: Nuitka's depends.exe breaks under Wine — use 32-bit build + mfc42.
+# Fix 1: Nuitka's depends.exe breaks under Wine - use 32-bit build + mfc42.
 # Ref: Nuitka issue #2194.
 # ============================================================================
 MFC42_FLAG="$WINEPREFIX/drive_c/windows/syswow64/mfc42.dll"
@@ -221,14 +221,14 @@ fi
 # ============================================================================
 # Fix 3: ICU 73.2 DLLs (icuuc, icuin, icuio, icutu) for Qt 6.11.
 # Download once, extract to TOOLS_DIR. Two staging targets:
-#   1. Bottle's PySide6/ dir — so `wine python -c "from PySide6 import QtCore"`
+#   1. Bottle's PySide6/ dir - so `wine python -c "from PySide6 import QtCore"`
 #      works during the build phase.
 #   2. A dedicated icu-stage/ dir we later pass to Nuitka via
-#      --include-data-files=... — this is what puts ICU inside the bundled
+#      --include-data-files=... - this is what puts ICU inside the bundled
 #      artifact (works for both standalone dist and onefile archive).
 # qt6core.dll imports "icuuc.dll" (unsuffixed), so we place both suffixed
 # (icuuc73.dll) and unsuffixed (icuuc.dll) copies in both locations.
-# icudt73.dll is intentionally excluded — Nuitka's pyside6 plugin already
+# icudt73.dll is intentionally excluded - Nuitka's pyside6 plugin already
 # bundles it; including it again errors with "data file conflicts with dll".
 # ============================================================================
 ICU_ZIP="$TOOLS_DIR/icu4c-73_2-Win64-MSVC2019.zip"
@@ -278,7 +278,7 @@ if [ ! -d "$MDE_INSTALLED_FLAG" ]; then
     echo "==> upgrading pip in bottle"
     wine python -m pip install --upgrade pip
     echo "==> installing project deps via Z: drive"
-    # Wine sees / as Z: — so the repo root becomes Z:\home\michael\src\mde
+    # Wine sees / as Z: - so the repo root becomes Z:\home\michael\src\mde
     REPO_ROOT_WIN='Z:'"$(echo "$REPO_ROOT" | tr '/' '\\')"
     wine python -m pip install -e "${REPO_ROOT_WIN}[build]"
 fi
@@ -329,7 +329,7 @@ ICON_WIN=$(to_win "$WIN_ICON_ABS")
 
 # Build the list of --include-data-files flags for ICU DLLs. Passing them
 # to Nuitka (rather than post-build copying) is what makes ICU end up INSIDE
-# the onefile archive too — post-build copy only works for standalone dist.
+# the onefile archive too - post-build copy only works for standalone dist.
 ICU_INCLUDE_ARGS=()
 ICU_STAGE_WIN=$(to_win "$ICU_STAGE")
 for dll in "$ICU_STAGE"/*.dll; do
@@ -373,7 +373,7 @@ else
 fi
 
 # ============================================================================
-# Smoke test under Wine (optional — --smoke-test)
+# Smoke test under Wine (optional - --smoke-test)
 #
 # Wine's Chromium emulation is incomplete (no WSALookupServiceBegin, no real
 # GPU compositing, etc.), so QtWebEngine needs a pile of Chromium flags to
@@ -407,7 +407,7 @@ if [ "$SMOKE_TEST" -eq 1 ]; then
             [ -n "$GEOM" ] && convert "$REPO_ROOT/local/tmp/mde-win-smoke-full.png" -crop "$GEOM" +repage "$REPO_ROOT/local/tmp/mde-win-smoke.png"
             echo "   screenshot: $REPO_ROOT/local/tmp/mde-win-smoke.png  (geom $GEOM)"
         else
-            echo "   (xwininfo/import missing — skipped screenshot)"
+            echo "   (xwininfo/import missing - skipped screenshot)"
         fi
     fi
     kill $SMOKE_PID 2>/dev/null; wait $SMOKE_PID 2>/dev/null
@@ -418,7 +418,7 @@ fi
 # flags needed to work around Wine's incomplete Chromium API surface.
 #
 # These flags are Wine-only. Do NOT bake them into the .exe or its launcher
-# — on real Windows, Chromium's normal process model + sandbox work fine,
+# - on real Windows, Chromium's normal process model + sandbox work fine,
 # and --no-sandbox / --single-process weaken security. They only exist here
 # so the developer can eyeball the Wine-built .exe before shipping to real
 # Windows users.

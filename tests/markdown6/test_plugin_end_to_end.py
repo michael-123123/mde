@@ -112,7 +112,7 @@ def test_full_editor_loads_em_dash_plugin_via_extra_dirs(qtbot) -> None:
     palette command.
 
     Triggering the action end-to-end requires an open document tab,
-    which on some environments drags in QtWebEngine initialization —
+    which on some environments drags in QtWebEngine initialization -
     that's covered separately by ``test_em_dash_transform_*`` using a
     bare ``QPlainTextEdit``. Here we just verify the editor-level
     wiring: plugin loaded, QAction present, palette entry created.
@@ -157,7 +157,7 @@ def test_full_editor_loads_em_dash_plugin_via_extra_dirs(qtbot) -> None:
 
 def test_full_editor_with_em_dash_disabled_hides_action(qtbot) -> None:
     """When em-dash is in `plugins.disabled`, the action must NOT be
-    visible in the menu at launch — even though the plugin is now
+    visible in the menu at launch - even though the plugin is now
     loaded (so it can be re-enabled live)."""
     from PySide6.QtWidgets import QApplication
 
@@ -176,7 +176,7 @@ def test_full_editor_with_em_dash_disabled_hides_action(qtbot) -> None:
         assert names["em_dash_to_hyphen"].module is not None
 
         # The QAction was created (so re-enable can work live) but is
-        # NOT visible — that's the user-facing disabled state.
+        # NOT visible - that's the user-facing disabled state.
         plugins_menu = editor._top_level_menus["Plugins"]
         transform_sub = next(
             (a.menu() for a in plugins_menu.actions()

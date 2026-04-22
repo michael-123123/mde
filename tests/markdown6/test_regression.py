@@ -742,7 +742,7 @@ class TestMathRendering:
         )
 
         tab = DocumentTab(main)
-        # Simulate a saved file — this sets the file:// base URL
+        # Simulate a saved file - this sets the file:// base URL
         test_file = tmp_path / "test.md"
         test_file.write_text("$E=mc^2$")
         tab.file_path = test_file
@@ -769,7 +769,7 @@ class TestMathRendering:
 class TestPreviewWheelScrollSync:
     """Regression test: wheel-scrolling the preview should scroll the editor.
 
-    Bug: Scrolling the preview pane did not move the editor — only
+    Bug: Scrolling the preview pane did not move the editor - only
     editor→preview sync existed. Fix: an event filter on WebEngine's
     internal rendering widget forwards wheel events to the editor.
     The editor's valueChanged then syncs the preview via scrollToSourceLine.

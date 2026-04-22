@@ -35,7 +35,7 @@ def test_notification_severities_are_distinct() -> None:
 
 
 # ---------------------------------------------------------------------------
-# NotificationCenter — basic add / list / clear
+# NotificationCenter - basic add / list / clear
 # ---------------------------------------------------------------------------
 
 
@@ -195,5 +195,5 @@ def test_default_history_cap_is_reasonable() -> None:
     """Default cap should be high enough that normal use never trims,
     but low enough to bound memory."""
     c = NotificationCenter()
-    # Don't pin the exact value — just sanity-check it's in the ballpark.
+    # Don't pin the exact value - just sanity-check it's in the ballpark.
     assert 50 <= c.max_history <= 1000
