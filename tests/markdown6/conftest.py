@@ -63,8 +63,22 @@ def ephemeral_settings():
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Flush pending widget deletions before Qt tears down profiles."""
+    """Flush pending widget deletions before Qt tears down profiles.
+
+    ``deleteLater()`` posts a ``DeferredDelete`` event; plain
+    ``processEvents()`` at shutdown doesn't reliably deliver those, so any
+    subclassed ``QWebEnginePage`` (``DocumentTab.LinkInterceptPage``,
+    ``GraphPreviewPage``) survives until the default
+    ``QWebEngineProfile`` is destroyed, producing
+    "Release of profile requested but WebEnginePage still not deleted."
+    on stderr. Explicitly flushing ``DeferredDelete`` lets those pages
+    tear down before the profile.
+    """
+    from PySide6.QtCore import QCoreApplication, QEvent
     from PySide6.QtWidgets import QApplication
     app = QApplication.instance()
     if app:
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        app.processEvents()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         app.processEvents()
