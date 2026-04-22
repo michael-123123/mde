@@ -282,6 +282,35 @@ Never merge branches into master directly via `git merge`. Always go through a G
 
 The PR must only be approved and merged when the branch has a clean merge/rebase from master. This applies any time you are asked to merge to master/main.
 
+## Deploying
+
+When the user says "deploy" with no other qualifier, it means: tag the `master` branch with a patch-version bump of the latest pushed tag, then push the tag to origin. Example: if the latest pushed tag is `v0.1.12`, `deploy` means create and push `v0.1.13` on `master`.
+
+Steps:
+1. `git fetch --tags origin` to make sure you have the latest tags.
+2. Find the latest pushed tag with `git tag --sort=-v:refname | head -1` (or equivalent).
+3. Compute the next patch version (increment the last `.Z` component).
+4. Tag `master` with the new version: `git tag vX.Y.Z master`.
+5. Push the tag: `git push origin vX.Y.Z`.
+
+If the user specifies a branch ("deploy feature/foo") or a version ("deploy as v0.2.0" / "deploy a minor bump"), follow those instructions instead of the defaults.
+
+Before tagging, confirm that `master` is clean and up to date with `origin/master`, and that the top commit is what the user expects to ship. Do not bump the version in `pyproject.toml` - setuptools-scm derives the version from the git tag.
+
+## Building
+
+When the user says "build" with no other qualifier, it means: run all three local packaging builds **in parallel**:
+
+1. Linux AppImage: `bash packaging/build.sh --appimage`
+2. Windows (via Wine): `bash packaging/build-windows.sh --mode=standalone`
+3. Windows installer: `bash packaging/make-installer-windows.sh --dist-dir=build/win/deployment/mde_launch.dist` (runs after #2 finishes, since it consumes the standalone dist)
+
+Runs #1 and #2 in parallel as background tasks; #3 is sequenced after #2 since it needs the dist folder. Report when each completes and surface any failures.
+
+If the user qualifies the command ("build for linux", "build the installer", "build windows native"), run only that specific target. Honour any `--build-dir` / mode overrides the user gives.
+
+See the "Building a Standalone Binary" section above for the full list of external dependencies per build path and the authoritative command reference.
+
 ## Known Technical Debt
 
 - `MarkdownEditor` is ~1800 lines; could still be split into TabManager and PanelManager
