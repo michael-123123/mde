@@ -125,7 +125,7 @@ Any difference in icons, panel layout, theme, or syntax highlighting is a bundli
 
 ## Architecture
 
-Widget-based architecture using Qt signal/slot for inter-component communication. No formal MVC — UI and logic are mixed in widget classes. Source lives under `src/markdown_editor/markdown6/` with subpackages `app_context/`, `components/`, `extensions/`, and `templates/`.
+Widget-based architecture using Qt signal/slot for inter-component communication. No formal MVC — UI and logic are mixed in widget classes. Source lives under `src/markdown_editor/markdown6/` with subpackages `app_context/`, `components/`, `extensions/`, `plugins/`, `builtin_plugins/`, and `templates/`. The public plugin API shim lives one level up at `src/markdown_editor/plugins/`.
 
 ### Core Components
 
@@ -188,6 +188,30 @@ Extensions live in the `extensions/` subpackage. The package's `__init__.py` re-
 - `source_lines.py` — `SourceLineExtension` (emits `data-source-line` attributes for editor↔preview scroll sync)
 - `wikilinks.py` — `WikiLinkExtension` (`[[target]]` / `[[target|display]]`)
 
+### Plugin system
+
+Plugins extend the editor without core changes. Discovery scans builtin (`markdown6/builtin_plugins/`) and user (`<config_dir>/plugins/`) directories; plugins ship as `<name>/<name>.py` + `<name>/<name>.toml` directories. Six extension points + lifecycle signals + scoped settings + auto-rendered Configure dialog from a declarative `Field` schema. Errors never crash the editor — they show up in Settings → Plugins (errored plugins) or the bell drawer in the status bar (runtime errors).
+
+For full plugin authoring documentation, see [`docs/plugins.md`](docs/plugins.md). For the API stability contract, see [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md). Read the bundled `em_dash_to_hyphen` / `wordcount` / `stamp` plugins under `markdown6/builtin_plugins/` for working code.
+
+Plugin-system architecture (under `markdown6/plugins/`):
+
+- `metadata.py` — `[tool.mde.plugin]` TOML parser
+- `loader.py` — discovery + dep check + import (never raises)
+- `plugin.py` — `Plugin` dataclass + `PluginStatus` / `PluginSource` enums
+- `registry.py` — record dataclasses + central `PluginRegistry`
+- `api.py` — public API: `register_*`, `on_*`, `notify_*`, `plugin_settings`, `Field`, `register_settings_schema`
+- `signals.py` — lifecycle signal dispatch
+- `fence.py` — markdown extension that dispatches plugin fences
+- `editor_integration.py` — menu/palette injection, panel installation, live disable/enable
+- `scoped_settings.py` — `PluginSettings` dict-like façade backed by `plugins.<id>.<key>`
+- `document_handle.py` — Qt-free `DocumentHandle` plugins receive
+- `reload.py` — discover-only "Reload plugins" diff helper
+
+Plugin runtime errors route into `markdown6/notifications.py:NotificationCenter` (one per `AppContext`) and surface via `components/notification_bell.py` (status bar). The Settings → Plugins page lives in `components/plugins_page.py` with `components/plugin_configure_dialog.py` and `components/plugin_info_dialog.py` as supporting modals.
+
+**Important rule for plugin code:** plugin authors should import from `markdown_editor.plugins` (the shim) — *not* from `markdown_editor.markdown6.plugins.*` (the internal namespace). Same rule applies to bundled plugins under `builtin_plugins/`. The shim re-exports the stable surface; reaching past it forfeits stability guarantees.
+
 ### CLI
 
 **markdown_editor_cli.py** — `mde` entry point. Subcommands: `export`, `graph`, `stats`, `validate`, `install-desktop` / `uninstall-desktop`, `install-autocomplete` / `uninstall-autocomplete`. Bare `mde` (with optional file paths) launches the GUI.
@@ -201,6 +225,8 @@ Extensions live in the `extensions/` subpackage. The package's `__init__.py` re-
 **Adding a menu item / shortcut / palette entry:** Add a single `ActionDef` to `MENU_STRUCTURE` (or to `PALETTE_ONLY` for palette-only entries) in `actions.py`. The menu, shortcut, and command-palette entry are all wired up automatically by `build_menu_bar()`, `apply_shortcuts()`, and `build_command_palette()`. Default shortcuts (with platform-aware `QKeySequence.StandardKey` on Ctrl+N, Ctrl+S, etc.) live in `app_context/shortcut_manager.py`.
 
 **Adding a markdown extension:** Create a new module under `extensions/`, export the `Extension` class and any required pre/postprocessors, and add it to the `markdown.Markdown(extensions=[...])` list where the preview is rendered (in `components/document_tab.py`). Also add a re-export line to `extensions/__init__.py` so the extension is accessible from the package root.
+
+**Adding a plugin (instead of editing core):** if a feature can be expressed as a plugin (custom action, sidebar panel, fence renderer, exporter, markdown extension, lifecycle handler), prefer that over a core change. See `docs/plugins.md` for the authoring guide. Bundled plugins under `markdown6/builtin_plugins/` are the canonical examples.
 
 **Link detection regexes:** Wiki links `[[target|display]]`, Markdown links `[text](url)`, bare URLs `https?://...`. Duplicated in `EnhancedEditor` and `components/references_panel.py`.
 

@@ -23,7 +23,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QLabel,
                                QPushButton, QScrollArea, QVBoxLayout,
                                QWidget)
@@ -77,10 +78,17 @@ class _PluginRow:
 class PluginsSettingsPage(QWidget):
     """Settings page that lists plugins with enable/disable toggles."""
 
+    # Emitted when the user clicks "Reload plugins". The editor
+    # listens and routes to ``plugins.reload.reload_plugins`` with
+    # the right roots — the page itself doesn't know the roots.
+    reload_requested = Signal()
+
     def __init__(self, ctx: Any, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._ctx = ctx
         self._rows: list[_PluginRow] = []
+        self.open_folder_button: QPushButton | None = None
+        self.reload_button: QPushButton | None = None
         self._empty_message = (
             "No plugins installed. Drop a plugin directory into "
             f"{self._user_plugin_dir_display()} and restart the editor."
@@ -139,6 +147,31 @@ class PluginsSettingsPage(QWidget):
         body_layout = QVBoxLayout(body)
         body_layout.setContentsMargins(10, 10, 10, 10)
         body_layout.setSpacing(8)
+
+        # Page-level action bar (Open Folder, etc.) — always shown,
+        # regardless of whether any plugins are installed. The Open
+        # Folder action especially makes sense on an empty page since
+        # that's exactly when a user wants to *get* their first plugin
+        # in there.
+        action_row = QHBoxLayout()
+        self.open_folder_button = QPushButton("Open plugins folder")
+        self.open_folder_button.setToolTip(
+            "Reveal the user plugin directory in the file manager. "
+            "Drop plugin directories here and restart the editor."
+        )
+        self.open_folder_button.clicked.connect(self._open_user_plugin_folder)
+        action_row.addWidget(self.open_folder_button)
+
+        self.reload_button = QPushButton("Reload plugins")
+        self.reload_button.setToolTip(
+            "Re-discover plugin directories on disk and report what's "
+            "new or removed. Restart the editor to actually load any "
+            "newly-discovered plugins."
+        )
+        self.reload_button.clicked.connect(self.reload_requested.emit)
+        action_row.addWidget(self.reload_button)
+        action_row.addStretch()
+        body_layout.addLayout(action_row)
 
         disabled_now = set(self._ctx.get("plugins.disabled", []) or [])
         plugins = list(self._ctx.get_plugins())
@@ -285,3 +318,25 @@ class PluginsSettingsPage(QWidget):
         if cfg is None:
             return "<user config dir>/plugins/"
         return str(cfg / "plugins") + "/"
+
+    def _user_plugin_dir(self):
+        """Return the on-disk path to the user plugin directory.
+
+        Mirrors the path ``MarkdownEditor._load_plugins`` reads from,
+        so opening this folder in the file manager points the user at
+        the same place plugins are loaded from.
+        """
+        from pathlib import Path
+        cfg = getattr(self._ctx, "config_dir", None)
+        if cfg is None:
+            return None
+        return Path(cfg) / "plugins"
+
+    def _open_user_plugin_folder(self) -> None:
+        path = self._user_plugin_dir()
+        if path is None:
+            return
+        # Create on demand — saves the user a confusing
+        # "folder doesn't exist" error from the file manager.
+        path.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))

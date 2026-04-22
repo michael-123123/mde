@@ -68,6 +68,32 @@ def test_register_action_stores_menu_shortcut_category() -> None:
     assert a.palette_category == "Transform"
 
 
+@pytest.mark.parametrize("bad_kwargs", [
+    {"id": "", "label": "OK"},
+    {"id": "x.ok", "label": ""},
+    {"id": "  ", "label": "OK"},     # whitespace-only counts as empty
+    {"id": "x.ok", "label": "  "},
+])
+def test_register_action_rejects_empty_id_or_label(bad_kwargs) -> None:
+    """Catch the typo at decoration time so the plugin author sees the
+    failure on import, not a confusing blank menu item."""
+    with pytest.raises(ValueError):
+        @plugin_api.register_action(**bad_kwargs)
+        def fn(ctx):
+            pass
+
+
+@pytest.mark.parametrize("bad_kwargs", [
+    {"id": "", "label": "OK"},
+    {"id": "x.ok", "label": ""},
+])
+def test_register_text_transform_rejects_empty_id_or_label(bad_kwargs) -> None:
+    with pytest.raises(ValueError):
+        @plugin_api.register_text_transform(**bad_kwargs)
+        def fn(text):
+            return text
+
+
 def test_register_action_duplicate_id_raises() -> None:
     @plugin_api.register_action(id="dup", label="one")
     def first(ctx) -> None:  # noqa: ANN001

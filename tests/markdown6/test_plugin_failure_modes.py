@@ -124,7 +124,7 @@ def test_e2e_plugin_missing_dependency(qtbot, ctx, tmp_path: Path) -> None:
 def test_e2e_plugin_bad_toml(qtbot, ctx, tmp_path: Path) -> None:
     _make_plugin(
         tmp_path, "badmeta",
-        toml_body='[plugin\nname = "badmeta"\n',   # malformed
+        toml_body='[tool\nname = "badmeta"\n',   # malformed TOML (unclosed table)
     )
     [p] = load_all([(tmp_path, PluginSource.USER)], user_disabled=set())
 

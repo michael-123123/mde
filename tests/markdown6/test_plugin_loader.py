@@ -147,7 +147,7 @@ def test_discovery_records_metadata_error(tmp_path: Path) -> None:
     _make_plugin_dir(
         tmp_path,
         "bad_meta",
-        toml_body='[plugin\nname = "bad"\n',   # malformed TOML
+        toml_body='[tool\nname = "bad"\n',   # malformed TOML (unclosed table)
     )
     found = discover_plugins([(tmp_path, PluginSource.USER)])
     assert len(found) == 1

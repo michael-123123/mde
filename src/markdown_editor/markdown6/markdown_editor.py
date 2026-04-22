@@ -722,6 +722,11 @@ class MarkdownEditor(QMainWindow):
 
     def _show_settings(self):
         dialog = SettingsDialog(ctx=self.ctx, parent=self)
+        # Wire the Plugins page's Reload button through to our reload
+        # handler. The page emits a signal so it doesn't have to know
+        # the plugin roots — the editor owns that.
+        if hasattr(dialog, "plugins_page"):
+            dialog.plugins_page.reload_requested.connect(self._reload_plugins)
         dialog.exec()
 
     # Format menu actions
@@ -1251,6 +1256,28 @@ class MarkdownEditor(QMainWindow):
         """Callback used by plugin_api.get_active_document()."""
         tab = self.current_tab()
         return DocumentHandle(tab) if tab is not None else None
+
+    def _reload_plugins(self):
+        """Re-discover plugins on disk and post a notification with the diff.
+
+        Wired to the "Reload Plugins" command palette entry and to the
+        Reload button on the Plugins settings page. Discovery-only —
+        does NOT hot-reload existing plugins; the notification tells
+        the user to restart for changes to take effect. See
+        ``plugins/reload.py`` for the rationale.
+        """
+        from markdown_editor.markdown6.plugins.reload import reload_plugins
+        reload_plugins(self.ctx, self._plugin_roots())
+
+    def _plugin_roots(self):
+        """Return the (path, source) pairs the loader uses at startup."""
+        import markdown_editor.markdown6 as pkg
+        builtin_root = Path(pkg.__file__).resolve().parent / "builtin_plugins"
+        user_root = self.ctx.config_dir / "plugins"
+        return [
+            (builtin_root, PluginSource.BUILTIN),
+            (user_root, PluginSource.USER),
+        ]
 
     def _get_all_document_handles(self):
         """Callback used by plugin_api.get_all_documents()."""

@@ -35,6 +35,7 @@ Requires Python 3.11+.
 - **Light and dark themes**
 - **Fullscreen** and **read-only** modes
 - **Cross-platform desktop integration** — Linux `.desktop`, Windows `.lnk`, macOS `.app`
+- **Plugin system** — drop-in Python plugins extend the editor with menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-rendered config dialogs. See [`docs/plugins.md`](docs/plugins.md) for the authoring guide and [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md) for the stability contract.
 
 ## Install
 
@@ -322,6 +323,45 @@ $$
 - Ctrl+click a wiki link to navigate to the target file.
 - Targets without an extension automatically get `.md` appended.
 
+## Plugins
+
+Plugins are Python directories you drop into a known location. They register menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-generated configuration UIs — all through a small, mostly Qt-free API surface.
+
+A minimum plugin is a directory with a `<name>.py` and `<name>.toml`:
+
+```
+~/.config/markdown-editor/plugins/my_plugin/
+├── my_plugin.py
+├── my_plugin.toml
+└── README.md          # optional; rendered in Settings → Plugins → Info
+```
+
+```toml
+# my_plugin.toml
+[tool.mde.plugin]
+name = "my_plugin"
+version = "1.0.0"
+```
+
+```python
+# my_plugin.py
+from markdown_editor.plugins import register_action, get_active_document
+
+@register_action(id="my_plugin.greet", label="Insert greeting")
+def greet():
+    doc = get_active_document()
+    if doc is not None:
+        doc.insert_at_cursor("Hello, world!")
+```
+
+Restart the editor and the action shows up under **Plugins → Insert greeting** + the command palette (`Ctrl+Shift+P`).
+
+**Settings → Plugins** lists every discovered plugin with status, enable/disable toggles, an **ℹ Info** dialog (metadata + your README), an **Open plugins folder** button, and a **Reload plugins** button. Plugin runtime errors surface in the **🔔 notifications drawer** (status bar) so the editor never silently fails.
+
+Read [`docs/plugins.md`](docs/plugins.md) for the full authoring guide with worked examples for every extension point. The bundled `em_dash_to_hyphen`, `wordcount`, and `stamp` plugins under `src/markdown_editor/markdown6/builtin_plugins/` are the canonical reference implementations.
+
+For the API stability promise (what won't break across versions), see [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md).
+
 ## Configuration
 
 Settings live under `~/.config/markdown-editor/`:
@@ -338,37 +378,47 @@ The **Settings** dialog (accessible from the Edit menu or the command palette) h
 - **Files** — show hidden (dotfile) files, external file-change detection
 - **Tools** — custom paths to `pandoc`, `dot`, `mmdc`
 - **Shortcuts** — remap any keyboard shortcut
+- **Plugins** — list of discovered plugins with enable/disable, Configure dialogs (for plugins with settings schemas), Info dialogs, and Open Folder / Reload buttons
 
 Pass `--config DIR` to use an alternate config directory, `--new-session` to keep settings in memory only, or `--reset` to wipe config and start clean.
 
 ## Project Structure
 
 ```
-src/markdown_editor/markdown6/
-├── markdown_editor.py         # Main QMainWindow
-├── markdown_editor_cli.py     # `mde` CLI entry point and subcommands
-├── actions.py                 # Data-driven menu/shortcut/palette registry
-├── enhanced_editor.py         # Text editor widget (QPlainTextEdit subclass)
-├── syntax_highlighter.py      # Markdown syntax highlighting
-├── theme.py                   # ThemeColors + StyleSheets factories
-├── export_service.py          # PDF/DOCX/HTML export
-├── graphviz_service.py        # Graphviz rendering (cached)
-├── mermaid_service.py         # Mermaid rendering (cached)
-├── tool_paths.py              # External tool path resolution
-├── snippets.py                # Snippet manager and popup
-├── searchable_popup.py        # Base class for searchable popups
-├── logger.py                  # Colored logger utilities
-├── temp_files.py              # Tracked temp files, atomic_write()
-├── file_tree_widget.py        # Checkbox file-tree widget (shared)
-├── project_manager.py         # ProjectPanel (top-level for import stability)
-│
-├── app_context/               # Settings, shortcuts, session state (DI facade)
-├── components/                # Widgets: panels, dialogs, activity bar, sidebar
-├── extensions/                # Markdown extensions (callouts, diagrams, math, …)
-└── templates/                 # Preview HTML templates
+src/markdown_editor/
+├── plugins/                   # Public plugin API shim (markdown_editor.plugins)
+└── markdown6/
+    ├── markdown_editor.py         # Main QMainWindow
+    ├── markdown_editor_cli.py     # `mde` CLI entry point and subcommands
+    ├── actions.py                 # Data-driven menu/shortcut/palette registry
+    ├── enhanced_editor.py         # Text editor widget (QPlainTextEdit subclass)
+    ├── syntax_highlighter.py      # Markdown syntax highlighting
+    ├── theme.py                   # ThemeColors + StyleSheets factories
+    ├── export_service.py          # PDF/DOCX/HTML export
+    ├── graphviz_service.py        # Graphviz rendering (cached)
+    ├── mermaid_service.py         # Mermaid rendering (cached)
+    ├── tool_paths.py              # External tool path resolution
+    ├── notifications.py           # NotificationCenter (bell/drawer storage)
+    ├── snippets.py                # Snippet manager and popup
+    ├── searchable_popup.py        # Base class for searchable popups
+    ├── logger.py                  # Colored logger utilities
+    ├── temp_files.py              # Tracked temp files, atomic_write()
+    ├── file_tree_widget.py        # Checkbox file-tree widget (shared)
+    ├── project_manager.py         # ProjectPanel (top-level for import stability)
+    │
+    ├── app_context/               # Settings, shortcuts, session state, plugin list
+    ├── components/                # Widgets: panels, dialogs, activity bar, sidebar
+    ├── extensions/                # Built-in markdown extensions (callouts, diagrams, …)
+    ├── plugins/                   # Plugin system internals (loader, registry, dispatch)
+    ├── builtin_plugins/           # Bundled reference plugins (em_dash, wordcount, stamp)
+    └── templates/                 # Preview HTML templates
+
+docs/                          # User-facing documentation
+├── plugins.md                 # Plugin authoring guide
+└── plugin-api-versioning.md   # Plugin API stability contract
 ```
 
-See `src/markdown_editor/markdown6/DEVELOPMENT.md` for a full module reference.
+See `src/markdown_editor/markdown6/DEVELOPMENT.md` for a full module reference, and `docs/plugins.md` for plugin authoring.
 
 ## License
 

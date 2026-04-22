@@ -36,9 +36,22 @@ If you find yourself needing something not exported here, that thing
 is either an internal helper (which may change without notice) or a
 gap in the public API — please file an issue.
 
-For escape hatches that explicitly opt into Qt access (``doc.editor``,
-the application's ``QMainWindow``, etc.), see the project plan's
-"Access model — two tiers" section.
+Documentation:
+
+* ``docs/plugins.md`` — tutorial-style plugin authoring guide with
+  worked examples for every extension point.
+* ``docs/plugin-api-versioning.md`` — full API stability contract
+  (what's stable, what's not, deprecation policy, ``mde_api_version``
+  semantics).
+
+Bundled reference plugins (read these for working code):
+
+* ``markdown6/builtin_plugins/em_dash_to_hyphen/`` — minimal text
+  transform.
+* ``markdown6/builtin_plugins/wordcount/`` — sidebar panel + signals
+  + plugin settings.
+* ``markdown6/builtin_plugins/stamp/`` — action + schema-driven
+  Configure dialog (every supported field type).
 """
 
 from __future__ import annotations

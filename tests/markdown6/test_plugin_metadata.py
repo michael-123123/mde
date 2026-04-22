@@ -68,10 +68,15 @@ def test_unknown_keys_tolerated(tmp_path: Path) -> None:
         version = "0.1"
         future_feature = "whatever"
 
-        [plugin.unknown_section]
+        [tool.mde.plugin.future_subtable]
+        key = "value"
+
+        [some.other.tool]
         key = "value"
     """)
-    # Unknown keys must not cause MetadataError — forward compatibility.
+    # Unknown keys + unknown subtables + sibling [tool.<other>] sections
+    # must not cause MetadataError — forward compatibility / coexistence
+    # with embedding in a wider pyproject-style TOML.
     m = load_metadata(toml)
     assert m.name == "x"
 
@@ -111,7 +116,7 @@ def test_file_not_found(tmp_path: Path) -> None:
 
 def test_malformed_toml(tmp_path: Path) -> None:
     toml = _write_toml(tmp_path, """
-        [plugin
+        [tool
         name = "bad"
     """)
     with pytest.raises(MetadataError, match="parse"):

@@ -124,6 +124,7 @@ def register_action(
     the plugin — the framework calls it with no arguments. Use
     :func:`get_active_document` inside to reach the current document.
     """
+    _require_non_empty("register_action", id=id, label=label)
     _validate_place(id, menu, place)
 
     def decorator(fn: Callable) -> Callable:
@@ -160,6 +161,23 @@ def _validate_place(action_id: str, menu: str, place: str) -> None:
         )
 
 
+def _require_non_empty(decorator_name: str, **fields: str) -> None:
+    """Reject empty / whitespace-only string fields at decoration time.
+
+    A blank ``id`` would silently let a second plugin claim the same
+    "" id (id-collision check would also catch it, but only on the
+    second plugin); a blank ``label`` would render a blank menu item
+    with no clue what plugin owns it. Either is almost certainly a
+    plugin-author typo — fail loud so they see it on import.
+    """
+    for name, value in fields.items():
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(
+                f"{decorator_name}: {name}={value!r} must be a "
+                "non-empty, non-whitespace string."
+            )
+
+
 def register_text_transform(
     *,
     id: str,
@@ -184,6 +202,7 @@ def register_text_transform(
     See :func:`register_action` for the ``menu`` and ``place``
     semantics — they are identical.
     """
+    _require_non_empty("register_text_transform", id=id, label=label)
     _validate_place(id, menu, place)
 
     def decorator(fn: Callable[[str], str]) -> Callable[[str], str]:
@@ -230,6 +249,7 @@ def register_exporter(
     Disabled plugins' exporters are hidden along with the rest of
     their menu entries.
     """
+    _require_non_empty("register_exporter", id=id, label=label)
     if not extensions:
         raise ValueError(
             f"register_exporter(id={id!r}): extensions must be a "
@@ -272,8 +292,7 @@ def register_panel(
     ``register_panel``), but the factory's return value is a
     ``QWidget``.
     """
-    if not label:
-        raise ValueError("register_panel: label must be non-empty")
+    _require_non_empty("register_panel", id=id, label=label)
     actual_name = _plugin_name if _plugin_name is not None else _CURRENT_PLUGIN_NAME
 
     def decorator(fn):

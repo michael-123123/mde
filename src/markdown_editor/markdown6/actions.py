@@ -256,6 +256,9 @@ MENU_STRUCTURE: list[MenuDef] = [
 PALETTE_ONLY: list[ActionDef] = [
     ActionDef("view.toggle_theme", "", "_toggle_theme",
               palette_name="Toggle Light/Dark Theme", palette_category="View"),
+    ActionDef("plugins.reload", "", "_reload_plugins",
+              palette_name="Reload Plugins (re-discover only)",
+              palette_category="Plugins"),
 ]
 
 

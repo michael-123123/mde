@@ -3,6 +3,15 @@
 All notable changes to markdown-editor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Plugin system.** Drop-in Python plugins extend the editor with menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-rendered configuration UIs. Plugins live in `<config_dir>/plugins/<name>/` and ship as a `<name>.py` + `<name>.toml` directory. Public API at `from markdown_editor.plugins import …`. See [`docs/plugins.md`](docs/plugins.md) for the authoring guide and [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md) for the stability contract.
+- **Settings → Plugins tab** lists every discovered plugin with status, enable/disable toggle, ℹ Info dialog (metadata + README), Open plugins folder, and Reload plugins buttons. Plugins with a registered settings schema get an auto-generated Configure… dialog.
+- **🔔 Notifications drawer** in the status bar. Plugin runtime errors and plugin-authored notifications surface here without blocking the editor; click the bell to see history.
+- **Three bundled reference plugins** under `markdown6/builtin_plugins/`: `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), `stamp` (action + every settings-schema field type).
+
 ## [0.1.13] - 2026-04-21
 
 ### Added
