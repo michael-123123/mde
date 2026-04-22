@@ -1,0 +1,91 @@
+"""Public plugin API for the Markdown editor.
+
+This is the import path **plugin authors** should use:
+
+.. code-block:: python
+
+    from markdown_editor.plugins import (
+        register_action,
+        register_text_transform,
+        register_panel,
+        register_fence,
+        register_exporter,
+        register_markdown_extension,
+        on_save,
+        on_content_changed,
+        on_file_opened,
+        on_file_closed,
+        get_active_document,
+        DocumentHandle,
+    )
+
+Everything here is a thin re-export of the corresponding symbol in
+:mod:`markdown_editor.markdown6.plugins.api`. The internal module is
+where the implementation lives; this shim is the stable contract
+plugin authors code against.
+
+Stability promise:
+
+* Names exported here will not change between MDE minor versions
+  once we hit 1.0.
+* Argument signatures of decorators may grow keyword-only arguments
+  (with sensible defaults) but won't drop or rename existing ones.
+* Method signatures on :class:`DocumentHandle` are similarly stable.
+
+If you find yourself needing something not exported here, that thing
+is either an internal helper (which may change without notice) or a
+gap in the public API — please file an issue.
+
+For escape hatches that explicitly opt into Qt access (``doc.editor``,
+the application's ``QMainWindow``, etc.), see the project plan's
+"Access model — two tiers" section.
+"""
+
+from __future__ import annotations
+
+from markdown_editor.markdown6.plugins.api import (
+    Field,
+    get_active_document,
+    get_all_documents,
+    get_app_context,
+    get_main_window,
+    on_content_changed,
+    on_file_closed,
+    on_file_opened,
+    on_save,
+    plugin_settings,
+    register_action,
+    register_exporter,
+    register_fence,
+    register_markdown_extension,
+    register_panel,
+    register_settings_schema,
+    register_text_transform,
+)
+from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
+
+
+__all__ = [
+    # Registration decorators
+    "register_action",
+    "register_text_transform",
+    "register_panel",
+    "register_fence",
+    "register_exporter",
+    "register_markdown_extension",
+    "register_settings_schema",
+    # Lifecycle signals
+    "on_save",
+    "on_content_changed",
+    "on_file_opened",
+    "on_file_closed",
+    # Document access + storage (stable)
+    "get_active_document",
+    "get_all_documents",
+    "plugin_settings",
+    "DocumentHandle",
+    "Field",
+    # Escape hatches (opt-in; not guaranteed stable across versions)
+    "get_app_context",
+    "get_main_window",
+]

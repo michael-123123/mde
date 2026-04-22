@@ -16,7 +16,7 @@ in their markdown, or disable it from Settings → Plugins.
 
 from __future__ import annotations
 
-from markdown_editor.markdown6.plugins.api import register_text_transform
+from markdown_editor.plugins import register_text_transform
 
 
 EM_DASH = "\u2014"   # —

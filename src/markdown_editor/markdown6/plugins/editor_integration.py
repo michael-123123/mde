@@ -41,6 +41,7 @@ from markdown_editor.markdown6.plugins.api import (
 )
 from markdown_editor.markdown6.plugins.registry import (
     PluginAction,
+    PluginExporter,
     PluginRegistry,
     PluginTextTransform,
 )
@@ -206,6 +207,9 @@ def inject_plugin_actions(
     for transform in registry.text_transforms():
         _inject_transform(window, transform, palette_commands)
 
+    for exporter in registry.exporters():
+        _inject_exporter(window, exporter, palette_commands)
+
 
 def _inject_action(
     window: QMainWindow,
@@ -239,6 +243,78 @@ def _inject_action(
     name = action.plugin_name or "_unattributed_"
     _actions_by_name(window).setdefault(name, []).append(qa)
     _palette_by_name(window).setdefault(name, []).append(cmd)
+
+
+def _inject_exporter(
+    window: QMainWindow,
+    exporter: PluginExporter,
+    palette_commands: list[Command],
+) -> None:
+    """Add an exporter as a menu entry under Plugins/Export.
+
+    Triggering the entry opens a save dialog filtered by the
+    exporter's file extensions and (on a non-cancelled selection)
+    invokes the plugin's callback with ``(doc, path)``. If there is
+    no active document, the dialog is NOT opened — better UX than
+    making the user click through a save dialog only to find nothing
+    happened.
+    """
+    menu = resolve_menu_path(window, "Export")
+    qa = QAction(exporter.label, window)
+    qa.setObjectName(exporter.id)
+
+    callback = _wrap_exporter_callback(window, exporter)
+    qa.triggered.connect(lambda *_args, _cb=callback: _cb())
+    menu.addAction(qa)
+
+    cmd = Command(
+        id=exporter.id,
+        name=exporter.label,
+        shortcut="",
+        callback=callback,
+        category="Plugin Export",
+    )
+    palette_commands.append(cmd)
+
+    name = exporter.plugin_name or "_unattributed_"
+    _actions_by_name(window).setdefault(name, []).append(qa)
+    _palette_by_name(window).setdefault(name, []).append(cmd)
+
+
+def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
+    """Return a zero-arg callable that drives the dialog → invoke flow."""
+    fn = exporter.callback
+
+    def invoke():
+        if fn is None:
+            return
+        doc = get_active_document()
+        if doc is None:
+            logger.debug(
+                "Plugin exporter %r invoked with no active document",
+                exporter.id,
+            )
+            return
+
+        from pathlib import Path
+        from PySide6.QtWidgets import QFileDialog
+
+        ext_glob = " ".join(f"*.{ext}" for ext in exporter.extensions)
+        filter_str = f"{exporter.label} ({ext_glob});;All Files (*)"
+        path_str, _ = QFileDialog.getSaveFileName(
+            window, f"Export as {exporter.label}", "", filter_str,
+        )
+        if not path_str:
+            return   # user cancelled
+        try:
+            fn(doc, Path(path_str))
+        except BaseException as exc:   # noqa: BLE001 — plugin code
+            logger.warning(
+                "Plugin exporter %r raised: %s", exporter.id, exc,
+                exc_info=True,
+            )
+
+    return invoke
 
 
 def _inject_transform(
@@ -438,6 +514,75 @@ def plugin_palette_commands_filtered(
             continue
         out.extend(cmds)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Plugin panel installation
+# ---------------------------------------------------------------------------
+
+
+_PANEL_INDEX_BY_NAME_ATTR = "_mde_plugin_panel_index_by_name"
+
+
+def _panel_index_by_name(sidebar) -> dict[str, list[int]]:
+    groups = getattr(sidebar, _PANEL_INDEX_BY_NAME_ATTR, None)
+    if groups is None:
+        groups = {}
+        setattr(sidebar, _PANEL_INDEX_BY_NAME_ATTR, groups)
+    return groups
+
+
+def install_plugin_panels(sidebar, registry: PluginRegistry, *, disabled: set[str]) -> None:
+    """Materialize each registered plugin panel into ``sidebar``.
+
+    Calls each plugin's factory once, validates the return is a
+    ``QWidget``, and adds it to the sidebar. Tracks the activity-bar
+    index keyed by ``plugin_name`` (in the new
+    ``_mde_plugin_panel_index_by_name`` attr on the sidebar) so the
+    editor can later toggle visibility on
+    ``plugins.disabled`` change. Disabled panels are still installed
+    (their factory runs, the widget exists in the stack) but their
+    activity-bar tab is hidden — this is what enables live re-enable
+    without restart.
+
+    Plugin factory exceptions are caught + logged; the panel is
+    skipped. Factories returning non-``QWidget`` values are also
+    rejected with a clear log entry.
+    """
+    from PySide6.QtWidgets import QWidget
+
+    groups = _panel_index_by_name(sidebar)
+    for panel in registry.panels():
+        try:
+            widget = panel.factory()
+        except BaseException as exc:    # noqa: BLE001 — plugin code
+            logger.warning(
+                "Plugin panel %r factory raised: %s", panel.id, exc,
+                exc_info=True,
+            )
+            continue
+        if not isinstance(widget, QWidget):
+            logger.warning(
+                "Plugin panel %r factory returned %r — must return a "
+                "QWidget; panel skipped.",
+                panel.id, type(widget).__name__,
+            )
+            continue
+        idx = sidebar.addPanel(panel.label, panel.icon, widget)
+        groups.setdefault(panel.plugin_name or "_unattributed_", []).append(idx)
+        if panel.plugin_name and panel.plugin_name in disabled:
+            sidebar.setPanelVisible(idx, False)
+
+
+def apply_panel_disabled_set(sidebar, disabled: set[str]) -> None:
+    """Toggle visibility for installed plugin panels based on
+    ``disabled``. Counterpart to :func:`apply_disabled_set` for the
+    sidebar half of the editor."""
+    groups = _panel_index_by_name(sidebar)
+    for name, indices in groups.items():
+        on = name not in disabled
+        for idx in indices:
+            sidebar.setPanelVisible(idx, on)
 
 
 # ---------------------------------------------------------------------------

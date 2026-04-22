@@ -114,6 +114,25 @@ class Sidebar(QWidget):
 
         return index
 
+    def setPanelVisible(self, index: int, visible: bool) -> None:
+        """Show or hide a panel + its activity-bar tab.
+
+        Used by the plugin system to disable a plugin's panel without
+        a full restart. The widget itself stays in the stack so
+        re-enabling can flip visibility back instantly.
+        """
+        if not (0 <= index < self.stack.count()):
+            return
+        self.activity_bar.setTabVisible(index, visible)
+        # If the currently-active panel is being hidden, fall back to
+        # the first still-visible panel so the user isn't stuck looking
+        # at an empty pane.
+        if not visible and self._active_index == index:
+            for i in range(self.activity_bar.tabCount()):
+                if self.activity_bar.isTabVisible(i):
+                    self.setActivePanel(i)
+                    break
+
     def setActivePanel(self, index: int):
         """Set the active panel by index."""
         if 0 <= index < self.stack.count():

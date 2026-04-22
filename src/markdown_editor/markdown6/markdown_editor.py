@@ -23,10 +23,12 @@ from markdown_editor.markdown6.actions import (_action_attr, _shortcut_id,
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (
-    apply_disabled_set, inject_plugin_actions,
-    plugin_palette_commands_filtered, register_existing_menu)
+    apply_disabled_set, apply_panel_disabled_set, inject_plugin_actions,
+    install_plugin_panels, plugin_palette_commands_filtered,
+    register_existing_menu)
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource
+from markdown_editor.markdown6.plugins.signals import SignalKind, dispatch as plugin_dispatch
 
 
 
@@ -165,8 +167,20 @@ class MarkdownEditor(QMainWindow):
         source of truth for "preview-grade rendering". The live preview
         and export paths build Markdown instances via the same factory
         so their extension sets can never drift apart.
+
+        Plugin-registered ``markdown.Extension`` instances (via
+        ``plugins.api.register_markdown_extension``) are appended after
+        the built-in stack — those from currently-disabled plugins are
+        excluded. The plugin-fence dispatcher (``PluginFenceExtension``)
+        is also added with the current disabled set captured.
         """
-        self.md = build_markdown()
+        from markdown_editor.markdown6.plugins.fence import PluginFenceExtension
+        disabled = set(self.ctx.get("plugins.disabled", []) or [])
+        extras = list(
+            plugin_api._REGISTRY.active_markdown_extensions(disabled=disabled)
+        )
+        extras.append(PluginFenceExtension(disabled=disabled))
+        self.md = build_markdown(extra_extensions=extras)
 
     def _init_ui(self):
         """Set up the user interface."""
@@ -343,18 +357,26 @@ class MarkdownEditor(QMainWindow):
     def _refresh_plugin_enabled_state(self):
         """React to a toggle in Settings → Plugins without a restart.
 
-        Hides/shows already-loaded plugins' menu entries and rebuilds
-        the command palette with the filtered set. Re-enabling a
-        plugin that wasn't loaded at startup (e.g. it was in the
-        disabled set when the editor launched) still requires a
-        restart — there's nothing in memory to bring back. This
-        limitation is documented in Settings → Plugins.
+        Hides/shows already-loaded plugins' menu entries, rebuilds the
+        command palette with the filtered set, and re-initializes the
+        markdown converter so plugin-registered ``markdown.Extension``
+        instances are added/removed from the preview pipeline.
+        Re-enabling a plugin that wasn't loaded at startup (e.g. it
+        was in the disabled set when the editor launched) still
+        requires a restart — there's nothing in memory to bring back.
         """
         disabled = set(self.ctx.get("plugins.disabled", []) or [])
         apply_disabled_set(self, disabled)
+        apply_panel_disabled_set(self.sidebar, disabled)
         static = build_command_palette(self, self._action_defs)
         static.extend(plugin_palette_commands_filtered(self, disabled))
         self.command_palette.set_commands(static)
+        # Rebuild self.md so plugin extensions take effect for next render
+        self._init_markdown()
+        # Re-render the active tab so the change is visible immediately
+        active = self.current_tab()
+        if active is not None:
+            active.render_markdown()
 
     def _init_autosave(self):
         """Initialize the autosave timer."""
@@ -816,6 +838,10 @@ class MarkdownEditor(QMainWindow):
         tab.editor.cursor_position_changed.connect(self._update_cursor_position)
         tab.link_clicked.connect(self._handle_link_click)
         tab.editor.link_ctrl_clicked.connect(self._handle_editor_link_click)
+        # Fan out content-change events to plugin signal handlers (if any).
+        tab.editor.textChanged.connect(
+            lambda _t=tab: self._dispatch_plugin_signal(SignalKind.CONTENT_CHANGED, _t)
+        )
 
     def open_file(self, file_path: str | Path | None = None):
         """Open a markdown file in a new tab."""
@@ -876,6 +902,7 @@ class MarkdownEditor(QMainWindow):
             self._update_recent_files_menu()
 
             self.status_bar.showMessage(f"Opened: {path}")
+            self._dispatch_plugin_signal(SignalKind.FILE_OPENED, tab)
         except Exception as e:
             logger.exception(f"Could not open file: {path}")
             QMessageBox.critical(self, "Error", f"Could not open file: {e}")
@@ -897,6 +924,7 @@ class MarkdownEditor(QMainWindow):
             self.update_tab_title(tab)
             self.update_window_title()
             self.status_bar.showMessage(f"Saved: {tab.file_path}")
+            self._dispatch_plugin_signal(SignalKind.SAVE, tab)
             return True
         except Exception as e:
             logger.exception(f"Could not save file: {tab.file_path}")
@@ -970,6 +998,10 @@ class MarkdownEditor(QMainWindow):
 
         if not self._check_tab_unsaved_changes(tab):
             return False
+
+        # Notify plugins BEFORE the tab is removed so handlers can still
+        # introspect the document (e.g. log final word count).
+        self._dispatch_plugin_signal(SignalKind.FILE_CLOSED, tab)
 
         self.tab_widget.removeTab(index)
 
@@ -1149,6 +1181,8 @@ class MarkdownEditor(QMainWindow):
         plugin_api._set_active_document_provider(
             self._get_active_document_handle
         )
+        plugin_api._set_all_documents_provider(self._get_all_document_handles)
+        plugin_api._set_main_window_provider(lambda: self)
 
         disabled = set(self.ctx.get("plugins.disabled", []) or [])
         self._plugins = load_all(
@@ -1164,11 +1198,24 @@ class MarkdownEditor(QMainWindow):
             self, plugin_api.get_registry(), self._plugin_palette_commands
         )
 
+        # Materialize plugin sidebar panels (`register_panel`). Disabled
+        # plugins' panels are still installed (so live re-enable can
+        # reveal them) but their activity-bar tab is hidden.
+        install_plugin_panels(
+            self.sidebar, plugin_api.get_registry(), disabled=disabled,
+        )
+
         # Apply the initial disabled-set to hide already-loaded plugins
         # that the user had toggled off in a previous session. This is
         # what lets re-enabling them later flip visibility instantly —
         # their QActions were created up-front, just hidden.
         apply_disabled_set(self, disabled)
+
+        # Rebuild the markdown converter so any plugin-registered
+        # ``markdown.Extension`` instances actually reach the preview
+        # pipeline. (`_init_markdown` ran in __init__ before plugins
+        # were loaded, so its first build had no plugin extensions.)
+        self._init_markdown()
 
         # Publish to AppContext so the Plugins settings tab can read the list.
         self.ctx.set_plugins(self._plugins)
@@ -1177,6 +1224,22 @@ class MarkdownEditor(QMainWindow):
         """Callback used by plugin_api.get_active_document()."""
         tab = self.current_tab()
         return DocumentHandle(tab) if tab is not None else None
+
+    def _get_all_document_handles(self):
+        """Callback used by plugin_api.get_all_documents()."""
+        out = []
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if tab is not None:
+                out.append(DocumentHandle(tab))
+        return out
+
+    def _dispatch_plugin_signal(self, kind: SignalKind, tab) -> None:
+        """Wrap a tab as a DocumentHandle and fan out to plugin handlers."""
+        if tab is None:
+            return
+        disabled = set(self.ctx.get("plugins.disabled", []) or [])
+        plugin_dispatch(kind, DocumentHandle(tab), disabled=disabled)
 
     def _show_command_palette(self):
         """Show the command palette."""

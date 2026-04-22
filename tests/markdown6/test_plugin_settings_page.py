@@ -229,6 +229,51 @@ def test_apply_persists_to_settings(qtbot, ctx) -> None:
     assert set(ctx.get("plugins.disabled", [])) == {"off"}
 
 
+def test_configure_button_present_when_schema_registered(qtbot, ctx) -> None:
+    """Plugins that registered a settings schema get a 'Configure…' button."""
+    from markdown_editor.markdown6.plugins import api as plugin_api
+    plugin_api._REGISTRY.clear()
+    plugin_api.register_settings_schema(
+        fields=[plugin_api.Field("k", "K", default="v")],
+        plugin_id="hi",
+    )
+    ctx.set_plugins([_plugin("hi")])
+
+    page = PluginsSettingsPage(ctx)
+    qtbot.addWidget(page)
+
+    row = page.row_for("hi")
+    assert row.configure_button is not None
+    assert row.configure_button.isVisible() or row.configure_button.isEnabled()
+
+
+def test_no_configure_button_when_no_schema(qtbot, ctx) -> None:
+    """Plugins without a schema don't have a Configure… button at all
+    — empty Configure dialogs would be confusing."""
+    ctx.set_plugins([_plugin("plain")])
+    page = PluginsSettingsPage(ctx)
+    qtbot.addWidget(page)
+    row = page.row_for("plain")
+    assert row.configure_button is None
+
+
+def test_configure_button_disabled_when_plugin_errored(qtbot, ctx) -> None:
+    """An errored plugin's schema may not be loaded; Configure is disabled."""
+    from markdown_editor.markdown6.plugins import api as plugin_api
+    plugin_api._REGISTRY.clear()
+    plugin_api.register_settings_schema(
+        fields=[plugin_api.Field("k", "K")],
+        plugin_id="broken",
+    )
+    ctx.set_plugins([_plugin("broken", status=PluginStatus.LOAD_FAILURE,
+                             detail="kaboom")])
+    page = PluginsSettingsPage(ctx)
+    qtbot.addWidget(page)
+    row = page.row_for("broken")
+    if row.configure_button is not None:
+        assert not row.configure_button.isEnabled()
+
+
 def test_apply_errored_plugins_not_added_to_disabled_set(qtbot, ctx) -> None:
     """An errored plugin is already unavailable — don't also write it
     into plugins.disabled (that'd stick even after fixing the error)."""

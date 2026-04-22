@@ -25,7 +25,8 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QLabel,
-                               QScrollArea, QVBoxLayout, QWidget)
+                               QPushButton, QScrollArea, QVBoxLayout,
+                               QWidget)
 
 from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
                                                       PluginStatus)
@@ -69,6 +70,7 @@ class _PluginRow:
     source_label: QLabel
     status_label: QLabel
     detail_label: QLabel
+    configure_button: QPushButton | None = None
 
 
 class PluginsSettingsPage(QWidget):
@@ -170,6 +172,12 @@ class PluginsSettingsPage(QWidget):
     def _build_row_widget(self, plugin: Plugin, disabled_now: set[str]) -> QWidget:
         status_text, checked, can_toggle = _effective_state(plugin, disabled_now)
 
+        # Look up settings schema (if any) to decide whether to show
+        # the Configure button. Imported lazily so this module doesn't
+        # need to depend on the plugin api at module-load time.
+        from markdown_editor.markdown6.plugins import api as plugin_api
+        schema = plugin_api._REGISTRY.get_settings_schema(plugin.name)
+
         frame = QFrame()
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         layout = QHBoxLayout(frame)
@@ -224,6 +232,15 @@ class PluginsSettingsPage(QWidget):
 
         layout.addLayout(text_col, 1)
 
+        configure_button: QPushButton | None = None
+        if schema is not None:
+            configure_button = QPushButton("Configure…")
+            configure_button.setEnabled(not plugin.is_errored)
+            configure_button.clicked.connect(
+                lambda _checked=False, _id=plugin.name: self._open_configure_dialog(_id),
+            )
+            layout.addWidget(configure_button, 0, Qt.AlignmentFlag.AlignTop)
+
         self._rows.append(_PluginRow(
             plugin=plugin,
             checkbox=checkbox,
@@ -232,8 +249,20 @@ class PluginsSettingsPage(QWidget):
             source_label=source_label,
             status_label=status_label,
             detail_label=detail_label,
+            configure_button=configure_button,
         ))
         return frame
+
+    def _open_configure_dialog(self, plugin_id: str) -> None:
+        from markdown_editor.markdown6.components.plugin_configure_dialog import (
+            PluginConfigureDialog,
+        )
+        from markdown_editor.markdown6.plugins import api as plugin_api
+        schema = plugin_api._REGISTRY.get_settings_schema(plugin_id)
+        if schema is None:
+            return
+        dialog = PluginConfigureDialog(self._ctx, schema, parent=self)
+        dialog.exec()
 
     def _user_plugin_dir_display(self) -> str:
         cfg = getattr(self._ctx, "config_dir", None)

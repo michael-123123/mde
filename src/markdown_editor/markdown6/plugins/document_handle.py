@@ -38,6 +38,25 @@ class DocumentHandle:
     def text(self) -> str:
         return self._editor.toPlainText()
 
+    # --- Escape hatches (Qt access; explicitly opt-in / not stable) ---------
+
+    @property
+    def editor(self):
+        """Underlying ``QPlainTextEdit`` — escape hatch, not stable.
+
+        Plugins that need fine-grained Qt control (custom selection
+        manipulation, signal connections, etc.) reach into this. The
+        documented Qt-free API (text, replace_all, atomic_edit, etc.)
+        should cover most use cases; this is for the cases it doesn't.
+        """
+        return self._editor
+
+    @property
+    def preview(self):
+        """Underlying preview widget (typically ``QWebEngineView``) or
+        ``None`` if the wrapping tab doesn't have one. Escape hatch."""
+        return getattr(self._tab, "preview", None)
+
     @property
     def file_path(self) -> Path | None:
         return getattr(self._tab, "file_path", None)
