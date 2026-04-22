@@ -154,6 +154,66 @@ class _PreviewWheelFilter(QObject):
         return False
 
 
+class _PreviewKeyFilter(QObject):
+    """Event filter that translates vertical-scroll keypresses on the
+    preview into scrollbar moves on the **editor**, so keyboard scrolling
+    in the preview keeps both panes aligned via the existing editor →
+    preview sync pipeline.
+
+    Keys handled (event consumed):
+
+    - ``Down`` / ``Up``           — single-step scroll
+    - ``PageDown`` / ``PageUp``   — page-step scroll
+    - ``Space`` / ``Shift+Space`` — page-step scroll (WebEngine's native
+      alias for PageDown/PageUp)
+    - ``Home`` / ``End``          — jump to top / bottom
+
+    All other keys pass through so the preview retains normal keyboard
+    behavior (Left/Right, Tab, character input, shortcuts).
+
+    Gate: the filter is a no-op when ``_sync_scrolling`` is off (user
+    disabled editor↔preview sync in settings) or the editor isn't
+    visible (preview-only layout — then native preview scrolling is the
+    right thing). Same gating as ``_PreviewWheelFilter``.
+    """
+
+    def __init__(self, tab: DocumentTab):
+        super().__init__(tab)
+        self._tab = tab
+
+    def eventFilter(self, obj, event):
+        if event.type() != event.Type.KeyPress:
+            return False
+        if not self._tab._sync_scrolling:
+            return False
+        if not self._tab.editor.isVisible():
+            return False
+
+        vbar = self._tab.editor.verticalScrollBar()
+        key = event.key()
+        mods = event.modifiers()
+
+        if key == Qt.Key.Key_Down:
+            vbar.setValue(vbar.value() + vbar.singleStep())
+        elif key == Qt.Key.Key_Up:
+            vbar.setValue(vbar.value() - vbar.singleStep())
+        elif key == Qt.Key.Key_PageDown:
+            vbar.setValue(vbar.value() + vbar.pageStep())
+        elif key == Qt.Key.Key_PageUp:
+            vbar.setValue(vbar.value() - vbar.pageStep())
+        elif key == Qt.Key.Key_Space:
+            delta = -vbar.pageStep() if mods & Qt.KeyboardModifier.ShiftModifier else vbar.pageStep()
+            vbar.setValue(vbar.value() + delta)
+        elif key == Qt.Key.Key_Home:
+            vbar.setValue(0)
+        elif key == Qt.Key.Key_End:
+            vbar.setValue(vbar.maximum())
+        else:
+            return False
+
+        return True
+
+
 class DocumentTab(QWidget):
     """A single document tab with editor and preview panes."""
 
@@ -305,19 +365,22 @@ class DocumentTab(QWidget):
         self.ctx.settings_changed.connect(self._on_setting_changed)
 
         # Sync scrolling — editor is the source of truth.
-        # For WebEngine, wheel events on the preview's internal rendering
-        # widget are forwarded to the editor so scrolling either pane
-        # keeps them in sync.
+        # For WebEngine, wheel and vertical-scroll key events on the
+        # preview's internal rendering widget are forwarded to the editor
+        # so scrolling either pane (via mouse or keyboard) keeps them in
+        # sync.
         self.editor.verticalScrollBar().valueChanged.connect(self._on_editor_scroll)
         if self._use_webengine:
             self._wheel_filter = _PreviewWheelFilter(self)
-            self._wheel_filter_installed = False
-            self._custom_page.loadFinished.connect(self._install_wheel_filter)
+            self._key_filter = _PreviewKeyFilter(self)
+            self._preview_filters_installed = False
+            self._custom_page.loadFinished.connect(self._install_preview_event_filters)
             self._custom_page.loadFinished.connect(
                 lambda ok: logger.info(f"[DIAG] loadFinished ok={ok}")
             )
         else:
             self.preview.viewport().installEventFilter(_PreviewWheelFilter(self))
+            self.preview.viewport().installEventFilter(_PreviewKeyFilter(self))
 
     def _on_link_clicked(self, url: QUrl):
         """Handle link clicks in the preview, forwarding to the main window."""
@@ -479,14 +542,21 @@ class DocumentTab(QWidget):
                 f"document.body.classList.toggle('zoomed', {zoomed});"
             )
 
-    def _install_wheel_filter(self):
-        """Install the wheel event filter on WebEngine's internal widget."""
-        if self._wheel_filter_installed:
+    def _install_preview_event_filters(self):
+        """Install wheel + key event filters on WebEngine's internal widgets.
+
+        WebEngine keeps its actual rendering surface as a native child
+        widget that only exists after ``loadFinished`` fires, so the
+        filters have to be installed at that point rather than at
+        construction time.
+        """
+        if self._preview_filters_installed:
             return
         children = self.preview.findChildren(QWidget)
         for child in children:
             child.installEventFilter(self._wheel_filter)
-        self._wheel_filter_installed = bool(children)
+            child.installEventFilter(self._key_filter)
+        self._preview_filters_installed = bool(children)
 
     def _on_text_changed(self):
         """Handle text changes in the editor."""
