@@ -12,8 +12,6 @@ Making it a derived property eliminates the sync problem structurally:
 there's only one source of truth, ``document().isModified()``, and the
 attribute simply returns it. Direct assignment raises ``AttributeError``
 so stragglers that try to write the old way surface immediately.
-
-See ``local/tech-debt/dirty-flag-one-way-ratchet.md`` Option C.
 """
 
 from __future__ import annotations

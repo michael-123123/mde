@@ -125,7 +125,12 @@ class MarkdownEditor(QMainWindow):
         self._is_fullscreen = False
         self._diagram_executor = ThreadPoolExecutor(max_workers=4)
         self._set_application_icon()
-        self._init_markdown()
+        # ``self.md`` is built inside ``_load_plugins`` (called by
+        # ``_init_ui`` below), after the plugin registry has been
+        # cleared and repopulated for this editor instance. Building
+        # it earlier would read stale module-level registry state
+        # left by a previous editor in the same process (matters in
+        # tests) and then immediately discard that build.
         self._init_ui()
         self._init_actions()
         self._init_shortcuts()
@@ -1250,10 +1255,12 @@ class MarkdownEditor(QMainWindow):
         # their QActions were created up-front, just hidden.
         apply_disabled_set(self, disabled)
 
-        # Rebuild the markdown converter so any plugin-registered
-        # ``markdown.Extension`` instances actually reach the preview
-        # pipeline. (`_init_markdown` ran in __init__ before plugins
-        # were loaded, so its first build had no plugin extensions.)
+        # Build ``self.md`` now that the plugin registry has been
+        # cleared (start of this method) and repopulated (by the
+        # ``load_all`` call above). This is the *first* build for
+        # this editor — ``__init__`` intentionally skipped the
+        # earlier call so the converter doesn't include extensions
+        # from a previous editor instance's registry state.
         self._init_markdown()
 
         # Publish to AppContext so the Plugins settings tab can read the list.

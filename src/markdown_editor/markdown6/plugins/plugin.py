@@ -20,6 +20,21 @@ from markdown_editor.markdown6.plugins.metadata import PluginMetadata
 
 
 class PluginSource(Enum):
+    """Where a plugin was discovered from.
+
+    Only two variants: plugins are either shipped with the editor
+    (``BUILTIN``) or installed / pointed at by the end user
+    (``USER``). Plugins contributed by ``--plugins-dir`` on the CLI
+    or by the ``plugins.extra_dirs`` setting are all tagged ``USER``
+    — they're user-controlled, just via different entry points.
+    Collapsing those into one variant keeps the enum focused on
+    "is this a ship-with-the-app plugin?" (the only distinction any
+    consumer currently cares about — builtin plugins ship
+    guaranteed-compatible, user plugins may not). If a later UX
+    decision needs to surface "which entry point" separately (e.g.
+    "added via CLI in this session"), add a sibling field on the
+    ``Plugin`` record rather than expanding this enum.
+    """
     BUILTIN = "builtin"
     USER = "user"
 

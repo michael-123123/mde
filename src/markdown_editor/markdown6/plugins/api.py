@@ -345,6 +345,18 @@ def register_fence(
     Same conceptual mechanism as the built-in ``mermaid`` /
     ``graphviz`` fences, just routed through plugins.
 
+    **Opening-line constraint:** the fence's opening line must be
+    just the triple backticks (or tildes) plus the language tag,
+    with no extra arguments on the same line. A bare ``plantuml``
+    opener works, but ``plantuml theme=dark`` (or any tokens after
+    the tag) falls through to python-markdown's built-in code-block
+    handler and the plugin renderer is not invoked. If your plugin
+    needs per-fence options, parse them from the fence body instead
+    — add them as the first few lines of content or use a
+    front-matter-style header your callback strips before rendering.
+    Passing mermaid-style options on the opening line is not yet
+    supported for plugin fences.
+
     Args:
         name: The language tag the fence will match (e.g. ``"plantuml"``).
             Must be non-empty, globally unique across plugins, and

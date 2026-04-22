@@ -1,7 +1,25 @@
-"""Tests for findings #1, #2, #5, #6 from local/reviews/plan-system-1.md.
+"""Regression coverage for a cluster of related polish fixes:
 
-Finding #3 (dead ``accepted`` connect in PluginInfoDialog) is a one-line
-cleanup with no behavior change; no test added.
+* ``atomic_edit`` rollback must clear the tab-title ``*`` marker on
+  a real ``DocumentTab`` (not just reset the attribute on a stub).
+* ``PluginInfoDialog`` must render the plugin description exactly
+  once — previously it was tacked onto both the metadata block and
+  a separate description panel.
+* ``register_fence`` must validate the language tag against the
+  preprocessor's character class (``[A-Za-z0-9_-]``); invalid names
+  must raise at decoration time instead of silently never firing.
+* ``notify_*`` called from a plugin action callback (not just from
+  module-level code during import) must auto-stamp the source as
+  ``plugin:<name>``.
+
+Plus coverage additions:
+
+* Disabled plugin's fence source appears verbatim in rendered HTML
+  (disable hides the renderer but keeps the fence text visible).
+* Atomic-edit title cleanness on a real ``DocumentTab`` (guards
+  against regressions in the ``modificationChanged`` signal wiring).
+* ``NotificationCenter.clear()`` with no unread items must not fire
+  ``unread_count_changed``.
 """
 
 from __future__ import annotations
