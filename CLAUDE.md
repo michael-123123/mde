@@ -270,6 +270,8 @@ Do not skip steps. Do not claim a bug is fixed without completing step 4.
 
 `CHANGELOG.md` is maintained at the repo root. When tagging a new release (`vX.Y.Z`), summarize all commits since the previous tag into a new entry at the top of the changelog. Use the sections `Added`, `Changed`, `Fixed`, `Removed`, `Deprecated` - only include sections that apply. Entries should be user-facing descriptions, not implementation details. When reviewing commits for changelog entries, exclude changes to `CHANGELOG.md` itself from consideration - only look at the non-changelog parts of each diff.
 
+The changelog update is a required step of [Deploying](#deploying), not an optional extra - do the changelog commit first, push it, and only then tag the release.
+
 ## Merging to Master
 
 Never merge branches into master directly via `git merge`. Always go through a GitHub PR:
@@ -290,8 +292,9 @@ Steps:
 1. `git fetch --tags origin` to make sure you have the latest tags.
 2. Find the latest pushed tag with `git tag --sort=-v:refname | head -1` (or equivalent).
 3. Compute the next patch version (increment the last `.Z` component).
-4. Tag `master` with the new version: `git tag vX.Y.Z master`.
-5. Push the tag: `git push origin vX.Y.Z`.
+4. Update `CHANGELOG.md` per the [Changelog](#changelog) section - commit and push the changelog to `master` before tagging. This step is mandatory; do not tag without it.
+5. Tag `master` with the new version: `git tag vX.Y.Z master`.
+6. Push the tag: `git push origin vX.Y.Z`.
 
 If the user specifies a branch ("deploy feature/foo") or a version ("deploy as v0.2.0" / "deploy a minor bump"), follow those instructions instead of the defaults.
 

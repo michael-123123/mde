@@ -5,6 +5,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-04-23
+
 ### Added
 
 - **Plugin system.** Drop-in Python plugins extend the editor with menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-rendered configuration UIs. Plugins live in `<config_dir>/plugins/<name>/` and ship as a `<name>.py` + `<name>.toml` directory. Public API at `from markdown_editor.plugins import …`. See [`docs/plugins.md`](docs/plugins.md) for the authoring guide and [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md) for the stability contract.
@@ -12,6 +14,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Settings → Plugins tab** lists every discovered plugin with status, enable/disable toggle, ℹ Info dialog (metadata + README), Open plugins folder, and Reload plugins buttons. Plugins with a registered settings schema get an auto-generated Configure… dialog.
 - **🔔 Notifications drawer** in the status bar. Plugin runtime errors and plugin-authored notifications surface here without blocking the editor; click the bell to see history.
 - **Three example plugins** under [`docs/plugins-examples/`](docs/plugins-examples/) - `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), `stamp` (action + every settings-schema field type). Not bundled - copy into your user plugin folder, or run `mde --plugins-dir docs/plugins-examples` to try them in place.
+- Preview pane now responds to scroll keys (PageUp/PageDown, arrow keys, Home/End, Space/Shift+Space) by forwarding them to the editor, matching existing wheel-forwarding behaviour. Scrolling either pane keeps the two in sync.
+
+### Changed
+
+- Emit a startup error log when QtWebEngine is unavailable. Without it, the preview silently falls back to QTextBrowser and loses diagrams, math, rich CSS, and code-block copy buttons; the new log surfaces the degradation instead of leaving users to guess.
+
+### Fixed
+
+- The tab dirty flag could remain set after the user undid every change back to the file's on-disk contents. The tab now reflects the editor's actual modified state via the underlying document.
 
 ## [0.1.13] - 2026-04-21
 
