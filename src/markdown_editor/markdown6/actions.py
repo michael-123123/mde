@@ -288,6 +288,9 @@ def _build_items(editor: MarkdownEditor, menu, items: list) -> list[ActionDef]:
             all_actions.extend(_build_items(editor, submenu, item.items))
         elif isinstance(item, ActionDef):
             action = menu.addAction(item.label)
+            # Stamp the id as objectName so plugins using `place=` can
+            # find this action as an anchor (see editor_integration.py).
+            action.setObjectName(item.id)
             action.triggered.connect(_make_callback(editor, item.method, item.args))
 
             if item.checkable:
@@ -308,12 +311,27 @@ def build_menu_bar(editor: MarkdownEditor) -> dict[str, ActionDef]:
     """Build the entire menu bar from MENU_STRUCTURE.
 
     Returns a dict mapping action IDs to their ActionDefs.
+
+    Side effect: stores each top-level QMenu on
+    ``editor._top_level_menus`` keyed by its label with Qt mnemonics
+    stripped (``"&File"`` → ``"File"``). The plugin system uses this
+    mapping to resolve menu paths like ``"Edit/Transform"`` to the
+    real Edit menu without having to re-scan menubar.actions() (which
+    is error-prone under PySide6 wrapper-ownership rules).
     """
+    from PySide6.QtWidgets import QMenu
+
     menubar = editor.menuBar()
     all_actions: list[ActionDef] = []
+    editor._top_level_menus = {}
 
     for menu_def in MENU_STRUCTURE:
-        menu = menubar.addMenu(menu_def.label)
+        # Parent the menu to the editor (not the menubar) so Qt owns
+        # the QMenu via the long-lived window; matches the pattern
+        # already used for submenus in _build_items below.
+        menu = QMenu(menu_def.label, editor)
+        menubar.addMenu(menu)
+        editor._top_level_menus[menu_def.label.replace("&", "")] = menu
         all_actions.extend(_build_items(editor, menu, menu_def.items))
 
     return {a.id: a for a in all_actions}

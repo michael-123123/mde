@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QStackedWidget, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
+from markdown_editor.markdown6.components.plugins_page import PluginsSettingsPage
 from markdown_editor.markdown6.app_context import (DEFAULT_SHORTCUTS,
                                                    get_app_context)
 from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
@@ -83,6 +84,7 @@ class SettingsDialog(QDialog):
             ("Files", "files"),
             ("External Tools", "tools"),
             ("Keyboard Shortcuts", "shortcuts"),
+            ("Plugins", "plugins"),
         ]
 
         from PySide6.QtCore import QSize
@@ -103,6 +105,7 @@ class SettingsDialog(QDialog):
         self.stack.addWidget(self._create_files_page())
         self.stack.addWidget(self._create_tools_page())
         self.stack.addWidget(self._create_shortcuts_page())
+        self.stack.addWidget(self._create_plugins_page())
 
         splitter.addWidget(self.stack)
         splitter.setStretchFactor(0, 0)  # Category list doesn't stretch
@@ -498,6 +501,11 @@ class SettingsDialog(QDialog):
 
         self.tools_status.setText("Tool status:\n" + "\n".join(lines))
 
+    def _create_plugins_page(self) -> QWidget:
+        """Create the plugins settings page."""
+        self.plugins_page = PluginsSettingsPage(self.ctx)
+        return self.plugins_page
+
     def _create_shortcuts_page(self) -> QWidget:
         """Create the keyboard shortcuts page."""
         page = QWidget()
@@ -796,6 +804,10 @@ class SettingsDialog(QDialog):
             self.ctx.set_shortcut(action, shortcut)
 
         self.pending_shortcuts.clear()
+
+        # Plugins — persist enable/disable toggles from the Plugins page
+        if hasattr(self, "plugins_page"):
+            self.plugins_page.apply()
 
     def _accept(self):
         """Accept and close the dialog."""

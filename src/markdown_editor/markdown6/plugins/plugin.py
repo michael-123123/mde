@@ -1,0 +1,58 @@
+"""Plugin record types — data carried around by the loader.
+
+The loader returns a list of :class:`Plugin` records. Each has a
+:class:`PluginStatus` explaining why it is (or isn't) active, plus a
+human-readable ``detail`` string for the Settings → Plugins tab to
+display.
+
+These types are deliberately free of any Qt dependency so they can be
+used from unit tests that don't spin up a QApplication.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from types import ModuleType
+
+from markdown_editor.markdown6.plugins.metadata import PluginMetadata
+
+
+class PluginSource(Enum):
+    BUILTIN = "builtin"
+    USER = "user"
+
+
+class PluginStatus(Enum):
+    ENABLED = "enabled"
+    DISABLED_BY_USER = "disabled_by_user"
+    LOAD_FAILURE = "load_failure"
+    MISSING_DEPS = "missing_deps"
+    METADATA_ERROR = "metadata_error"
+    API_MISMATCH = "api_mismatch"
+
+
+@dataclass
+class Plugin:
+    """One discovered plugin. Mutated in-place by the loader as it
+    advances through discovery → dep check → import."""
+
+    name: str
+    source: "PluginSource"
+    directory: Path
+    metadata: PluginMetadata | None = None
+    module: ModuleType | None = None
+    status: PluginStatus = PluginStatus.ENABLED
+    detail: str = ""
+    missing_deps: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def is_errored(self) -> bool:
+        """True if the plugin cannot run (and the user can't re-enable it)."""
+        return self.status in (
+            PluginStatus.LOAD_FAILURE,
+            PluginStatus.MISSING_DEPS,
+            PluginStatus.METADATA_ERROR,
+            PluginStatus.API_MISMATCH,
+        )

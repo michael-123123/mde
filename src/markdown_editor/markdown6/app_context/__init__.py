@@ -155,6 +155,20 @@ class AppContext(QObject):
             ephemeral=ephemeral,
         )
 
+        # Plugin registry — populated by MarkdownEditor after startup
+        # plugin load completes. Consumed by Settings → Plugins tab.
+        self._plugins: list = []
+
+    # --- Plugins ---
+
+    def set_plugins(self, plugins: list) -> None:
+        """Called by the editor after load_all() completes."""
+        self._plugins = list(plugins)
+
+    def get_plugins(self) -> list:
+        """Return the list of discovered plugins (may be empty)."""
+        return list(self._plugins)
+
     # --- Settings delegation ---
 
     def get(self, key: str, default: Any = None) -> Any:

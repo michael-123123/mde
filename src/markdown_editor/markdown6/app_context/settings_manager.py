@@ -76,6 +76,9 @@ DEFAULT_SETTINGS = {
     # `set(..., False)` on a non-ephemeral ctx. See decision G in
     # local/html-export-unify.md.
     "export.use_canonical_fonts": False,
+    # Plugin system — list of plugin names the user has toggled off in
+    # Settings → Plugins. Names not in this list default to enabled.
+    "plugins.disabled": [],
 }
 
 

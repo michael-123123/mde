@@ -20,6 +20,13 @@ from markdown_editor.markdown6.actions import (_action_attr, _shortcut_id,
                                                apply_shortcuts,
                                                build_command_palette,
                                                build_menu_bar)
+from markdown_editor.markdown6.plugins import api as plugin_api
+from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
+from markdown_editor.markdown6.plugins.editor_integration import (
+    apply_disabled_set, inject_plugin_actions,
+    plugin_palette_commands_filtered, register_existing_menu)
+from markdown_editor.markdown6.plugins.loader import load_all
+from markdown_editor.markdown6.plugins.plugin import PluginSource
 
 
 
@@ -230,12 +237,31 @@ class MarkdownEditor(QMainWindow):
 
         self._create_menu_bar()
         self._create_status_bar()
+        self._load_plugins()
         self._init_command_palette()
         self._init_debounce_timers()
 
     def _create_menu_bar(self):
         """Create the application menu bar from the declarative action registry."""
         self._action_defs = build_menu_bar(self)
+        self._ensure_plugins_menu_slot()
+
+    def _ensure_plugins_menu_slot(self):
+        """Reserve the top-level "Plugins" menu just before "Help".
+
+        Always present, even when no plugin is installed — gives users
+        a stable place to find plugin commands and a stable target for
+        plugin-supplied menu paths (which are namespaced under it).
+        """
+        from PySide6.QtWidgets import QMenu
+        plugins_menu = QMenu("Plugins", self)
+        help_menu = self._top_level_menus.get("&Help") or self._top_level_menus.get("Help")
+        if help_menu is not None:
+            self.menuBar().insertMenu(help_menu.menuAction(), plugins_menu)
+        else:
+            self.menuBar().addMenu(plugins_menu)
+        self._top_level_menus["Plugins"] = plugins_menu
+        register_existing_menu(self, "Plugins", plugins_menu)
 
     def _init_actions(self):
         """Apply shortcuts from the action registry."""
@@ -311,6 +337,24 @@ class MarkdownEditor(QMainWindow):
             self._configure_autosave()
         elif key == "editor.auto_save_interval":
             self._configure_autosave()
+        elif key == "plugins.disabled":
+            self._refresh_plugin_enabled_state()
+
+    def _refresh_plugin_enabled_state(self):
+        """React to a toggle in Settings → Plugins without a restart.
+
+        Hides/shows already-loaded plugins' menu entries and rebuilds
+        the command palette with the filtered set. Re-enabling a
+        plugin that wasn't loaded at startup (e.g. it was in the
+        disabled set when the editor launched) still requires a
+        restart — there's nothing in memory to bring back. This
+        limitation is documented in Settings → Plugins.
+        """
+        disabled = set(self.ctx.get("plugins.disabled", []) or [])
+        apply_disabled_set(self, disabled)
+        static = build_command_palette(self, self._action_defs)
+        static.extend(plugin_palette_commands_filtered(self, disabled))
+        self.command_palette.set_commands(static)
 
     def _init_autosave(self):
         """Initialize the autosave timer."""
@@ -1073,7 +1117,66 @@ class MarkdownEditor(QMainWindow):
     def _init_command_palette(self):
         """Initialize the command palette from the action registry."""
         commands = build_command_palette(self, self._action_defs)
+        disabled = set(self.ctx.get("plugins.disabled", []) or [])
+        commands.extend(plugin_palette_commands_filtered(self, disabled))
         self.command_palette.set_commands(commands)
+
+    def _load_plugins(self):
+        """Discover and import builtin + user plugins, wire their actions in.
+
+        Runs after the static menu bar is built (so plugin menu paths
+        like "Edit/Transform" can find the real Edit menu) and before
+        :meth:`_init_command_palette` (so plugin-registered palette
+        commands are included in the initial command list).
+
+        The loader never raises — plugins that fail to load are simply
+        recorded with an error status in ``self._plugins`` and shown
+        in Settings → Plugins.
+        """
+        import markdown_editor.markdown6 as pkg
+        builtin_root = Path(pkg.__file__).resolve().parent / "builtin_plugins"
+        user_root = self.ctx.config_dir / "plugins"
+
+        # Expose the static top-level menus to the plugin integration
+        # cache so plugins can attach under "Edit", "File", etc.
+        for name, menu in getattr(self, "_top_level_menus", {}).items():
+            register_existing_menu(self, name, menu)
+
+        # Fresh registry for this editor's lifetime — clear any leftover
+        # state from a previous init (important for tests that recreate
+        # the editor inside the same process).
+        plugin_api._REGISTRY.clear()
+        plugin_api._set_active_document_provider(
+            self._get_active_document_handle
+        )
+
+        disabled = set(self.ctx.get("plugins.disabled", []) or [])
+        self._plugins = load_all(
+            [
+                (builtin_root, PluginSource.BUILTIN),
+                (user_root, PluginSource.USER),
+            ],
+            user_disabled=disabled,
+        )
+
+        self._plugin_palette_commands = []
+        inject_plugin_actions(
+            self, plugin_api.get_registry(), self._plugin_palette_commands
+        )
+
+        # Apply the initial disabled-set to hide already-loaded plugins
+        # that the user had toggled off in a previous session. This is
+        # what lets re-enabling them later flip visibility instantly —
+        # their QActions were created up-front, just hidden.
+        apply_disabled_set(self, disabled)
+
+        # Publish to AppContext so the Plugins settings tab can read the list.
+        self.ctx.set_plugins(self._plugins)
+
+    def _get_active_document_handle(self):
+        """Callback used by plugin_api.get_active_document()."""
+        tab = self.current_tab()
+        return DocumentHandle(tab) if tab is not None else None
 
     def _show_command_palette(self):
         """Show the command palette."""
