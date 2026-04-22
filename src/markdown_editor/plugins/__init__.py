@@ -44,14 +44,13 @@ Documentation:
   (what's stable, what's not, deprecation policy, ``mde_api_version``
   semantics).
 
-Bundled reference plugins (read these for working code):
+Reference example plugins (read these for working code) — not
+bundled, available under ``docs/plugins-examples/``:
 
-* ``markdown6/builtin_plugins/em_dash_to_hyphen/`` — minimal text
-  transform.
-* ``markdown6/builtin_plugins/wordcount/`` — sidebar panel + signals
-  + plugin settings.
-* ``markdown6/builtin_plugins/stamp/`` — action + schema-driven
-  Configure dialog (every supported field type).
+* ``em_dash_to_hyphen/`` — minimal text transform.
+* ``wordcount/`` — sidebar panel + signals + plugin settings.
+* ``stamp/`` — action + schema-driven Configure dialog (every
+  supported field type).
 """
 
 from __future__ import annotations

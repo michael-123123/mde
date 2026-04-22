@@ -358,7 +358,7 @@ Restart the editor and the action shows up under **Plugins → Insert greeting**
 
 **Settings → Plugins** lists every discovered plugin with status, enable/disable toggles, an **ℹ Info** dialog (metadata + your README), an **Open plugins folder** button, and a **Reload plugins** button. Plugin runtime errors surface in the **🔔 notifications drawer** (status bar) so the editor never silently fails.
 
-Read [`docs/plugins.md`](docs/plugins.md) for the full authoring guide with worked examples for every extension point. The bundled `em_dash_to_hyphen`, `wordcount`, and `stamp` plugins under `src/markdown_editor/markdown6/builtin_plugins/` are the canonical reference implementations.
+Read [`docs/plugins.md`](docs/plugins.md) for the full authoring guide with worked examples for every extension point. Three reference plugins live under [`docs/plugins-examples/`](docs/plugins-examples/) — `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), and `stamp` (action + every settings-schema field type). They are not bundled with the editor; copy any of them into your user plugins folder to install.
 
 For the API stability promise (what won't break across versions), see [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md).
 
@@ -410,12 +410,13 @@ src/markdown_editor/
     ├── components/                # Widgets: panels, dialogs, activity bar, sidebar
     ├── extensions/                # Built-in markdown extensions (callouts, diagrams, …)
     ├── plugins/                   # Plugin system internals (loader, registry, dispatch)
-    ├── builtin_plugins/           # Bundled reference plugins (em_dash, wordcount, stamp)
+    ├── builtin_plugins/           # Reserved for plugins shipped with the editor (currently empty)
     └── templates/                 # Preview HTML templates
 
 docs/                          # User-facing documentation
 ├── plugins.md                 # Plugin authoring guide
-└── plugin-api-versioning.md   # Plugin API stability contract
+├── plugin-api-versioning.md   # Plugin API stability contract
+└── plugins-examples/          # Reference plugins (not bundled — opt-in install)
 ```
 
 See `src/markdown_editor/markdown6/DEVELOPMENT.md` for a full module reference, and `docs/plugins.md` for plugin authoring.

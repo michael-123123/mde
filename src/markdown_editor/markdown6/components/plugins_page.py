@@ -25,9 +25,9 @@ from typing import Any
 
 from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QLabel,
-                               QPushButton, QScrollArea, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFrame, QHBoxLayout,
+                               QLabel, QListWidget, QPushButton, QScrollArea,
+                               QVBoxLayout, QWidget)
 
 from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
                                                       PluginStatus)
@@ -89,6 +89,13 @@ class PluginsSettingsPage(QWidget):
         self._rows: list[_PluginRow] = []
         self.open_folder_button: QPushButton | None = None
         self.reload_button: QPushButton | None = None
+        # Extra plugin directories the user has added on top of the
+        # default user dir. Stored as plain strings (not Path) because
+        # that's the persistence format in `plugins.extra_dirs`.
+        self._pending_extra_dirs: list[str] = [
+            str(p) for p in (ctx.get("plugins.extra_dirs", []) or [])
+        ]
+        self._extra_dirs_list: QListWidget | None = None
         self._empty_message = (
             "No plugins installed. Drop a plugin directory into "
             f"{self._user_plugin_dir_display()} and restart the editor."
@@ -127,8 +134,33 @@ class PluginsSettingsPage(QWidget):
         return disabled
 
     def apply(self) -> None:
-        """Persist the current toggle state to ``plugins.disabled``."""
+        """Persist the current toggle state and extra-dirs list."""
         self._ctx.set("plugins.disabled", sorted(self.pending_disabled_set()))
+        self._ctx.set("plugins.extra_dirs", list(self._pending_extra_dirs))
+
+    # ------------------------------------------------------------------
+    # Extra plugin directories (additional discovery roots on top of the
+    # default user dir). Mutating these takes effect at the next editor
+    # restart — they're added to `_plugin_roots()`.
+    # ------------------------------------------------------------------
+
+    def pending_extra_dirs(self) -> list[str]:
+        """Return the current pending list (insertion order preserved)."""
+        return list(self._pending_extra_dirs)
+
+    def add_extra_dir(self, path) -> None:
+        """Add ``path`` to the pending list if it isn't already there."""
+        s = str(path)
+        if s not in self._pending_extra_dirs:
+            self._pending_extra_dirs.append(s)
+            self._refresh_extra_dirs_list()
+
+    def remove_extra_dir(self, path) -> None:
+        """Remove ``path`` from the pending list (no-op if absent)."""
+        s = str(path)
+        if s in self._pending_extra_dirs:
+            self._pending_extra_dirs.remove(s)
+            self._refresh_extra_dirs_list()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -172,6 +204,10 @@ class PluginsSettingsPage(QWidget):
         action_row.addWidget(self.reload_button)
         action_row.addStretch()
         body_layout.addLayout(action_row)
+
+        # Extra plugin directories — list + Add/Remove buttons. Layered
+        # on top of the default user dir; takes effect at next restart.
+        body_layout.addWidget(self._build_extra_dirs_section())
 
         disabled_now = set(self._ctx.get("plugins.disabled", []) or [])
         plugins = list(self._ctx.get_plugins())
@@ -340,3 +376,65 @@ class PluginsSettingsPage(QWidget):
         # "folder doesn't exist" error from the file manager.
         path.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    # ------------------------------------------------------------------
+    # Extra plugin directories UI
+    # ------------------------------------------------------------------
+
+    def _build_extra_dirs_section(self) -> QFrame:
+        frame = QFrame()
+        frame.setFrameShape(QFrame.Shape.StyledPanel)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(6)
+
+        header = QLabel("<b>Extra plugin directories</b>")
+        layout.addWidget(header)
+
+        intro = QLabel(
+            "Additional directories to scan for plugins on top of the "
+            "default user folder. Same as passing <code>--plugins-dir</code> "
+            "on the command line. Changes take effect at next restart."
+        )
+        intro.setWordWrap(True)
+        intro.setObjectName("MutedLabel")
+        layout.addWidget(intro)
+
+        self._extra_dirs_list = QListWidget()
+        self._extra_dirs_list.setMinimumHeight(80)
+        layout.addWidget(self._extra_dirs_list)
+        self._refresh_extra_dirs_list()
+
+        button_row = QHBoxLayout()
+        add_btn = QPushButton("Add directory…")
+        add_btn.clicked.connect(self._prompt_add_extra_dir)
+        button_row.addWidget(add_btn)
+        remove_btn = QPushButton("Remove selected")
+        remove_btn.clicked.connect(self._remove_selected_extra_dir)
+        button_row.addWidget(remove_btn)
+        button_row.addStretch()
+        layout.addLayout(button_row)
+
+        return frame
+
+    def _refresh_extra_dirs_list(self) -> None:
+        if self._extra_dirs_list is None:
+            return
+        self._extra_dirs_list.clear()
+        for path in self._pending_extra_dirs:
+            self._extra_dirs_list.addItem(path)
+
+    def _prompt_add_extra_dir(self) -> None:
+        path = QFileDialog.getExistingDirectory(
+            self, "Select plugin directory", str(self._user_plugin_dir() or ""),
+        )
+        if path:
+            self.add_extra_dir(path)
+
+    def _remove_selected_extra_dir(self) -> None:
+        if self._extra_dirs_list is None:
+            return
+        item = self._extra_dirs_list.currentItem()
+        if item is None:
+            return
+        self.remove_extra_dir(item.text())

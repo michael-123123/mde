@@ -1,34 +1,12 @@
-"""End-to-end tests: bundled builtin plugins discovered + loaded + invoked.
+"""End-to-end tests: example `em_dash_to_hyphen` plugin loaded + invoked.
 
-Covers the full Phase 1 happy path:
+Covers discovery + registration + atomic application of a registered
+text transform against a real :class:`QPlainTextEdit`.
 
-1. The loader's builtin root points at a directory containing a plugin.
-2. Discovery + import succeed; the plugin registers a text transform.
-3. ``invoke_text_transform`` applies the transform atomically to a
-   :class:`DocumentHandle` wrapping a real :class:`QPlainTextEdit`.
-4. Constructing a full :class:`MarkdownEditor` loads the plugin, wires
-   the QAction into ``Edit/Transform``, and registers the palette
-   command.
-
-**QtWebEngine hang caveat (read before adding tests here):** tests that
-construct ``MarkdownEditor()`` must NOT call ``editor.new_tab()``,
-``editor.open_file()``, or trigger any action that creates a
-``DocumentTab``. Under pytest-xvfb, the first ``QWebEngineView``
-initialization inside a ``DocumentTab`` hangs indefinitely (zygote
-subprocesses never complete against the minimal xvfb display) — even
-``pytest-timeout --signal`` doesn't reliably cut through it.
-
-For action-triggering end-to-end verification, use a bare
-``QPlainTextEdit`` + ``SimpleNamespace`` stand-in for the tab, as
-``test_em_dash_transform_*`` below does. The full-editor test here
-(``test_full_editor_loads_em_dash_plugin``) deliberately stops at
-attribute inspection — it verifies wiring, not runtime behavior.
-
-We use the ``em_dash_to_hyphen`` builtin (the reference plugin shipped
-in-tree) as the fixture. If this test ever needs to exercise plugin
-*discovery failures* end-to-end, add a separate test module with
-fixtures under ``tests/markdown6/fixtures/plugins/`` — don't pollute
-the bundled builtins for test scaffolding.
+The reference implementation lives under ``docs/plugins-examples/``
+(the editor does NOT bundle it by default); these tests use the
+self-contained copy in ``tests/markdown6/fixtures/plugins/`` so the
+test suite never reaches outside the test tree.
 """
 
 from __future__ import annotations
@@ -45,13 +23,7 @@ from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus
 
 
-BUILTIN_PLUGINS_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "src"
-    / "markdown_editor"
-    / "markdown6"
-    / "builtin_plugins"
-)
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "plugins"
 
 
 @pytest.fixture(autouse=True)
@@ -61,33 +33,27 @@ def _clean_registry() -> None:
     plugin_api._REGISTRY.clear()
 
 
-def test_builtin_plugins_dir_exists() -> None:
-    """The builtin plugin dir must exist and be a package-relative path
-    so wheels include it."""
-    assert BUILTIN_PLUGINS_DIR.is_dir()
-
-
 def test_em_dash_plugin_files_present() -> None:
-    d = BUILTIN_PLUGINS_DIR / "em_dash_to_hyphen"
+    d = FIXTURES_DIR / "em_dash_to_hyphen"
     assert (d / "em_dash_to_hyphen.py").is_file()
     assert (d / "em_dash_to_hyphen.toml").is_file()
 
 
 def test_load_all_discovers_em_dash_plugin() -> None:
     plugins = load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)],
+        [(FIXTURES_DIR, PluginSource.USER)],
         user_disabled=set(),
     )
     by_name = {p.name: p for p in plugins}
     assert "em_dash_to_hyphen" in by_name
     p = by_name["em_dash_to_hyphen"]
     assert p.status == PluginStatus.ENABLED
-    assert p.source == PluginSource.BUILTIN
+    assert p.source == PluginSource.USER
 
 
 def test_em_dash_plugin_registers_text_transform() -> None:
     load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)],
+        [(FIXTURES_DIR, PluginSource.USER)],
         user_disabled=set(),
     )
     transforms = plugin_api._REGISTRY.text_transforms()
@@ -99,7 +65,7 @@ def test_em_dash_plugin_registers_text_transform() -> None:
 
 def test_em_dash_transform_replaces_em_dashes(qtbot) -> None:
     load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)],
+        [(FIXTURES_DIR, PluginSource.USER)],
         user_disabled=set(),
     )
     [t] = [
@@ -120,7 +86,7 @@ def test_em_dash_transform_replaces_em_dashes(qtbot) -> None:
 
 def test_em_dash_transform_noop_on_text_without_em_dashes(qtbot) -> None:
     load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)],
+        [(FIXTURES_DIR, PluginSource.USER)],
         user_disabled=set(),
     )
     [t] = [
@@ -140,9 +106,10 @@ def test_em_dash_transform_noop_on_text_without_em_dashes(qtbot) -> None:
     assert editor.toPlainText() == text
 
 
-def test_full_editor_loads_em_dash_plugin(qtbot) -> None:
-    """Construct the real MarkdownEditor and verify the em-dash builtin
-    plugin is loaded, surfaces in the Edit/Transform menu, and has a
+def test_full_editor_loads_em_dash_plugin_via_extra_dirs(qtbot) -> None:
+    """Construct the real MarkdownEditor with the example plugin's
+    fixture dir injected via ``extra_plugin_dirs`` and verify it is
+    loaded, surfaces in the Plugins/Transform menu, and has a
     palette command.
 
     Triggering the action end-to-end requires an open document tab,
@@ -156,7 +123,7 @@ def test_full_editor_loads_em_dash_plugin(qtbot) -> None:
     from markdown_editor.markdown6.markdown_editor import MarkdownEditor
     from markdown_editor.markdown6.plugins.plugin import PluginStatus
 
-    editor = MarkdownEditor()
+    editor = MarkdownEditor(extra_plugin_dirs=[FIXTURES_DIR])
 
     try:
         # 1. Plugin discovered and loaded successfully
@@ -190,10 +157,9 @@ def test_full_editor_loads_em_dash_plugin(qtbot) -> None:
 
 
 def test_full_editor_with_em_dash_disabled_hides_action(qtbot) -> None:
-    """Reproduces the user-reported bug: when em-dash is in
-    `plugins.disabled`, the action must NOT be visible in the menu
-    at launch — even though the plugin is now loaded (so it can be
-    re-enabled live)."""
+    """When em-dash is in `plugins.disabled`, the action must NOT be
+    visible in the menu at launch — even though the plugin is now
+    loaded (so it can be re-enabled live)."""
     from PySide6.QtWidgets import QApplication
 
     from markdown_editor.markdown6.app_context import get_app_context
@@ -203,7 +169,7 @@ def test_full_editor_with_em_dash_disabled_hides_action(qtbot) -> None:
     ctx = get_app_context()
     ctx.set("plugins.disabled", ["em_dash_to_hyphen"], save=False)
 
-    editor = MarkdownEditor()
+    editor = MarkdownEditor(extra_plugin_dirs=[FIXTURES_DIR])
     try:
         # Plugin still loaded (status just flipped)
         names = {p.name: p for p in editor._plugins}
@@ -262,7 +228,7 @@ def test_full_editor_with_em_dash_disabled_hides_action(qtbot) -> None:
 def test_em_dash_transform_is_single_undo_step(qtbot) -> None:
     """Apply transform → undo → document restored to pre-transform state."""
     load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)],
+        [(FIXTURES_DIR, PluginSource.USER)],
         user_disabled=set(),
     )
     [t] = [

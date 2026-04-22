@@ -1,4 +1,4 @@
-"""End-to-end tests for the bundled wordcount reference plugin.
+"""End-to-end tests for the `wordcount` example plugin.
 
 The plugin exercises three Phase 2 extension points at once:
 
@@ -7,6 +7,10 @@ The plugin exercises three Phase 2 extension points at once:
   in sync as the user edits or opens a different document.
 * ``plugin_settings`` — remember the user's target word count
   across editor restarts.
+
+The reference implementation lives under ``docs/plugins-examples/``;
+the tests use a self-contained copy in ``tests/markdown6/fixtures/plugins/``
+so the test suite never reaches outside the test tree.
 
 This test covers loader discovery + registration end-to-end and
 exercises the panel widget with a stand-in document handle (the
@@ -30,10 +34,7 @@ from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus
 from markdown_editor.markdown6.plugins.signals import SignalKind, dispatch
 
 
-BUILTIN_PLUGINS_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "src" / "markdown_editor" / "markdown6" / "builtin_plugins"
-)
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "plugins"
 
 
 @pytest.fixture
@@ -63,19 +64,19 @@ def _make_doc(qtbot, text: str) -> DocumentHandle:
 
 
 # ---------------------------------------------------------------------------
-# Plugin discoverable from the bundled builtin dir
+# Plugin discoverable from the test fixtures dir
 # ---------------------------------------------------------------------------
 
 
 def test_wordcount_plugin_files_present() -> None:
-    d = BUILTIN_PLUGINS_DIR / "wordcount"
+    d = FIXTURES_DIR / "wordcount"
     assert (d / "wordcount.py").is_file()
     assert (d / "wordcount.toml").is_file()
 
 
 def test_wordcount_plugin_loads_clean(ctx) -> None:
     plugins = load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set(),
+        [(FIXTURES_DIR, PluginSource.USER)], user_disabled=set(),
     )
     by_name = {p.name: p for p in plugins}
     assert "wordcount" in by_name
@@ -83,7 +84,7 @@ def test_wordcount_plugin_loads_clean(ctx) -> None:
 
 
 def test_wordcount_registers_panel_and_signal_handlers(ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     panels = plugin_api._REGISTRY.panels()
     [wc_panel] = [p for p in panels if p.id == "wordcount"]
     assert wc_panel.label == "Word Count"
@@ -104,7 +105,7 @@ def test_wordcount_registers_panel_and_signal_handlers(ctx) -> None:
 
 def _build_panel(qtbot, ctx):
     """Materialize the wordcount panel via its registered factory."""
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [rec] = [p for p in plugin_api._REGISTRY.panels() if p.id == "wordcount"]
     widget = rec.factory()
     qtbot.addWidget(widget)

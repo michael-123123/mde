@@ -9,9 +9,13 @@ This guide walks through the basics. For the stability promise (what's guarantee
 | Kind | Location |
 |---|---|
 | **User plugins** | `~/.config/markdown-editor/plugins/<name>/` on Linux. The exact path is the value of `QStandardPaths.GenericConfigLocation`, which is `~/Library/Application Support/markdown-editor/plugins/` on macOS and `%APPDATA%\markdown-editor\plugins\` on Windows. |
-| **Built-in plugins** | shipped under `markdown_editor/markdown6/builtin_plugins/`. You can read these as the canonical examples (see `em_dash_to_hyphen`, `wordcount`, `stamp`). |
+| **Built-in plugins** | `markdown_editor/markdown6/builtin_plugins/`. Reserved for plugins shipped with the editor; **currently empty**. |
+| **Extra dirs (CLI)** | one or more `--plugins-dir DIR` flags. Stacks on top of the user dir — useful for per-project plugin sets without polluting your user config. |
+| **Extra dirs (settings)** | the `plugins.extra_dirs` list. Manage it from **Settings → Plugins → Extra plugin directories** with the *Add directory…* / *Remove selected* buttons. Persists across launches. |
 
-Inside Settings → Plugins, the **"Open plugins folder"** button reveals the user dir in your file manager and creates it if missing.
+All four sources are additive — none replaces another. Inside Settings → Plugins, the **"Open plugins folder"** button reveals the user dir in your file manager and creates it if missing.
+
+The reference example plugins (`em_dash_to_hyphen`, `wordcount`, `stamp`) live under [`../docs/plugins-examples/`](plugins-examples/). They are not bundled with the editor; copy any of them into your user dir to install.
 
 ## File layout
 
@@ -299,12 +303,12 @@ See [`plugin-api-versioning.md`](plugin-api-versioning.md). Short version: stuff
 
 ## Worked examples
 
-The bundled built-in plugins are the best place to read real working code:
+The example plugins under [`plugins-examples/`](plugins-examples/) are the best place to read real working code:
 
 | Plugin | Demonstrates |
 |---|---|
-| `em_dash_to_hyphen` | Minimal `register_text_transform` plugin. |
-| `wordcount` | `register_panel` + `@on_content_changed` + `@on_file_opened` + `plugin_settings`. |
-| `stamp` | `register_action` + `register_settings_schema` (every supported field type). |
+| [`em_dash_to_hyphen`](plugins-examples/em_dash_to_hyphen/) | Minimal `register_text_transform` plugin. |
+| [`wordcount`](plugins-examples/wordcount/) | `register_panel` + `@on_content_changed` + `@on_file_opened` + `plugin_settings`. |
+| [`stamp`](plugins-examples/stamp/) | `register_action` + `register_settings_schema` (every supported field type). |
 
-You can find them under `src/markdown_editor/markdown6/builtin_plugins/` in the source tree.
+To install one, copy the directory into your user plugin folder (see [`plugins-examples/README.md`](plugins-examples/README.md) for paste-ready commands per OS) and restart the editor — or point at the source directly with `mde --plugins-dir docs/plugins-examples`.

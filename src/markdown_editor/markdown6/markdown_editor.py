@@ -115,9 +115,13 @@ from markdown_editor.markdown6.theme import (StyleSheets, get_theme,
 class MarkdownEditor(QMainWindow):
     """A tabbed Markdown editor with split-screen editing and preview."""
 
-    def __init__(self):
+    def __init__(self, extra_plugin_dirs: list[Path] | None = None):
         super().__init__()
         self.ctx = get_app_context()
+        # Extra plugin roots layered on top of builtin + user dirs. CLI
+        # passes its --plugins-dir values here; settings-derived dirs
+        # are read from `plugins.extra_dirs` inside `_plugin_roots()`.
+        self._extra_plugin_dirs: list[Path] = list(extra_plugin_dirs or [])
         self._is_fullscreen = False
         self._diagram_executor = ThreadPoolExecutor(max_workers=4)
         self._set_application_icon()
@@ -1197,10 +1201,6 @@ class MarkdownEditor(QMainWindow):
         recorded with an error status in ``self._plugins`` and shown
         in Settings → Plugins.
         """
-        import markdown_editor.markdown6 as pkg
-        builtin_root = Path(pkg.__file__).resolve().parent / "builtin_plugins"
-        user_root = self.ctx.config_dir / "plugins"
-
         # Expose the static top-level menus to the plugin integration
         # cache so plugins can attach under "Edit", "File", etc.
         for name, menu in getattr(self, "_top_level_menus", {}).items():
@@ -1217,13 +1217,7 @@ class MarkdownEditor(QMainWindow):
         plugin_api._set_main_window_provider(lambda: self)
 
         disabled = set(self.ctx.get("plugins.disabled", []) or [])
-        self._plugins = load_all(
-            [
-                (builtin_root, PluginSource.BUILTIN),
-                (user_root, PluginSource.USER),
-            ],
-            user_disabled=disabled,
-        )
+        self._plugins = load_all(self._plugin_roots(), user_disabled=disabled)
 
         self._plugin_palette_commands = []
         inject_plugin_actions(
@@ -1270,14 +1264,29 @@ class MarkdownEditor(QMainWindow):
         reload_plugins(self.ctx, self._plugin_roots())
 
     def _plugin_roots(self):
-        """Return the (path, source) pairs the loader uses at startup."""
+        """Return the (path, source) pairs the loader uses at startup.
+
+        Built from three sources, in scan order:
+        1. ``markdown6/builtin_plugins/`` — anything shipped with the
+           editor (currently empty by default).
+        2. ``<config_dir>/plugins/`` — the user's installed plugins.
+        3. Extra dirs — constructor arg (CLI ``--plugins-dir``) +
+           ``plugins.extra_dirs`` setting. Both are additive; neither
+           replaces the defaults. Extra dirs are tagged
+           :data:`PluginSource.USER`.
+        """
         import markdown_editor.markdown6 as pkg
         builtin_root = Path(pkg.__file__).resolve().parent / "builtin_plugins"
         user_root = self.ctx.config_dir / "plugins"
-        return [
+        roots: list[tuple[Path, PluginSource]] = [
             (builtin_root, PluginSource.BUILTIN),
             (user_root, PluginSource.USER),
         ]
+        for extra in self._extra_plugin_dirs:
+            roots.append((Path(extra), PluginSource.USER))
+        for raw in self.ctx.get("plugins.extra_dirs", []) or []:
+            roots.append((Path(raw), PluginSource.USER))
+        return roots
 
     def _get_all_document_handles(self):
         """Callback used by plugin_api.get_all_documents()."""

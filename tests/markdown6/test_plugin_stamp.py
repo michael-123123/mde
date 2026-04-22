@@ -1,9 +1,13 @@
-"""End-to-end tests for the bundled stamp reference plugin.
+"""End-to-end tests for the `stamp` example plugin.
 
 The stamp plugin demonstrates the schema-driven Configure UI by
 declaring a settings schema with every supported field type
 (str / str+choices / str+multiline / int with bounds / bool) and
 an action that uses the stored values.
+
+The reference implementation lives under ``docs/plugins-examples/``;
+the tests use a self-contained copy in ``tests/markdown6/fixtures/plugins/``
+so the test suite never reaches outside the test tree.
 """
 
 from __future__ import annotations
@@ -21,10 +25,7 @@ from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus
 
 
-BUILTIN_PLUGINS_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "src" / "markdown_editor" / "markdown6" / "builtin_plugins"
-)
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "plugins"
 
 
 @pytest.fixture
@@ -60,7 +61,7 @@ def _make_doc(qtbot, text: str = "") -> DocumentHandle:
 
 def test_stamp_plugin_loads_clean(ctx) -> None:
     plugins = load_all(
-        [(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set(),
+        [(FIXTURES_DIR, PluginSource.USER)], user_disabled=set(),
     )
     by_name = {p.name: p for p in plugins}
     assert "stamp" in by_name
@@ -73,7 +74,7 @@ def test_stamp_plugin_loads_clean(ctx) -> None:
 
 
 def test_stamp_registers_schema_with_all_field_types(ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     schema = plugin_api._REGISTRY.get_settings_schema("stamp")
     assert schema is not None
     by_key = {f.key: f for f in schema.fields}
@@ -89,7 +90,7 @@ def test_stamp_registers_schema_with_all_field_types(ctx) -> None:
 
 
 def test_stamp_registers_action(ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     ids = [a.id for a in plugin_api._REGISTRY.actions()]
     assert "stamp.insert" in ids
 
@@ -100,7 +101,7 @@ def test_stamp_registers_action(ctx) -> None:
 
 
 def test_stamp_action_uses_default_text(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
 
     doc = _make_doc(qtbot)
@@ -111,7 +112,7 @@ def test_stamp_action_uses_default_text(qtbot, ctx) -> None:
 
 
 def test_stamp_action_uses_configured_text(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
 
     ctx.plugin_settings("stamp")["text"] = "★REVIEW★"
@@ -123,7 +124,7 @@ def test_stamp_action_uses_configured_text(qtbot, ctx) -> None:
 
 
 def test_stamp_action_repeats_count_times(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
 
     ctx.plugin_settings("stamp")["text"] = "X"
@@ -136,7 +137,7 @@ def test_stamp_action_repeats_count_times(qtbot, ctx) -> None:
 
 
 def test_stamp_action_position_line_end(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
 
     ctx.plugin_settings("stamp")["text"] = "END"
@@ -149,7 +150,7 @@ def test_stamp_action_position_line_end(qtbot, ctx) -> None:
 
 
 def test_stamp_action_position_line_start(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
 
     ctx.plugin_settings("stamp")["text"] = "TOP"
@@ -162,7 +163,7 @@ def test_stamp_action_position_line_start(qtbot, ctx) -> None:
 
 
 def test_stamp_action_includes_timestamp_when_enabled(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
 
     ctx.plugin_settings("stamp")["text"] = "Note"
@@ -180,7 +181,7 @@ def test_stamp_action_includes_timestamp_when_enabled(qtbot, ctx) -> None:
 
 
 def test_stamp_action_no_active_document_is_noop(qtbot, ctx) -> None:
-    load_all([(BUILTIN_PLUGINS_DIR, PluginSource.BUILTIN)], user_disabled=set())
+    load_all([(FIXTURES_DIR, PluginSource.USER)], user_disabled=set())
     [action] = [a for a in plugin_api._REGISTRY.actions() if a.id == "stamp.insert"]
     plugin_api._set_active_document_provider(lambda: None)
 

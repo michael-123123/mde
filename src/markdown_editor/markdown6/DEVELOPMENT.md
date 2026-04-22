@@ -388,13 +388,13 @@ elif format_type == "xyz":
 
 ### Adding a Plugin
 
-Plugins live outside the core code — they're Python directories users (or the project) drop into `markdown_editor/markdown6/builtin_plugins/<name>/` (bundled) or `<config_dir>/plugins/<name>/` (user). The plugin API is documented for *plugin authors* in [`docs/plugins.md`](../../../docs/plugins.md); the stability contract is in [`docs/plugin-api-versioning.md`](../../../docs/plugin-api-versioning.md).
+Plugins live outside the core code — they're Python directories the editor discovers from any of three roots: `markdown_editor/markdown6/builtin_plugins/<name>/` (reserved for plugins shipped with the editor; currently empty), `<config_dir>/plugins/<name>/` (the user's installed plugins), and any extra dirs added via `--plugins-dir DIR` (CLI, repeatable) or the `plugins.extra_dirs` setting (managed in **Settings → Plugins → Extra plugin directories**). All sources are additive. The plugin API is documented for *plugin authors* in [`docs/plugins.md`](../../../docs/plugins.md); the stability contract is in [`docs/plugin-api-versioning.md`](../../../docs/plugin-api-versioning.md).
 
 When adding a plugin yourself:
 
 1. Use the public shim only — `from markdown_editor.plugins import register_action, on_save, plugin_settings, ...`. Do **not** import from `markdown_editor.markdown6.plugins.*` (the deeper internal namespace is not stable).
 2. Match the directory name in `<name>.py`, `<name>.toml`, and `[tool.mde.plugin].name`. The loader fails `METADATA_ERROR` if any of those disagree.
-3. Read the bundled plugins as references: `em_dash_to_hyphen` (text transform), `wordcount` (panel + signals + scoped settings), `stamp` (action + settings schema with every supported field type).
+3. Read the example plugins as references — they live under [`docs/plugins-examples/`](../../../docs/plugins-examples/): `em_dash_to_hyphen` (text transform), `wordcount` (panel + signals + scoped settings), `stamp` (action + settings schema with every supported field type).
 
 Internal plugin-system architecture lives under `markdown6/plugins/`:
 
@@ -588,13 +588,11 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 
 The public shim lives one level up at `src/markdown_editor/plugins/__init__.py` and re-exports the stable surface.
 
-### `builtin_plugins/` (bundled reference plugins)
+### `builtin_plugins/`
 
-| Subdir | Demonstrates |
-|---|---|
-| `em_dash_to_hyphen/` | Minimal `register_text_transform` (em-dash → hyphen). |
-| `wordcount/` | `register_panel` + `@on_content_changed` + `@on_file_opened` + `plugin_settings`. |
-| `stamp/` | `register_action` + `register_settings_schema` covering every supported field type. |
+Reserved for plugins shipped with the editor. **Currently empty** — nothing is bundled by default. The loader still scans this directory at startup, so dropping a plugin package here makes it a built-in again.
+
+The reference plugins that used to live here are now under [`docs/plugins-examples/`](../../../docs/plugins-examples/) (`em_dash_to_hyphen`, `wordcount`, `stamp`); the test suite carries self-contained copies under `tests/markdown6/fixtures/plugins/`.
 
 ### `extensions/`
 
