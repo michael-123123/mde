@@ -245,6 +245,8 @@ from PySide6.QtWidgets import (
 
 Prefer this over backslash line continuation or a single long line. One or two names on one line is fine.
 
+**No em-dashes in non-user-facing text:** Do not use em-dashes (Unicode U+2014) in comments, docstrings, commit messages, code identifiers, markdown documentation (CLAUDE.md, README, docs/), workflow files, or packaging scripts - use a regular hyphen (`-`) instead. Em-dashes are only acceptable in user-visible strings (UI labels, menu items, placeholders, error messages surfaced to the user, example/fixture content shown in the preview).
+
 ## Testing
 
 Uses **pytest** + **pytest-qt**. Tests are in `tests/markdown6/` (26 test modules).
