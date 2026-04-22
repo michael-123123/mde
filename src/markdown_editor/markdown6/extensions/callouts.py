@@ -84,11 +84,11 @@ class CalloutPreprocessor(Preprocessor):
 
                 # Generate HTML
                 new_lines.append(f'<div class="callout callout-{callout_type}">')
-                new_lines.append(f'<div class="callout-title">')
-                new_lines.append(f'<span class="callout-icon"></span>')
+                new_lines.append('<div class="callout-title">')
+                new_lines.append('<span class="callout-icon"></span>')
                 new_lines.append(f'<span>{style["title"]}</span>')
                 new_lines.append('</div>')
-                new_lines.append(f'<div class="callout-content">')
+                new_lines.append('<div class="callout-content">')
                 new_lines.append(content)
                 new_lines.append('</div>')
                 new_lines.append('</div>')

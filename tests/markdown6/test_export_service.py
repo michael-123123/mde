@@ -5,11 +5,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from markdown_editor.markdown6.export_service import (ExportError,
-                                                      _add_formatted_text,
-                                                      export_docx, export_html,
-                                                      export_pdf, has_pandoc,
-                                                      markdown_to_html)
+from markdown_editor.markdown6.export_service import (
+    ExportError,
+    _add_formatted_text,
+    export_docx,
+    export_html,
+    export_pdf,
+    has_pandoc,
+    markdown_to_html,
+)
 
 
 class TestHasPandoc:
@@ -18,12 +22,12 @@ class TestHasPandoc:
     def test_has_pandoc_when_available(self):
         """Test has_pandoc returns True when pandoc exists."""
         with patch("shutil.which", return_value="/usr/bin/pandoc"):
-            assert has_pandoc() == True
+            assert has_pandoc() is True
 
     def test_has_pandoc_when_unavailable(self):
         """Test has_pandoc returns False when pandoc doesn't exist."""
         with patch("shutil.which", return_value=None):
-            assert has_pandoc() == False
+            assert has_pandoc() is False
 
 
 class TestMarkdownToHtml:
@@ -206,8 +210,9 @@ class TestExportPandoc:
 
     def test_pandoc_docx_error_handling(self, tmp_path):
         """Test that pandoc DOCX errors are raised as ExportError."""
-        from markdown_editor.markdown6.export_service import \
-            _export_docx_pandoc
+        from markdown_editor.markdown6.export_service import (
+            _export_docx_pandoc,
+        )
 
         output_path = tmp_path / "output.docx"
         mock_result = MagicMock()
@@ -227,7 +232,6 @@ class TestExportPandoc:
         mock_result.returncode = 0
 
         temp_files_created = []
-        original_run = None
 
         def capture_run(cmd, **kwargs):
             # Capture the temp file path from the command
@@ -248,8 +252,9 @@ class TestExportPythonDocx:
 
     def test_docx_python_missing_dependency(self, tmp_path):
         """Test that missing python-docx raises ExportError."""
-        from markdown_editor.markdown6.export_service import \
-            _export_docx_python
+        from markdown_editor.markdown6.export_service import (
+            _export_docx_python,
+        )
 
         output_path = tmp_path / "output.docx"
 

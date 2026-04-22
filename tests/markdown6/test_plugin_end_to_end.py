@@ -22,7 +22,6 @@ from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus
 
-
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "plugins"
 
 

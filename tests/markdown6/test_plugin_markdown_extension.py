@@ -12,7 +12,6 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-import markdown
 import pytest
 from markdown import Extension
 from markdown.preprocessors import Preprocessor
@@ -37,7 +36,7 @@ def _clean_registry():
 
 class _ReplacePre(Preprocessor):
     def run(self, lines):
-        return [l.replace("REPLACE_ME", "REPLACED") for l in lines]
+        return [line.replace("REPLACE_ME", "REPLACED") for line in lines]
 
 
 class _ReplaceExt(Extension):

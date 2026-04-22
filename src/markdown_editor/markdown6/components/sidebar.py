@@ -8,8 +8,15 @@ Provides VSCode/PyCharm-style sidebar with:
 
 from PySide6.QtCore import QEasingCurve, QVariantAnimation, Signal
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QSizePolicy,
-                               QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from markdown_editor.markdown6.components.activity_bar import ActivityBar
 from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx

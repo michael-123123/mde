@@ -6,9 +6,11 @@ import pytest
 from PySide6.QtWidgets import QMessageBox
 
 from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.project_manager import (ProjectConfig,
-                                                       ProjectExportDialog,
-                                                       ProjectPanel)
+from markdown_editor.markdown6.project_manager import (
+    ProjectConfig,
+    ProjectExportDialog,
+    ProjectPanel,
+)
 
 
 @pytest.fixture
@@ -188,7 +190,7 @@ class TestContextMenu:
         """Test creating a new file."""
         panel.set_project_path(project_dir)
 
-        with patch.object(panel, "file_double_clicked") as mock_signal:
+        with patch.object(panel, "file_double_clicked"):
             with patch("PySide6.QtWidgets.QInputDialog.getText", return_value=("new.md", True)):
                 panel._new_file(project_dir)
 
@@ -207,7 +209,6 @@ class TestContextMenu:
             panel._new_file(project_dir)
 
         # No new file should be created
-        files_before = list(project_dir.glob("*.md"))
         assert len([f for f in project_dir.glob("*.md") if f.name not in ["readme.md", "doc.md"]]) == 0
 
     def test_new_folder(self, panel, project_dir):

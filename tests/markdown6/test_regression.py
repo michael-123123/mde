@@ -47,8 +47,9 @@ class TestGraphExportLabelSpacing:
 
     def test_labels_below_adds_spacing_for_dot_layout(self, qtbot, tmp_path):
         """Test that dot layout gets nodesep and ranksep when labels below."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         # Create a test project with files
         project = tmp_path / "project"
@@ -73,8 +74,9 @@ class TestGraphExportLabelSpacing:
 
     def test_labels_below_adds_overlap_for_circo_layout(self, qtbot, tmp_path):
         """Test that circo layout gets overlap=prism when labels below."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -95,8 +97,9 @@ class TestGraphExportLabelSpacing:
 
     def test_labels_below_disabled_no_extra_spacing(self, qtbot, tmp_path):
         """Test that spacing attributes are NOT added when labels_below is off."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -125,27 +128,29 @@ class TestVerticalTabCollapse:
 
     def test_vertical_tab_arrow_changes_on_collapse(self, qtbot):
         """Test that arrow direction changes when collapsed."""
-        from markdown_editor.markdown6.components.graph_export import \
-            VerticalTab
+        from markdown_editor.markdown6.components.graph_export import (
+            VerticalTab,
+        )
 
         tab = VerticalTab("FILES", width=28, arrow_direction="left")
         qtbot.addWidget(tab)
 
         # Initially not collapsed
-        assert tab._collapsed == False
+        assert tab._collapsed is False
 
         # Collapse it
         tab.setCollapsed(True)
-        assert tab._collapsed == True
+        assert tab._collapsed is True
 
         # Expand it
         tab.setCollapsed(False)
-        assert tab._collapsed == False
+        assert tab._collapsed is False
 
     def test_vertical_tab_text_centered(self, qtbot):
         """Test that VerticalTab can be created with text."""
-        from markdown_editor.markdown6.components.graph_export import \
-            VerticalTab
+        from markdown_editor.markdown6.components.graph_export import (
+            VerticalTab,
+        )
 
         tab = VerticalTab("OPTIONS", width=28, arrow_direction="right")
         qtbot.addWidget(tab)
@@ -164,8 +169,9 @@ class TestCommandPaletteAlignment:
 
     def test_command_palette_uses_monospace_font(self, qtbot):
         """Test that command palette list uses monospace font."""
-        from markdown_editor.markdown6.components.command_palette import \
-            CommandPalette
+        from markdown_editor.markdown6.components.command_palette import (
+            CommandPalette,
+        )
 
         palette = CommandPalette()
         qtbot.addWidget(palette)
@@ -178,7 +184,9 @@ class TestCommandPaletteAlignment:
     def test_command_shortcut_padding(self, qtbot):
         """Test that commands with shortcuts get padded for alignment."""
         from markdown_editor.markdown6.components.command_palette import (
-            Command, CommandPalette)
+            Command,
+            CommandPalette,
+        )
 
         palette = CommandPalette()
         qtbot.addWidget(palette)
@@ -203,8 +211,9 @@ class TestGraphExportWindowFlags:
 
     def test_graph_export_can_maximize(self, qtbot, tmp_path):
         """Test that graph export dialog has maximize button enabled."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -227,8 +236,9 @@ class TestGraphPreviewNoScrollbars:
 
     def test_preview_html_has_no_scrollbar_styling(self, qtbot, tmp_path):
         """Test that preview HTML doesn't have scrollbar CSS."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -254,8 +264,9 @@ class TestGraphExportPreviewScaling:
 
     def test_preview_widget_has_stretch(self, qtbot, tmp_path):
         """Test that preview view is added with stretch factor."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -281,8 +292,9 @@ class TestNodeClickNavigation:
 
     def test_preview_html_has_click_handlers(self, qtbot, tmp_path):
         """Test that preview HTML has node click JavaScript."""
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -299,7 +311,9 @@ class TestNodeClickNavigation:
     def test_graph_preview_page_intercepts_navigation(self, qtbot):
         """Test that GraphPreviewPage can intercept file:// URLs."""
         from markdown_editor.markdown6.components.graph_export import (
-            HAS_WEBENGINE, GraphPreviewPage)
+            HAS_WEBENGINE,
+            GraphPreviewPage,
+        )
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -317,7 +331,7 @@ class TestNodeClickNavigation:
         # acceptNavigationRequest should return False for file:// URLs
         result = page.acceptNavigationRequest(url, None, True)
 
-        assert result == False
+        assert result is False
         assert clicked_files == ["/path/to/doc.md"]
 
 
@@ -326,8 +340,9 @@ class TestWikiLinkPattern:
 
     def test_wiki_link_with_pipe_alias(self):
         """Test that wiki links with aliases are detected correctly."""
-        from markdown_editor.markdown6.components.graph_export import \
-            WIKI_LINK_PATTERN
+        from markdown_editor.markdown6.components.graph_export import (
+            WIKI_LINK_PATTERN,
+        )
 
         text = "See [[Document Name|display text]] for more."
         matches = WIKI_LINK_PATTERN.findall(text)
@@ -337,8 +352,9 @@ class TestWikiLinkPattern:
 
     def test_markdown_link_only_md_files(self):
         """Test that only .md/.mdown files are matched."""
-        from markdown_editor.markdown6.components.graph_export import \
-            MD_LINK_PATTERN
+        from markdown_editor.markdown6.components.graph_export import (
+            MD_LINK_PATTERN,
+        )
 
         text = "[doc](file.md) [img](image.png) [pdf](doc.pdf)"
         matches = MD_LINK_PATTERN.findall(text)
@@ -379,8 +395,10 @@ class TestSettingsPersistence:
 
     def test_corrupt_settings_file_uses_defaults(self, tmp_path):
         """Test that corrupt settings file falls back to defaults."""
-        from markdown_editor.markdown6.app_context import (DEFAULT_SETTINGS,
-                                                           AppContext)
+        from markdown_editor.markdown6.app_context import (
+            DEFAULT_SETTINGS,
+            AppContext,
+        )
 
         config_dir = tmp_path / "config"
         config_dir.mkdir()
@@ -409,7 +427,9 @@ class TestPreviewDarkModeBackground:
 
         from markdown_editor.markdown6.app_context import get_app_context
         from markdown_editor.markdown6.components.document_tab import (
-            HAS_WEBENGINE, DocumentTab)
+            HAS_WEBENGINE,
+            DocumentTab,
+        )
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -431,7 +451,9 @@ class TestPreviewDarkModeBackground:
 
         from markdown_editor.markdown6.app_context import get_app_context
         from markdown_editor.markdown6.components.document_tab import (
-            HAS_WEBENGINE, DocumentTab)
+            HAS_WEBENGINE,
+            DocumentTab,
+        )
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")
@@ -524,8 +546,9 @@ class TestDarkModeTheming:
         """Test that apply_application_theme applies dark styling."""
         from PySide6.QtWidgets import QApplication
 
-        from markdown_editor.markdown6.markdown_editor import \
-            apply_application_theme
+        from markdown_editor.markdown6.markdown_editor import (
+            apply_application_theme,
+        )
 
         apply_application_theme(dark_mode=True)
 
@@ -543,8 +566,9 @@ class TestDarkModeTheming:
         """Test that apply_application_theme applies light styling."""
         from PySide6.QtWidgets import QApplication
 
-        from markdown_editor.markdown6.markdown_editor import \
-            apply_application_theme
+        from markdown_editor.markdown6.markdown_editor import (
+            apply_application_theme,
+        )
 
         apply_application_theme(dark_mode=False)
 
@@ -600,8 +624,9 @@ class TestDarkModeTheming:
     def test_graph_export_dialog_theming(self, qtbot, tmp_path):
         """Test that GraphExportDialog has proper dark mode theming."""
         from markdown_editor.markdown6.app_context import get_app_context
-        from markdown_editor.markdown6.components.graph_export import \
-            GraphExportDialog
+        from markdown_editor.markdown6.components.graph_export import (
+            GraphExportDialog,
+        )
 
         project = tmp_path / "project"
         project.mkdir()
@@ -700,7 +725,9 @@ class TestMathRendering:
 
         from markdown_editor.markdown6.app_context import get_app_context
         from markdown_editor.markdown6.components.document_tab import (
-            HAS_WEBENGINE, DocumentTab)
+            HAS_WEBENGINE,
+            DocumentTab,
+        )
         from markdown_editor.markdown6.extensions.math import get_math_js
 
         if not HAS_WEBENGINE:
@@ -753,7 +780,9 @@ class TestPreviewWheelScrollSync:
         on the preview once its page has loaded."""
         from markdown_editor.markdown6.app_context import get_app_context
         from markdown_editor.markdown6.components.document_tab import (
-            HAS_WEBENGINE, DocumentTab)
+            HAS_WEBENGINE,
+            DocumentTab,
+        )
 
         if not HAS_WEBENGINE:
             pytest.skip("WebEngine not available")

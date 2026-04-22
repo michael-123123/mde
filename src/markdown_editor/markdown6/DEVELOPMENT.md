@@ -304,7 +304,7 @@ Preview HTML contains a placeholder <div data-mermaid-src="..."> or <div data-do
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
-from ..theme import get_theme_from_ctx
+from markdown_editor.markdown6.theme import get_theme_from_ctx
 
 class MyPanel(QWidget):
     item_clicked = Signal(str)
@@ -436,7 +436,7 @@ class MyExtension(Extension):
 
 2. Register it where the preview markdown instance is constructed (`components/document_tab.py`):
 ```python
-from ..extensions.my_ext import MyExtension
+from markdown_editor.markdown6.extensions.my_ext import MyExtension
 self.md = markdown.Markdown(extensions=[..., MyExtension()])
 ```
 

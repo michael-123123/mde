@@ -5,9 +5,17 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QCheckBox, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QTreeWidget, QTreeWidgetItem,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from markdown_editor.markdown6.app_context import get_project_markdown_files
 from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx

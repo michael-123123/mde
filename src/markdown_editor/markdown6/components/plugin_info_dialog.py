@@ -13,13 +13,22 @@ just see the metadata section.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFrame, QLabel,
-                               QScrollArea, QTextBrowser, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QFrame,
+    QLabel,
+    QScrollArea,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
 
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                       PluginStatus)
-
+from markdown_editor.markdown6.plugins.plugin import (
+    Plugin,
+    PluginSource,
+    PluginStatus,
+)
 
 _STATUS_DISPLAY = {
     PluginStatus.ENABLED: "Enabled",

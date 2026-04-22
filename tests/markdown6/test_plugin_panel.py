@@ -21,7 +21,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QLabel, QWidget
+from PySide6.QtWidgets import QLabel
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.sidebar import Sidebar

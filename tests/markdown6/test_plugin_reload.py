@@ -22,8 +22,7 @@ from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.notifications import Severity
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.loader import load_all
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                       PluginStatus)
+from markdown_editor.markdown6.plugins.plugin import PluginSource
 from markdown_editor.markdown6.plugins.reload import reload_plugins
 
 

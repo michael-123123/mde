@@ -16,17 +16,15 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import pytest
-
-
 # ─── Unit tests: _absolutize_dot_image_paths ───────────────────────
 
 class TestAbsolutizeDotImagePaths:
     """Pure string-transformation tests for the absolutizer."""
 
     def _sub(self, content: str, source_path: Path) -> str:
-        from markdown_editor.markdown6.export_service import \
-            _absolutize_dot_image_paths
+        from markdown_editor.markdown6.export_service import (
+            _absolutize_dot_image_paths,
+        )
         return _absolutize_dot_image_paths(content, source_path)
 
     def test_rewrites_relative_path(self, tmp_path):
@@ -107,8 +105,9 @@ class TestCombineProjectMarkdownAbsolutizesDotPaths:
     after concatenation."""
 
     def test_per_file_resolution(self, tmp_path):
-        from markdown_editor.markdown6.export_service import \
-            combine_project_markdown
+        from markdown_editor.markdown6.export_service import (
+            combine_project_markdown,
+        )
 
         a_dir = tmp_path / "dir_a"
         b_dir = tmp_path / "dir_b"

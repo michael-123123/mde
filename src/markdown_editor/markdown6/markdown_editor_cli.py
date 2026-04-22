@@ -319,8 +319,9 @@ def read_stdin() -> str:
 
 def get_project_files(project_path: Path) -> list[Path]:
     """Get all markdown files in a project."""
-    from markdown_editor.markdown6.app_context import \
-        get_project_markdown_files
+    from markdown_editor.markdown6.app_context import (
+        get_project_markdown_files,
+    )
     return get_project_markdown_files(project_path)
 
 
@@ -494,7 +495,6 @@ def cmd_graph(args: argparse.Namespace) -> int:
         nodes = {f: links for f, links in nodes.items() if f in linked_files}
 
     # Generate DOT source
-    is_directed = True
     graph_type = "digraph"
     edge_op = "->"
 
@@ -521,7 +521,6 @@ def cmd_graph(args: argparse.Namespace) -> int:
     # Add nodes
     for f, node_id in node_ids.items():
         label = f.stem
-        rel_path = f.relative_to(args.project)
         if args.labels_below:
             lines.append(f'    {node_id} [xlabel="{label}"];')
         else:
@@ -718,7 +717,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return 1
 
     if not files:
-        print(f"Error: No markdown files found", file=sys.stderr)
+        print("Error: No markdown files found", file=sys.stderr)
         return 1
 
     # Build file index
@@ -1083,7 +1082,7 @@ def _install_desktop_macos() -> int:
     else:
         # Fallback: copy PNG as-is (icon may not display perfectly)
         shutil.copy2(src_icon, resources / "app.png")
-        print(f"Warning: sips conversion failed, copied PNG icon instead")
+        print("Warning: sips conversion failed, copied PNG icon instead")
 
     print(f"Done. '{_MACOS_APP_NAME}' is now in ~/Applications.")
     print("You can drag it to the Dock or find it in Launchpad.")
@@ -1153,7 +1152,7 @@ def _install_autocomplete_bash():
     bashrc = Path.home() / ".bashrc"
     sourcer = 'for f in ~/.bash_completion.d/*; do [ -f "$f" ] && . "$f"; done'
     if bashrc.exists() and sourcer not in bashrc.read_text():
-        print(f"\nAdd this to your ~/.bashrc if not already present:")
+        print("\nAdd this to your ~/.bashrc if not already present:")
         print(f"  {sourcer}")
     print("Then restart your shell or run: source ~/.bashrc")
 
@@ -1173,9 +1172,9 @@ def _install_autocomplete_zsh():
     zshrc = Path.home() / ".zshrc"
     lines_needed = ['fpath=(~/.zfunc $fpath)', 'autoload -Uz compinit && compinit']
     existing = zshrc.read_text() if zshrc.exists() else ""
-    missing = [l for l in lines_needed if l not in existing]
+    missing = [line for line in lines_needed if line not in existing]
     if missing:
-        print(f"\nAdd these to your ~/.zshrc if not already present:")
+        print("\nAdd these to your ~/.zshrc if not already present:")
         for line in missing:
             print(f"  {line}")
     print("Then restart your shell or run: exec zsh")
@@ -1261,7 +1260,9 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     from markdown_editor.markdown6.app_context import get_app_context
     from markdown_editor.markdown6.markdown_editor import (
-        MarkdownEditor, apply_application_theme)
+        MarkdownEditor,
+        apply_application_theme,
+    )
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")

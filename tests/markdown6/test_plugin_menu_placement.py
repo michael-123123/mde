@@ -12,8 +12,6 @@ explaining where in the target menu the action should land.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMainWindow, QMenu
@@ -29,7 +27,6 @@ from markdown_editor.markdown6.plugins.registry import (
     PluginRegistry,
     PluginTextTransform,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -394,6 +391,7 @@ def test_full_editor_has_plugins_menu_before_help(qtbot) -> None:
     positioned just before Help, regardless of whether any plugin is
     installed."""
     from PySide6.QtWidgets import QApplication
+
     from markdown_editor.markdown6.markdown_editor import MarkdownEditor
 
     editor = MarkdownEditor()

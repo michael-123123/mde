@@ -16,10 +16,15 @@ from unittest import mock
 import pytest
 
 from markdown_editor.markdown6.app_context import init_app_context
-from markdown_editor.markdown6.components.plugins_page import PluginsSettingsPage
+from markdown_editor.markdown6.components.plugins_page import (
+    PluginsSettingsPage,
+)
 from markdown_editor.markdown6.plugins.metadata import PluginMetadata
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                       PluginStatus)
+from markdown_editor.markdown6.plugins.plugin import (
+    Plugin,
+    PluginSource,
+    PluginStatus,
+)
 
 
 @pytest.fixture

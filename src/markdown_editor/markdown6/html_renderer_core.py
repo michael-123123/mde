@@ -49,10 +49,21 @@ from pygments.formatters import HtmlFormatter
 from markdown_editor.markdown6 import graphviz_service
 from markdown_editor.markdown6.diagram_helpers import _render_diagram
 from markdown_editor.markdown6.extensions import (
-    BreaklessListExtension, CalloutExtension, GraphvizExtension,
-    LogseqExtension, MathExtension, MermaidExtension, SourceLineExtension,
-    TaskListExtension, WikiLinkExtension, get_callout_css, get_math_js,
-    get_mermaid_css, get_mermaid_js, get_tasklist_css)
+    BreaklessListExtension,
+    CalloutExtension,
+    GraphvizExtension,
+    LogseqExtension,
+    MathExtension,
+    MermaidExtension,
+    SourceLineExtension,
+    TaskListExtension,
+    WikiLinkExtension,
+    get_callout_css,
+    get_math_js,
+    get_mermaid_css,
+    get_mermaid_js,
+    get_tasklist_css,
+)
 from markdown_editor.markdown6.templates.preview import PREVIEW_TEMPLATE_FULL
 from markdown_editor.markdown6.theme import get_theme
 

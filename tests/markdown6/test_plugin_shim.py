@@ -13,7 +13,6 @@ import pytest
 import markdown_editor.plugins as shim
 from markdown_editor.markdown6.plugins import api as internal
 
-
 # ---------------------------------------------------------------------------
 # Required exports
 # ---------------------------------------------------------------------------

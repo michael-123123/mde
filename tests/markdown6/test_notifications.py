@@ -9,14 +9,11 @@ future non-plugin notification sources route through.
 
 from __future__ import annotations
 
-import pytest
-
 from markdown_editor.markdown6.notifications import (
     Notification,
     NotificationCenter,
     Severity,
 )
-
 
 # ---------------------------------------------------------------------------
 # Notification dataclass

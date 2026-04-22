@@ -23,15 +23,26 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFrame, QHBoxLayout,
-                               QLabel, QListWidget, QPushButton, QScrollArea,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                      PluginStatus)
-
+from markdown_editor.markdown6.plugins.plugin import (
+    Plugin,
+    PluginSource,
+    PluginStatus,
+)
 
 _ERROR_STATUS_TEXT = {
     PluginStatus.LOAD_FAILURE:     "Error (load failure)",

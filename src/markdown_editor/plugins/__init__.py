@@ -79,7 +79,6 @@ from markdown_editor.markdown6.plugins.api import (
 )
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 
-
 __all__ = [
     # Registration decorators
     "register_action",

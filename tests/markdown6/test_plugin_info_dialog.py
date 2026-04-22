@@ -26,17 +26,22 @@ from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_info_dialog import (
     PluginInfoDialog,
 )
+from markdown_editor.markdown6.components.plugins_page import (
+    PluginsSettingsPage,
+)
+from markdown_editor.markdown6.plugins.loader import load_all
+from markdown_editor.markdown6.plugins.metadata import PluginMetadata
+from markdown_editor.markdown6.plugins.plugin import (
+    Plugin,
+    PluginSource,
+    PluginStatus,
+)
 
 
 def _visible_text(widget: QWidget) -> str:
     """All QLabel text in the widget tree, concatenated. Mirrors what a
     reader of the dialog would see."""
     return "\n".join(lbl.text() for lbl in widget.findChildren(QLabel))
-from markdown_editor.markdown6.components.plugins_page import PluginsSettingsPage
-from markdown_editor.markdown6.plugins.loader import load_all
-from markdown_editor.markdown6.plugins.metadata import PluginMetadata
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                       PluginStatus)
 
 
 @pytest.fixture

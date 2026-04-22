@@ -3,9 +3,11 @@
 
 import pytest
 
-from markdown_editor.markdown6.app_context import (get_app_context,
-                                                   get_project_markdown_files,
-                                                   is_hidden_path)
+from markdown_editor.markdown6.app_context import (
+    get_app_context,
+    get_project_markdown_files,
+    is_hidden_path,
+)
 
 # --- is_hidden_path ---
 

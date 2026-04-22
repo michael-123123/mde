@@ -5,20 +5,42 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from markdown_editor.markdown6.logger import getLogger
-
-logger = getLogger(__name__)
-
-from PySide6.QtCore import (QFileSystemWatcher, QMimeData, QPoint, QRect,
-                            QSize, Qt, QTimer, Signal)
-from PySide6.QtGui import (QColor, QCursor, QFont, QImage, QPainter, QPolygon,
-                           QTextCursor, QTextFormat, QTextOption)
-from PySide6.QtWidgets import (QApplication, QFileDialog, QListWidget,
-                               QPlainTextEdit, QTextEdit, QWidget)
+from PySide6.QtCore import (
+    QFileSystemWatcher,
+    QMimeData,
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    QTimer,
+    Signal,
+)
+from PySide6.QtGui import (
+    QColor,
+    QCursor,
+    QFont,
+    QImage,
+    QPainter,
+    QPolygon,
+    QTextCursor,
+    QTextFormat,
+    QTextOption,
+)
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QListWidget,
+    QPlainTextEdit,
+    QTextEdit,
+    QWidget,
+)
 
 from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
 from markdown_editor.markdown6.theme import StyleSheets, get_theme
+
+logger = getLogger(__name__)
 
 
 class FoldingRegion:
@@ -717,8 +739,6 @@ class EnhancedEditor(QPlainTextEdit):
         cursor = self.textCursor()
 
         if cursor.hasSelection():
-            start = cursor.selectionStart()
-            end = cursor.selectionEnd()
             selected_text = cursor.selectedText()
 
             # Check if already commented

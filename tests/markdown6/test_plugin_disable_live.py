@@ -12,16 +12,14 @@ test.
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
-import textwrap
-from PySide6.QtWidgets import QMainWindow, QPlainTextEdit
+from PySide6.QtWidgets import QMainWindow
 
 from markdown_editor.markdown6.components.command_palette import Command
 from markdown_editor.markdown6.plugins import api as plugin_api
-from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (
     apply_disabled_set,
     inject_plugin_actions,
@@ -34,7 +32,6 @@ from markdown_editor.markdown6.plugins.registry import (
     PluginRegistry,
     PluginTextTransform,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture plugin dir used by several tests
@@ -337,6 +334,7 @@ def test_disable_does_not_hide_editor_builtin_submenu(qtbot) -> None:
     """Pre-existing non-plugin menus must NEVER be hidden by apply_disabled_set,
     even if all of their (plugin) contents are."""
     from PySide6.QtWidgets import QMenu
+
     from markdown_editor.markdown6.plugins.editor_integration import (
         register_existing_menu,
     )

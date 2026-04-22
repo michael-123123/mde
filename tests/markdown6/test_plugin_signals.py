@@ -24,10 +24,7 @@ from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource
-from markdown_editor.markdown6.plugins.signals import (
-    SignalKind,
-    dispatch,
-)
+from markdown_editor.markdown6.plugins.signals import SignalKind, dispatch
 
 
 @pytest.fixture(autouse=True)

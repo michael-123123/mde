@@ -81,7 +81,9 @@ def dispatch(
                 "Plugin signal handler %r (kind=%s) raised: %s",
                 handler_name, kind.value, exc, exc_info=True,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 h.plugin_name,
                 f"Plugin {kind.value} handler failed: {handler_name}",

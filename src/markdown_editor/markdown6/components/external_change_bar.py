@@ -1,8 +1,13 @@
 """Non-modal notification bar for external file modifications."""
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-                               QWidget)
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QWidget,
+)
 
 from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
 

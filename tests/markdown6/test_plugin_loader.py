@@ -15,7 +15,6 @@ from markdown_editor.markdown6.plugins.loader import (
 )
 from markdown_editor.markdown6.plugins.plugin import Plugin, PluginStatus
 
-
 # ---------------------------------------------------------------------------
 # Fixture plugin construction helpers
 # ---------------------------------------------------------------------------

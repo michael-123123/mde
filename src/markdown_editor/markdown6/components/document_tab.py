@@ -13,13 +13,20 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QApplication, QSplitter, QTextBrowser,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QSplitter,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
 
-from markdown_editor.markdown6.components.external_change_bar import \
-    ExternalChangeBar
-from markdown_editor.markdown6.components.find_replace_bar import \
-    FindReplaceBar
+from markdown_editor.markdown6.components.external_change_bar import (
+    ExternalChangeBar,
+)
+from markdown_editor.markdown6.components.find_replace_bar import (
+    FindReplaceBar,
+)
 from markdown_editor.markdown6.diagram_helpers import _render_diagram
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
 from markdown_editor.markdown6.logger import getLogger
@@ -44,8 +51,10 @@ def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | No
     import json
     import subprocess
 
-    from markdown_editor.markdown6.temp_files import (create_temp_dir,
-                                                      create_temp_file)
+    from markdown_editor.markdown6.temp_files import (
+        create_temp_dir,
+        create_temp_file,
+    )
 
     if kind == 'mermaid':
         from markdown_editor.markdown6.tool_paths import get_mmdc_path

@@ -8,16 +8,16 @@ Fix: Check preview_has_focus() and delegate to the preview when it owns
 keyboard focus.
 """
 
+import importlib.util
+
 import pytest
 from PySide6.QtWidgets import QApplication
 
 from markdown_editor.markdown6.app_context import get_app_context
 
-try:
-    from PySide6.QtWebEngineWidgets import QWebEngineView
-    HAS_WEBENGINE = True
-except ImportError:
-    HAS_WEBENGINE = False
+HAS_WEBENGINE = (
+    importlib.util.find_spec("PySide6.QtWebEngineWidgets") is not None
+)
 
 
 class FakeMainWindow:
@@ -25,6 +25,7 @@ class FakeMainWindow:
 
     def __init__(self):
         import markdown
+
         from markdown_editor.markdown6.extensions.math import MathExtension
 
         self.ctx = get_app_context()

@@ -12,8 +12,6 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-import pytest
-
 from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.markdown_editor_cli import create_parser
 

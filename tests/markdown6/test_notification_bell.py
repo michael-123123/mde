@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from markdown_editor.markdown6.components.notification_bell import (
     NotificationBellButton,
     NotificationDrawer,
@@ -13,7 +11,6 @@ from markdown_editor.markdown6.notifications import (
     NotificationCenter,
     Severity,
 )
-
 
 # ---------------------------------------------------------------------------
 # Bell button

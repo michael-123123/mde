@@ -4,7 +4,9 @@ import pytest
 from PySide6.QtWidgets import QTableWidgetItem
 
 from markdown_editor.markdown6.components.table_editor import (
-    TableEditorDialog, create_table_from_size)
+    TableEditorDialog,
+    create_table_from_size,
+)
 
 
 @pytest.fixture
@@ -295,7 +297,7 @@ class TestCreateTableFromSize:
     def test_correct_row_count(self):
         """Test that correct number of rows are created."""
         markdown = create_table_from_size(5, 2)
-        lines = [l for l in markdown.split("\n") if l.strip()]
+        lines = [line for line in markdown.split("\n") if line.strip()]
         # 1 header + 1 separator + 5 data rows
         assert len(lines) == 7
 

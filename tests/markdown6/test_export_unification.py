@@ -43,7 +43,6 @@ import pytest
 from markdown_editor.markdown6 import export_service
 from markdown_editor.markdown6.app_context import get_app_context
 
-
 # ─── Source-tree references ─────────────────────────────────────────
 
 SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "markdown_editor" / "markdown6"

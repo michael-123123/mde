@@ -33,7 +33,6 @@ from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus
 from markdown_editor.markdown6.plugins.signals import SignalKind, dispatch
 
-
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "plugins"
 
 
@@ -173,7 +172,7 @@ def test_panel_responds_to_file_opened_signal(qtbot, ctx) -> None:
 
 def test_signal_handler_with_no_active_document_is_safe(qtbot, ctx) -> None:
     """Handler is called when there's no active document — must not raise."""
-    panel = _build_panel(qtbot, ctx)
+    _build_panel(qtbot, ctx)
     plugin_api._set_active_document_provider(lambda: None)
 
     # Get the registered handler and call it through dispatch

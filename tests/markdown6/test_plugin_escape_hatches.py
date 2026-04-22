@@ -82,8 +82,11 @@ def test_get_app_context_exported_from_shim() -> None:
 
 def test_get_app_context_returns_appcontext() -> None:
     """Sanity: the returned object behaves like AppContext (has .get())."""
-    from markdown_editor.markdown6.app_context import AppContext, init_app_context
     import markdown_editor.markdown6.app_context as ctx_mod
+    from markdown_editor.markdown6.app_context import (
+        AppContext,
+        init_app_context,
+    )
 
     ctx_mod._app_context = None
     init_app_context(ephemeral=True)
@@ -103,6 +106,7 @@ def test_get_main_window_default_returns_none() -> None:
 
 def test_get_main_window_returns_provider_result(qtbot) -> None:
     from PySide6.QtWidgets import QMainWindow
+
     from markdown_editor.markdown6.plugins import api
 
     win = QMainWindow()

@@ -24,7 +24,9 @@ from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_info_dialog import (
     PluginInfoDialog,
 )
-from markdown_editor.markdown6.components.plugins_page import PluginsSettingsPage
+from markdown_editor.markdown6.components.plugins_page import (
+    PluginsSettingsPage,
+)
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus

@@ -16,7 +16,10 @@ import pytest
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QPlainTextEdit
 
 from markdown_editor.markdown6.app_context import init_app_context
-from markdown_editor.markdown6.notifications import NotificationCenter, Severity
+from markdown_editor.markdown6.notifications import (
+    NotificationCenter,
+    Severity,
+)
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (

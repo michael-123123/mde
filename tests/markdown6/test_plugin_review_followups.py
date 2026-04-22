@@ -25,10 +25,9 @@ Plus coverage additions:
 from __future__ import annotations
 
 import textwrap
-from types import SimpleNamespace
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel, QPlainTextEdit, QTextBrowser
+from PySide6.QtWidgets import QApplication, QLabel
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_info_dialog import (
@@ -44,7 +43,6 @@ from markdown_editor.markdown6.plugins.plugin import (
     PluginSource,
     PluginStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Finding #1 — atomic_edit rollback must clear the stale tab-title `*`

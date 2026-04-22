@@ -17,14 +17,23 @@ from datetime import datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
-                               QScrollArea, QSizeGrip, QToolButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSizeGrip,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from markdown_editor.markdown6.notifications import (Notification,
-                                                     NotificationCenter,
-                                                     Severity)
-
+from markdown_editor.markdown6.notifications import (
+    Notification,
+    NotificationCenter,
+    Severity,
+)
 
 _SEVERITY_GLYPH = {
     Severity.INFO: "ℹ",

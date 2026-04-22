@@ -4,10 +4,12 @@
 import pytest
 from PySide6.QtGui import QTextCursor
 
-from markdown_editor.markdown6.enhanced_editor import (EnhancedEditor,
-                                                       FoldingRegion,
-                                                       LineNumberArea,
-                                                       WikiLinkCompleter)
+from markdown_editor.markdown6.enhanced_editor import (
+    EnhancedEditor,
+    FoldingRegion,
+    LineNumberArea,
+    WikiLinkCompleter,
+)
 
 
 @pytest.fixture
@@ -35,7 +37,7 @@ class TestFoldingRegion:
         assert region.start_line == 5
         assert region.end_line == 10
         assert region.region_type == "heading"
-        assert region.is_folded == False
+        assert region.is_folded is False
 
     def test_folding_region_default_type(self):
         """Test default region type."""
@@ -233,7 +235,7 @@ class TestEnhancedEditorFile:
         editor.setPlainText("# Saved Content")
 
         result = editor.save_file()
-        assert result == True
+        assert result is True
         assert test_file.exists()
         assert "Saved Content" in test_file.read_text()
 
@@ -242,7 +244,7 @@ class TestEnhancedEditorFile:
         editor.setPlainText("# Content")
         editor.file_path = None
         result = editor.save_file()
-        assert result == False
+        assert result is False
 
 
 class TestEnhancedEditorFormatting:

@@ -31,7 +31,7 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import QMainWindow, QMenu, QMenuBar
+from PySide6.QtWidgets import QMainWindow, QMenu
 
 from markdown_editor.markdown6.components.command_palette import Command
 from markdown_editor.markdown6.logger import getLogger
@@ -300,6 +300,7 @@ def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
             return
 
         from pathlib import Path
+
         from PySide6.QtWidgets import QFileDialog
 
         ext_glob = " ".join(f"*.{ext}" for ext in exporter.extensions)
@@ -317,7 +318,9 @@ def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
                 "Plugin exporter %r raised: %s", exporter.id, exc,
                 exc_info=True,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 exporter.plugin_name,
                 f"Plugin export failed: {exporter.label}",
@@ -617,7 +620,9 @@ def _wrap_action_callback(action: PluginAction):
                 "Plugin action %r raised: %s", action.id, exc,
                 exc_info=True,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 action.plugin_name,
                 f"Plugin action failed: {action.label}",
@@ -643,7 +648,9 @@ def _wrap_transform_callback(transform: PluginTextTransform):
                 "Text transform %r failed: %s",
                 transform.id, result.detail,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 transform.plugin_name,
                 f"Plugin transform failed: {transform.label}",

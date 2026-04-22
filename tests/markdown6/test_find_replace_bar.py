@@ -20,8 +20,9 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSizePolicy, QTextBrowser
 
-from markdown_editor.markdown6.components.find_replace_bar import \
-    FindReplaceBar
+from markdown_editor.markdown6.components.find_replace_bar import (
+    FindReplaceBar,
+)
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
 
 # ---------------------------------------------------------------------------

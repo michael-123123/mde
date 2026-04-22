@@ -159,13 +159,15 @@ class TestClipboardAccessEnabled:
     fails."""
 
     def test_setting_enabled(self, qtbot):
-        from markdown_editor.markdown6.components.document_tab import \
-            DocumentTab
+        from markdown_editor.markdown6.components.document_tab import (
+            DocumentTab,
+        )
 
         class FakeMainWindow:
             def __init__(self):
-                from markdown_editor.markdown6.extensions.math import \
-                    MathExtension
+                from markdown_editor.markdown6.extensions.math import (
+                    MathExtension,
+                )
                 self.ctx = get_app_context()
                 self.md = markdown.Markdown(extensions=["extra", MathExtension()])
 

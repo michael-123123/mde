@@ -4,9 +4,11 @@ import json
 
 import pytest
 
-from markdown_editor.markdown6.app_context import (DEFAULT_SETTINGS,
-                                                   DEFAULT_SHORTCUTS,
-                                                   AppContext)
+from markdown_editor.markdown6.app_context import (
+    DEFAULT_SETTINGS,
+    DEFAULT_SHORTCUTS,
+    AppContext,
+)
 
 
 @pytest.fixture
@@ -295,8 +297,10 @@ class TestEphemeralAppContext:
     def test_init_app_context_ephemeral(self, tmp_path):
         """Test init_app_context with ephemeral flag."""
         import markdown_editor.markdown6.app_context as ctx_module
-        from markdown_editor.markdown6.app_context import (get_app_context,
-                                                           init_app_context)
+        from markdown_editor.markdown6.app_context import (
+            get_app_context,
+            init_app_context,
+        )
 
         # Reset global context
         ctx_module._app_context = None

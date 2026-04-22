@@ -7,12 +7,24 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from markdown_editor.markdown6.markdown_editor_cli import (
-    _MACOS_APP_NAME, _create_windows_shortcut, _icons_dir,
-    _install_desktop_linux, _install_desktop_macos, _install_desktop_windows,
-    _uninstall_desktop_linux, _uninstall_desktop_macos,
-    _uninstall_desktop_windows, cmd_export, cmd_graph, cmd_install_desktop,
-    cmd_stats, cmd_uninstall_desktop, cmd_validate, create_parser,
-    get_project_files, main)
+    _MACOS_APP_NAME,
+    _create_windows_shortcut,
+    _install_desktop_linux,
+    _install_desktop_macos,
+    _install_desktop_windows,
+    _uninstall_desktop_linux,
+    _uninstall_desktop_macos,
+    _uninstall_desktop_windows,
+    cmd_export,
+    cmd_graph,
+    cmd_install_desktop,
+    cmd_stats,
+    cmd_uninstall_desktop,
+    cmd_validate,
+    create_parser,
+    get_project_files,
+    main,
+)
 
 
 class TestCreateParser:
@@ -384,7 +396,7 @@ class TestCmdValidate:
 
         parser = create_parser()
         args = parser.parse_args(["validate", "-p", str(tmp_path), "--json"])
-        result = cmd_validate(args)
+        cmd_validate(args)
 
         captured = capsys.readouterr()
         data = json.loads(captured.out)
@@ -625,7 +637,6 @@ class TestInstallDesktopLinux:
     def test_install_creates_desktop_file(self, tmp_path, capsys):
         """Test that install creates .desktop file and icons."""
         data_home = tmp_path / "data"
-        icons_dir = _icons_dir()
 
         with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
              patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):

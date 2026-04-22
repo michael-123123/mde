@@ -23,7 +23,6 @@ from markdown_editor.plugins import (
     register_settings_schema,
 )
 
-
 _PLUGIN_ID = "stamp"
 
 

@@ -25,6 +25,7 @@ from typing import Callable
 
 from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
+from markdown_editor.markdown6.plugins.fence import FENCE_NAME_CHARS
 from markdown_editor.markdown6.plugins.registry import (
     Field,
     PluginAction,
@@ -43,9 +44,28 @@ logger = getLogger(__name__)
 # --- Module-level state ------------------------------------------------------
 
 _REGISTRY: PluginRegistry = PluginRegistry()
-_ACTIVE_DOCUMENT_PROVIDER: Callable[[], DocumentHandle | None] = lambda: None
-_ALL_DOCUMENTS_PROVIDER: Callable[[], list[DocumentHandle]] = lambda: []
-_MAIN_WINDOW_PROVIDER: Callable[[], object] = lambda: None
+
+
+# Default no-op providers for the three "inject an editor callable
+# here" hooks. The real editor overrides these at startup via the
+# ``_set_*_provider`` helpers below; the defaults let the API surface
+# stay usable without a MarkdownEditor wired in (unit tests, plugin
+# authoring in isolation).
+def _no_active_document() -> DocumentHandle | None:
+    return None
+
+
+def _no_documents() -> list[DocumentHandle]:
+    return []
+
+
+def _no_window() -> object:
+    return None
+
+
+_ACTIVE_DOCUMENT_PROVIDER: Callable[[], DocumentHandle | None] = _no_active_document
+_ALL_DOCUMENTS_PROVIDER: Callable[[], list[DocumentHandle]] = _no_documents
+_MAIN_WINDOW_PROVIDER: Callable[[], object] = _no_window
 
 # Name of the plugin currently being imported by the loader. Read by
 # the registration decorators so each registration can be stamped with
@@ -327,8 +347,6 @@ def register_panel(
 
 # --- Fenced code blocks ------------------------------------------------------
 
-
-from markdown_editor.markdown6.plugins.fence import FENCE_NAME_CHARS
 
 _FENCE_NAME_RE = re.compile(rf"^{FENCE_NAME_CHARS}+$")
 
