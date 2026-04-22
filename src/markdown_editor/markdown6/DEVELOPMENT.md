@@ -71,7 +71,7 @@ A container widget for a single document. Contains:
 
 **Key attributes:**
 - `file_path: Path | None` — current file path
-- `unsaved_changes: bool` — dirty state
+- `unsaved_changes: bool` — dirty state (read-only `@property` derived from `self.editor.document().isModified()`; reset the baseline by calling `document().setModified(False)` on load/save)
 - `editor: EnhancedEditor` — the text editor widget
 
 **Signals:**
@@ -386,6 +386,34 @@ elif format_type == "xyz":
     export_service.export_xyz(combined, output_path, title)
 ```
 
+### Adding a Plugin
+
+Plugins live outside the core code — they're Python directories the editor discovers from any of three roots: `markdown_editor/markdown6/builtin_plugins/<name>/` (reserved for plugins shipped with the editor; currently empty), `<config_dir>/plugins/<name>/` (the user's installed plugins), and any extra dirs added via `--plugins-dir DIR` (CLI, repeatable) or the `plugins.extra_dirs` setting (managed in **Settings → Plugins → Extra plugin directories**). All sources are additive. The plugin API is documented for *plugin authors* in [`docs/plugins.md`](../../../docs/plugins.md); the stability contract is in [`docs/plugin-api-versioning.md`](../../../docs/plugin-api-versioning.md).
+
+When adding a plugin yourself:
+
+1. Use the public shim only — `from markdown_editor.plugins import register_action, on_save, plugin_settings, ...`. Do **not** import from `markdown_editor.markdown6.plugins.*` (the deeper internal namespace is not stable).
+2. Match the directory name in `<name>.py`, `<name>.toml`, and `[tool.mde.plugin].name`. The loader fails `METADATA_ERROR` if any of those disagree.
+3. Read the example plugins as references — they live under [`docs/plugins-examples/`](../../../docs/plugins-examples/): `em_dash_to_hyphen` (text transform), `wordcount` (panel + signals + scoped settings), `stamp` (action + settings schema with every supported field type).
+
+Internal plugin-system architecture lives under `markdown6/plugins/`:
+
+| File | Responsibility |
+|---|---|
+| `metadata.py` | `[tool.mde.plugin]` TOML parser and validation |
+| `loader.py` | Discovery + dependency check + import |
+| `plugin.py` | `Plugin` dataclass + `PluginStatus` / `PluginSource` enums |
+| `registry.py` | Records (`PluginAction`, `PluginPanel`, `PluginFence`, …) and the central `PluginRegistry` |
+| `api.py` | Public API surface (registration decorators, lifecycle signal decorators, `notify_*`, etc.) |
+| `signals.py` | `SignalKind` + `dispatch()` |
+| `fence.py` | `PluginFenceExtension` (markdown extension that dispatches plugin fences) |
+| `editor_integration.py` | Menu/palette injection, panel installation, live-disable filtering |
+| `scoped_settings.py` | `PluginSettings` dict-like façade backed by `plugins.<id>.<key>` |
+| `document_handle.py` | Qt-free `DocumentHandle` plugins receive (with opt-in `editor` / `preview` escape hatches) |
+| `reload.py` | Discover-only "Reload plugins" diff |
+
+Plugin runtime errors route into `markdown6/notifications.py:NotificationCenter` (one per `AppContext`), surfaced through the bell button + drawer in the status bar. The `notify_*` helpers in the shim let plugins post their own non-error notifications too.
+
 ### Adding a New Markdown Extension
 
 Extensions live in the `extensions/` subpackage (`callouts.py`, `diagrams.py`, `lists.py`, `logseq.py`, `math.py`, `source_lines.py`, `wikilinks.py`). The package's `__init__.py` re-exports the public API so callers can `from markdown_editor.markdown6.extensions import MermaidExtension, ...`.
@@ -504,6 +532,7 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 | `graphviz_service.py`      |  302 | `render_dot`, `has_graphviz` (cached) |
 | `mermaid_service.py`       |  255 | `render_mermaid`, `has_mermaid` (cached) |
 | `tool_paths.py`            |   68 | `get_pandoc_path` / `get_dot_path` / `get_mmdc_path` + `has_*` |
+| `notifications.py`         | ~135 | `NotificationCenter` (in-memory, signals, capped history); read by the bell + drawer in the status bar |
 | `snippets.py`              |  406 | `Snippet`, `SnippetManager`, `SnippetPopup` |
 | `searchable_popup.py`      |   99 | `SearchablePopup` base class |
 | `logger.py`                |   77 | Colored `getLogger` / `setup` under `mde` namespace |
@@ -533,9 +562,37 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 | `command_palette.py`    |  133 | `CommandPalette`, `Command` |
 | `find_replace_bar.py`   |  401 | `FindReplaceBar` |
 | `external_change_bar.py`|   64 | `ExternalChangeBar` |
-| `settings_dialog.py`    |  844 | `SettingsDialog` multi-page |
+| `settings_dialog.py`    |  844 | `SettingsDialog` multi-page (Editor, View, Appearance, Files, Tools, Shortcuts, **Plugins**) |
 | `table_editor.py`       |  287 | `TableEditorDialog` |
 | `graph_export.py`       | 1120 | `GraphExportDialog` |
+| `plugins_page.py`       | ~290 | `PluginsSettingsPage` — Settings → Plugins UI (rows, Open Folder, Reload, Configure / Info buttons) |
+| `plugin_configure_dialog.py` | ~190 | `PluginConfigureDialog` — auto-rendered from a plugin's `register_settings_schema` |
+| `plugin_info_dialog.py` | ~130 | `PluginInfoDialog` — metadata + status detail + README rendering |
+| `notification_bell.py`  | ~225 | `NotificationBellButton` (status bar) + `NotificationDrawer` popup |
+
+### `plugins/` (plugin system internals)
+
+| File | Lines | Purpose |
+|------|------:|---------|
+| `metadata.py`         | ~160 | `[tool.mde.plugin]` TOML parsing + validation |
+| `loader.py`           | ~270 | Discovery + dep check + import; never raises |
+| `plugin.py`           |  ~60 | `Plugin` dataclass; `PluginStatus`, `PluginSource` enums |
+| `registry.py`         | ~165 | All plugin record dataclasses + central `PluginRegistry` |
+| `api.py`              | ~430 | Public API: `register_*`, `on_*`, `notify_*`, `plugin_settings`, `Field`, `register_settings_schema` |
+| `signals.py`          |  ~85 | `SignalKind` + `dispatch()` for plugin lifecycle handlers |
+| `fence.py`            |  ~95 | `PluginFenceExtension` markdown extension |
+| `editor_integration.py` | ~625 | Menu/palette/panel injection + live disable + cluster ordering |
+| `scoped_settings.py`  | ~100 | `PluginSettings` dict-like façade |
+| `document_handle.py`  | ~140 | Qt-free `DocumentHandle` (with opt-in escape hatches) |
+| `reload.py`           |  ~90 | Discover-only "Reload plugins" diff helper |
+
+The public shim lives one level up at `src/markdown_editor/plugins/__init__.py` and re-exports the stable surface.
+
+### `builtin_plugins/`
+
+Reserved for plugins shipped with the editor. **Currently empty** — nothing is bundled by default. The loader still scans this directory at startup, so dropping a plugin package here makes it a built-in again.
+
+The reference plugins that used to live here are now under [`docs/plugins-examples/`](../../../docs/plugins-examples/) (`em_dash_to_hyphen`, `wordcount`, `stamp`); the test suite carries self-contained copies under `tests/markdown6/fixtures/plugins/`.
 
 ### `extensions/`
 
@@ -557,7 +614,7 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 
 ## Testing
 
-Tests live in `tests/markdown6/` (26 modules) and use **pytest** + **pytest-qt**. External tools (pandoc, graphviz, mmdc) are mocked.
+Tests live in `tests/markdown6/` and use **pytest** + **pytest-qt**. External tools (pandoc, graphviz, mmdc) are mocked. Plugin-system tests are spread across ~25 `test_plugin_*.py` modules covering metadata parsing, the loader, document handle atomicity, every extension point, the Settings → Plugins UI, the notification drawer, and end-to-end failure-mode walks.
 
 `tests/markdown6/conftest.py` provides an autouse `ephemeral_settings` fixture that resets the global `AppContext` with `ephemeral=True` before each test, so tests never touch the user's real `~/.config/markdown-editor/` files. Widget tests use the `qtbot` fixture.
 

@@ -109,7 +109,10 @@ def get_cached_html_formatter(style: str) -> HtmlFormatter:
 
 # ── Public API ──────────────────────────────────────────────────────
 
-def build_markdown() -> markdown.Markdown:
+def build_markdown(
+    *,
+    extra_extensions: list | None = None,
+) -> markdown.Markdown:
     """Construct a Markdown instance with the full extension stack.
 
     This is the SINGLE definition of "preview-grade rendering". Both
@@ -117,26 +120,33 @@ def build_markdown() -> markdown.Markdown:
     export pipeline build Markdown instances via this function, so
     preview output and exported HTML use the same extensions in the
     same order.
+
+    ``extra_extensions`` is appended after the built-in stack and is
+    where plugin-registered ``markdown.Extension`` instances are
+    plugged in (see ``plugins.api.register_markdown_extension``).
+    The order matters — plugin extensions run last so they can
+    transform output produced by the built-in stack.
     """
-    return markdown.Markdown(
-        extensions=[
-            "extra",
-            LogseqExtension(),
-            BreaklessListExtension(),
-            FencedCodeExtension(),
-            CodeHiliteExtension(css_class="highlight", guess_lang=True),
-            TableExtension(),
-            TocExtension(),
-            'admonition',
-            CalloutExtension(),
-            WikiLinkExtension(),
-            MathExtension(),
-            MermaidExtension(),
-            GraphvizExtension(),
-            TaskListExtension(),
-            SourceLineExtension(),
-        ]
-    )
+    extensions = [
+        "extra",
+        LogseqExtension(),
+        BreaklessListExtension(),
+        FencedCodeExtension(),
+        CodeHiliteExtension(css_class="highlight", guess_lang=True),
+        TableExtension(),
+        TocExtension(),
+        'admonition',
+        CalloutExtension(),
+        WikiLinkExtension(),
+        MathExtension(),
+        MermaidExtension(),
+        GraphvizExtension(),
+        TaskListExtension(),
+        SourceLineExtension(),
+    ]
+    if extra_extensions:
+        extensions.extend(extra_extensions)
+    return markdown.Markdown(extensions=extensions)
 
 
 def render_html_document(

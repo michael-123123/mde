@@ -1,0 +1,6 @@
+[tool.mde.plugin]
+name = "em_dash_to_hyphen"
+version = "1.0.0"
+description = "Replace em-dashes (U+2014) with regular ASCII hyphens."
+author = "markdown-editor"
+mde_api_version = "0"

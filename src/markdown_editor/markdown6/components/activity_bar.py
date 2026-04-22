@@ -208,6 +208,22 @@ class ActivityBar(QFrame):
         """Return the active tab index."""
         return self._active_index
 
+    def setTabVisible(self, index: int, visible: bool) -> None:
+        if 0 <= index < len(self._tabs):
+            self._tabs[index].setVisible(visible)
+
+    def isTabVisible(self, index: int) -> bool:
+        # Use `not isHidden()` rather than `isVisible()` — the latter
+        # requires the parent widget to be shown, but we want to query
+        # the explicit visibility intent regardless of whether the
+        # window is currently rendered.
+        if 0 <= index < len(self._tabs):
+            return not self._tabs[index].isHidden()
+        return False
+
+    def tabCount(self) -> int:
+        return len(self._tabs)
+
     def clearSelection(self):
         """Clear selection from all tabs (used when collapsed)."""
         for tab in self._tabs:

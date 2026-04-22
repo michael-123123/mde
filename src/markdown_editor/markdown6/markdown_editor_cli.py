@@ -110,6 +110,16 @@ Examples:
         action="store_true",
         help="Delete all config files and start with clean default settings",
     )
+    parser.add_argument(
+        "--plugins-dir",
+        action="append",
+        type=Path,
+        metavar="PATH",
+        default=[],
+        help="Additional plugin directory to scan (repeatable). "
+             "Stacks on top of the built-in and user plugin dirs; does "
+             "not replace them.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", metavar="command")
 
@@ -1262,7 +1272,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
     apply_application_theme(theme == "dark")
 
     # Create editor
-    editor = MarkdownEditor()
+    editor = MarkdownEditor(extra_plugin_dirs=args.plugins_dir or None)
 
     # Apply theme override (also update settings if specified)
     if args.theme:

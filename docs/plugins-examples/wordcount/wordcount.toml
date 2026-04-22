@@ -1,0 +1,6 @@
+[tool.mde.plugin]
+name = "wordcount"
+version = "1.0.0"
+description = "Sidebar panel showing live word count vs. configurable target."
+author = "markdown-editor"
+mde_api_version = "0"

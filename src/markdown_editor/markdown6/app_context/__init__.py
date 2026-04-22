@@ -155,6 +155,49 @@ class AppContext(QObject):
             ephemeral=ephemeral,
         )
 
+        # Plugin registry — populated by MarkdownEditor after startup
+        # plugin load completes. Consumed by Settings → Plugins tab.
+        self._plugins: list = []
+
+        # Lazy notification center; created on first access. In-memory
+        # only (no persistence across restarts) per Phase 3 plan.
+        self._notifications = None
+
+    @property
+    def notifications(self):
+        """Return the per-context :class:`NotificationCenter`.
+
+        Created lazily so the import cost is only paid by code paths
+        that actually use it.
+        """
+        if self._notifications is None:
+            from markdown_editor.markdown6.notifications import NotificationCenter
+            self._notifications = NotificationCenter()
+        return self._notifications
+
+    # --- Plugins ---
+
+    def set_plugins(self, plugins: list) -> None:
+        """Called by the editor after load_all() completes."""
+        self._plugins = list(plugins)
+
+    def get_plugins(self) -> list:
+        """Return the list of discovered plugins (may be empty)."""
+        return list(self._plugins)
+
+    def plugin_settings(self, plugin_id: str) -> "PluginSettings":
+        """Return a dict-like façade scoped to ``plugin_id``.
+
+        Storage is the main settings file with namespaced keys
+        ``plugins.<plugin_id>.<key>``. Plugin ids must be non-empty
+        and must not contain ``.`` (which would let one plugin write
+        into another plugin's namespace).
+        """
+        from markdown_editor.markdown6.plugins.scoped_settings import (
+            PluginSettings,
+        )
+        return PluginSettings(self, plugin_id)
+
     # --- Settings delegation ---
 
     def get(self, key: str, default: Any = None) -> Any:

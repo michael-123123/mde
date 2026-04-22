@@ -3,6 +3,16 @@
 All notable changes to markdown-editor are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Plugin system.** Drop-in Python plugins extend the editor with menu items, sidebar panels, custom export formats, fenced-code renderers, lifecycle handlers, and auto-rendered configuration UIs. Plugins live in `<config_dir>/plugins/<name>/` and ship as a `<name>.py` + `<name>.toml` directory. Public API at `from markdown_editor.plugins import …`. See [`docs/plugins.md`](docs/plugins.md) for the authoring guide and [`docs/plugin-api-versioning.md`](docs/plugin-api-versioning.md) for the stability contract.
+- **Extra plugin directories** layer on top of the user dir: pass `--plugins-dir DIR` (repeatable) on the command line or manage a persistent list via **Settings → Plugins → Extra plugin directories**. Useful for per-project plugin sets without copying into the user config.
+- **Settings → Plugins tab** lists every discovered plugin with status, enable/disable toggle, ℹ Info dialog (metadata + README), Open plugins folder, and Reload plugins buttons. Plugins with a registered settings schema get an auto-generated Configure… dialog.
+- **🔔 Notifications drawer** in the status bar. Plugin runtime errors and plugin-authored notifications surface here without blocking the editor; click the bell to see history.
+- **Three example plugins** under [`docs/plugins-examples/`](docs/plugins-examples/) — `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), `stamp` (action + every settings-schema field type). Not bundled — copy into your user plugin folder, or run `mde --plugins-dir docs/plugins-examples` to try them in place.
+
 ## [0.1.13] - 2026-04-21
 
 ### Added

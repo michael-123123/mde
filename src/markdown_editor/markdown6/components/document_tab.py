@@ -224,11 +224,6 @@ class DocumentTab(QWidget):
         self.main_window = parent
         self.ctx = parent.ctx
         self.file_path: Path | None = None
-        # Dirty flag mirroring ``self.editor.document().isModified()``.
-        # Kept in sync via the ``modificationChanged`` signal wired in
-        # ``_connect_signals`` — see ``_on_modification_changed`` for the
-        # tech-debt note on making this a derived read-only property.
-        self.unsaved_changes = False
         self._sync_scrolling = True
         self._pending_scroll_line: int | None = None
         self._preview_needs_full_reload = True
@@ -565,26 +560,28 @@ class DocumentTab(QWidget):
         if hasattr(self.main_window, '_schedule_outline_update'):
             self.main_window._schedule_outline_update()
 
-    def _on_modification_changed(self, modified: bool):
-        """Mirror ``self.editor.document().isModified()`` onto ``unsaved_changes``.
+    @property
+    def unsaved_changes(self) -> bool:
+        """Whether the document has unsaved changes.
 
-        Also refreshes the tab title (the leading ``*`` marker) and the
-        window title.
-
-        Tech debt: ``unsaved_changes`` is still a mutable attribute kept
-        in sync with the document's modified flag by convention — every
-        call site that resets content pairs ``setPlainText`` with
-        ``setModified(False)`` so this handler fires. The cleaner design
-        is a read-only ``@property`` deriving ``unsaved_changes``
-        directly from ``self.editor.document().isModified()``, which
-        would make the sync structural rather than discipline-based.
-        That refactor is deferred: plugin-side code writes this
-        attribute directly (``DocumentHandle.is_dirty`` snapshot and
-        restore on the ``feature/plugin-system`` branch), so converting
-        it to a read-only property is a coordinated change across the
-        plugin API and should wait until the plugin API stabilizes.
+        Derived read-only view of ``self.editor.document().isModified()``
+        — the single source of truth. Direct assignment is deliberately
+        not supported; callers that want to reset the modification
+        baseline (file load, save, etc.) call
+        ``self.editor.document().setModified(False)`` instead, which
+        propagates here automatically via the ``modificationChanged``
+        signal.
         """
-        self.unsaved_changes = modified
+        return self.editor.document().isModified()
+
+    def _on_modification_changed(self, modified: bool):
+        """Refresh the tab title and window title when the document's
+        modification state flips.
+
+        ``unsaved_changes`` itself is a derived property reading
+        ``document().isModified()`` — no local mirror to update here,
+        only the UI side effects that used to live in this handler.
+        """
         self.main_window.update_tab_title(self)
         self.main_window.update_window_title()
 
