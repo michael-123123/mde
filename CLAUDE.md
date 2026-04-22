@@ -32,7 +32,7 @@ pytest tests/markdown6/test_export_service.py::TestMarkdownToHtml::test_basic_co
 
 No linter, formatter, or CI pipeline is configured.
 
-**pytest rules:** Never use `-q` (quiet mode). Don't truncate output (no `| tail`, `| head`, etc.) unless you have a specific reason to.
+**pytest rules:** Never use `-q` (quiet mode). Never pipe through `tail`, `head`, `wc`, or similar — the user wants to see tests stream live as they run, not a post-hoc summary. Do not truncate pytest output.
 
 ## Optional System Dependencies
 
@@ -229,6 +229,21 @@ Plugin runtime errors route into `markdown6/notifications.py:NotificationCenter`
 **Adding a plugin (instead of editing core):** if a feature can be expressed as a plugin (custom action, sidebar panel, fence renderer, exporter, markdown extension, lifecycle handler), prefer that over a core change. See `docs/plugins.md` for the authoring guide; the example plugins under `docs/plugins-examples/` are the canonical references.
 
 **Link detection regexes:** Wiki links `[[target|display]]`, Markdown links `[text](url)`, bare URLs `https?://...`. Duplicated in `EnhancedEditor` and `components/references_panel.py`.
+
+## Code Style
+
+**Multi-name imports:** When importing more than a couple of names from the same module (or any time the import would run long), use parenthesised multi-line form with one name per line:
+
+```python
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QMenuBar,
+    QTabWidget,
+)
+```
+
+Prefer this over backslash line continuation or a single long line. One or two names on one line is fine.
 
 ## Testing
 

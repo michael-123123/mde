@@ -433,7 +433,8 @@ class MarkdownEditor(QMainWindow):
                     tab.file_path.write_text(
                         tab.editor.toPlainText(), encoding="utf-8"
                     )
-                    tab.unsaved_changes = False
+                    # modificationChanged(False) → DocumentTab updates
+                    # ``unsaved_changes`` and tab title automatically.
                     tab.editor.document().setModified(False)
                     self.update_tab_title(tab)
                 except OSError:
@@ -928,7 +929,8 @@ class MarkdownEditor(QMainWindow):
             tab.editor.setPlainText(content)
             tab.file_path = path
             tab.editor.set_file_path(path)
-            tab.unsaved_changes = False
+            # Reset the modification baseline to the just-loaded content.
+            tab.editor.document().setModified(False)
             self.update_tab_title(tab)
             self.update_window_title()
             tab.render_markdown()
@@ -955,7 +957,7 @@ class MarkdownEditor(QMainWindow):
         try:
             tab.editor._ignore_next_file_change = True
             tab.file_path.write_text(tab.editor.toPlainText(), encoding="utf-8")
-            tab.unsaved_changes = False
+            # modificationChanged(False) → DocumentTab clears unsaved_changes.
             tab.editor.document().setModified(False)
             self.update_tab_title(tab)
             self.update_window_title()

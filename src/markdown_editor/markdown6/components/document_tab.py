@@ -154,6 +154,66 @@ class _PreviewWheelFilter(QObject):
         return False
 
 
+class _PreviewKeyFilter(QObject):
+    """Event filter that translates vertical-scroll keypresses on the
+    preview into scrollbar moves on the **editor**, so keyboard scrolling
+    in the preview keeps both panes aligned via the existing editor →
+    preview sync pipeline.
+
+    Keys handled (event consumed):
+
+    - ``Down`` / ``Up``           — single-step scroll
+    - ``PageDown`` / ``PageUp``   — page-step scroll
+    - ``Space`` / ``Shift+Space`` — page-step scroll (WebEngine's native
+      alias for PageDown/PageUp)
+    - ``Home`` / ``End``          — jump to top / bottom
+
+    All other keys pass through so the preview retains normal keyboard
+    behavior (Left/Right, Tab, character input, shortcuts).
+
+    Gate: the filter is a no-op when ``_sync_scrolling`` is off (user
+    disabled editor↔preview sync in settings) or the editor isn't
+    visible (preview-only layout — then native preview scrolling is the
+    right thing). Same gating as ``_PreviewWheelFilter``.
+    """
+
+    def __init__(self, tab: DocumentTab):
+        super().__init__(tab)
+        self._tab = tab
+
+    def eventFilter(self, obj, event):
+        if event.type() != event.Type.KeyPress:
+            return False
+        if not self._tab._sync_scrolling:
+            return False
+        if not self._tab.editor.isVisible():
+            return False
+
+        vbar = self._tab.editor.verticalScrollBar()
+        key = event.key()
+        mods = event.modifiers()
+
+        if key == Qt.Key.Key_Down:
+            vbar.setValue(vbar.value() + vbar.singleStep())
+        elif key == Qt.Key.Key_Up:
+            vbar.setValue(vbar.value() - vbar.singleStep())
+        elif key == Qt.Key.Key_PageDown:
+            vbar.setValue(vbar.value() + vbar.pageStep())
+        elif key == Qt.Key.Key_PageUp:
+            vbar.setValue(vbar.value() - vbar.pageStep())
+        elif key == Qt.Key.Key_Space:
+            delta = -vbar.pageStep() if mods & Qt.KeyboardModifier.ShiftModifier else vbar.pageStep()
+            vbar.setValue(vbar.value() + delta)
+        elif key == Qt.Key.Key_Home:
+            vbar.setValue(0)
+        elif key == Qt.Key.Key_End:
+            vbar.setValue(vbar.maximum())
+        else:
+            return False
+
+        return True
+
+
 class DocumentTab(QWidget):
     """A single document tab with editor and preview panes."""
 
@@ -164,6 +224,10 @@ class DocumentTab(QWidget):
         self.main_window = parent
         self.ctx = parent.ctx
         self.file_path: Path | None = None
+        # Dirty flag mirroring ``self.editor.document().isModified()``.
+        # Kept in sync via the ``modificationChanged`` signal wired in
+        # ``_connect_signals`` — see ``_on_modification_changed`` for the
+        # tech-debt note on making this a derived read-only property.
         self.unsaved_changes = False
         self._sync_scrolling = True
         self._pending_scroll_line: int | None = None
@@ -173,6 +237,10 @@ class DocumentTab(QWidget):
 
         self._init_ui()
         self._init_timer()
+        # Baseline the document as unmodified before wiring the
+        # modificationChanged signal so the initial (empty / just-loaded)
+        # state is the "clean" reference point.
+        self.editor.document().setModified(False)
         self._connect_signals()
 
     def _init_ui(self):
@@ -277,24 +345,42 @@ class DocumentTab(QWidget):
 
     def _connect_signals(self):
         """Connect signals."""
+        # ``textChanged`` is one-way (fires on every buffer mutation,
+        # including undo/redo) — we keep it only for side effects that
+        # should run on any content change: preview re-render and
+        # outline update scheduling.
         self.editor.textChanged.connect(self._on_text_changed)
+        # Dirty tracking uses ``modificationChanged`` instead because
+        # it is bidirectional: emits ``True`` when the document leaves
+        # its last ``setModified(False)`` baseline, and ``False`` when
+        # it returns to that baseline (e.g. user undoes every edit).
+        # Without this, the dirty flag would ratchet to ``True`` on
+        # the first keystroke and never turn off until an explicit
+        # save or reload — even if the buffer is byte-identical to
+        # the saved state.
+        self.editor.document().modificationChanged.connect(
+            self._on_modification_changed
+        )
         self.editor.file_externally_modified.connect(self._on_file_externally_modified)
         self.ctx.settings_changed.connect(self._on_setting_changed)
 
         # Sync scrolling — editor is the source of truth.
-        # For WebEngine, wheel events on the preview's internal rendering
-        # widget are forwarded to the editor so scrolling either pane
-        # keeps them in sync.
+        # For WebEngine, wheel and vertical-scroll key events on the
+        # preview's internal rendering widget are forwarded to the editor
+        # so scrolling either pane (via mouse or keyboard) keeps them in
+        # sync.
         self.editor.verticalScrollBar().valueChanged.connect(self._on_editor_scroll)
         if self._use_webengine:
             self._wheel_filter = _PreviewWheelFilter(self)
-            self._wheel_filter_installed = False
-            self._custom_page.loadFinished.connect(self._install_wheel_filter)
+            self._key_filter = _PreviewKeyFilter(self)
+            self._preview_filters_installed = False
+            self._custom_page.loadFinished.connect(self._install_preview_event_filters)
             self._custom_page.loadFinished.connect(
                 lambda ok: logger.info(f"[DIAG] loadFinished ok={ok}")
             )
         else:
             self.preview.viewport().installEventFilter(_PreviewWheelFilter(self))
+            self.preview.viewport().installEventFilter(_PreviewKeyFilter(self))
 
     def _on_link_clicked(self, url: QUrl):
         """Handle link clicks in the preview, forwarding to the main window."""
@@ -456,25 +542,51 @@ class DocumentTab(QWidget):
                 f"document.body.classList.toggle('zoomed', {zoomed});"
             )
 
-    def _install_wheel_filter(self):
-        """Install the wheel event filter on WebEngine's internal widget."""
-        if self._wheel_filter_installed:
+    def _install_preview_event_filters(self):
+        """Install wheel + key event filters on WebEngine's internal widgets.
+
+        WebEngine keeps its actual rendering surface as a native child
+        widget that only exists after ``loadFinished`` fires, so the
+        filters have to be installed at that point rather than at
+        construction time.
+        """
+        if self._preview_filters_installed:
             return
         children = self.preview.findChildren(QWidget)
         for child in children:
             child.installEventFilter(self._wheel_filter)
-        self._wheel_filter_installed = bool(children)
+            child.installEventFilter(self._key_filter)
+        self._preview_filters_installed = bool(children)
 
     def _on_text_changed(self):
         """Handle text changes in the editor."""
-        if not self.unsaved_changes:
-            self.unsaved_changes = True
-            self.main_window.update_tab_title(self)
-            self.main_window.update_window_title()
         self.render_timer.start(300)
         # Schedule debounced outline panel update
         if hasattr(self.main_window, '_schedule_outline_update'):
             self.main_window._schedule_outline_update()
+
+    def _on_modification_changed(self, modified: bool):
+        """Mirror ``self.editor.document().isModified()`` onto ``unsaved_changes``.
+
+        Also refreshes the tab title (the leading ``*`` marker) and the
+        window title.
+
+        Tech debt: ``unsaved_changes`` is still a mutable attribute kept
+        in sync with the document's modified flag by convention — every
+        call site that resets content pairs ``setPlainText`` with
+        ``setModified(False)`` so this handler fires. The cleaner design
+        is a read-only ``@property`` deriving ``unsaved_changes``
+        directly from ``self.editor.document().isModified()``, which
+        would make the sync structural rather than discipline-based.
+        That refactor is deferred: plugin-side code writes this
+        attribute directly (``DocumentHandle.is_dirty`` snapshot and
+        restore on the ``feature/plugin-system`` branch), so converting
+        it to a read-only property is a coordinated change across the
+        plugin API and should wait until the plugin API stabilizes.
+        """
+        self.unsaved_changes = modified
+        self.main_window.update_tab_title(self)
+        self.main_window.update_window_title()
 
     def _on_file_externally_modified(self):
         """Handle external file modification with non-modal notification."""
@@ -638,7 +750,9 @@ class DocumentTab(QWidget):
         if self.file_path and self.file_path.exists():
             content = self.file_path.read_text(encoding="utf-8")
             self.editor.setPlainText(content)
-            self.unsaved_changes = False
+            # Reset the modification baseline to the just-loaded state;
+            # modificationChanged(False) will propagate to unsaved_changes.
+            self.editor.document().setModified(False)
             self.main_window.update_tab_title(self)
 
     def get_tab_title(self) -> str:

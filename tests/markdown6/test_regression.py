@@ -749,7 +749,8 @@ class TestPreviewWheelScrollSync:
     """
 
     def test_wheel_filter_installed(self, qtbot):
-        """The wheel event filter should be installed on the preview."""
+        """The preview event filters (wheel + key) should be installed
+        on the preview once its page has loaded."""
         from markdown_editor.markdown6.app_context import get_app_context
         from markdown_editor.markdown6.components.document_tab import (
             HAS_WEBENGINE, DocumentTab)
@@ -761,14 +762,14 @@ class TestPreviewWheelScrollSync:
         main = FakeMainWindow(ctx)
         tab = DocumentTab(main)
 
-        # Trigger a render so loadFinished fires and filter gets installed
+        # Trigger a render so loadFinished fires and filters get installed
         tab.editor.setPlainText("test content\n" * 50)
         tab._preview_needs_full_reload = True
         tab.render_markdown()
         qtbot.wait(500)
 
-        assert tab._wheel_filter_installed, (
-            "Wheel event filter should be installed after first page load"
+        assert tab._preview_filters_installed, (
+            "Preview event filters should be installed after first page load"
         )
 
         del tab
