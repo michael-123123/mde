@@ -46,6 +46,9 @@ class Plugin:
     status: PluginStatus = PluginStatus.ENABLED
     detail: str = ""
     missing_deps: tuple[str, ...] = field(default_factory=tuple)
+    # Populated by discovery if the plugin's directory contains a
+    # README.md. Read by the Settings → Plugins info dialog.
+    readme_path: Path | None = None
 
     @property
     def is_errored(self) -> bool:

@@ -96,7 +96,7 @@ def test_register_exporter_returns_original_function() -> None:
 def test_register_exporter_stamps_plugin_name(tmp_path: Path) -> None:
     (tmp_path / "expplug").mkdir()
     (tmp_path / "expplug" / "expplug.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "expplug"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

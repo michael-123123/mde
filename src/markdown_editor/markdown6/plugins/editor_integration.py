@@ -313,6 +313,12 @@ def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
                 "Plugin exporter %r raised: %s", exporter.id, exc,
                 exc_info=True,
             )
+            from markdown_editor.markdown6.notifications import _post_plugin_error
+            _post_plugin_error(
+                exporter.plugin_name,
+                f"Plugin export failed: {exporter.label}",
+                f"{type(exc).__name__}: {exc}",
+            )
 
     return invoke
 
@@ -603,6 +609,12 @@ def _wrap_action_callback(action: PluginAction):
                 "Plugin action %r raised: %s", action.id, exc,
                 exc_info=True,
             )
+            from markdown_editor.markdown6.notifications import _post_plugin_error
+            _post_plugin_error(
+                action.plugin_name,
+                f"Plugin action failed: {action.label}",
+                f"{type(exc).__name__}: {exc}",
+            )
 
     return invoke
 
@@ -621,6 +633,12 @@ def _wrap_transform_callback(transform: PluginTextTransform):
             logger.warning(
                 "Text transform %r failed: %s",
                 transform.id, result.detail,
+            )
+            from markdown_editor.markdown6.notifications import _post_plugin_error
+            _post_plugin_error(
+                transform.plugin_name,
+                f"Plugin transform failed: {transform.label}",
+                result.detail,
             )
 
     return invoke

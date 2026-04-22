@@ -159,6 +159,22 @@ class AppContext(QObject):
         # plugin load completes. Consumed by Settings → Plugins tab.
         self._plugins: list = []
 
+        # Lazy notification center; created on first access. In-memory
+        # only (no persistence across restarts) per Phase 3 plan.
+        self._notifications = None
+
+    @property
+    def notifications(self):
+        """Return the per-context :class:`NotificationCenter`.
+
+        Created lazily so the import cost is only paid by code paths
+        that actually use it.
+        """
+        if self._notifications is None:
+            from markdown_editor.markdown6.notifications import NotificationCenter
+            self._notifications = NotificationCenter()
+        return self._notifications
+
     # --- Plugins ---
 
     def set_plugins(self, plugins: list) -> None:

@@ -88,7 +88,7 @@ def test_register_settings_schema_auto_detects_plugin_id_from_loader(tmp_path: P
     the schema's plugin_id is taken from that context."""
     (tmp_path / "schemap").mkdir()
     (tmp_path / "schemap" / "schemap.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "schemap"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

@@ -80,7 +80,7 @@ def test_register_panel_returns_original_function(qtbot) -> None:
 def test_register_panel_stamps_plugin_name(qtbot, tmp_path: Path) -> None:
     (tmp_path / "panplug").mkdir()
     (tmp_path / "panplug" / "panplug.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "panplug"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

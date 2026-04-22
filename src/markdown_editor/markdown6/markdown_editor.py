@@ -283,6 +283,10 @@ class MarkdownEditor(QMainWindow):
 
     def _create_status_bar(self):
         """Create the status bar."""
+        from markdown_editor.markdown6.components.notification_bell import (
+            NotificationBellButton, NotificationDrawer,
+        )
+
         self.status_bar = self.statusBar()
 
         # Word count label
@@ -293,7 +297,30 @@ class MarkdownEditor(QMainWindow):
         self.cursor_pos_label = QLabel("Ln 1, Col 1")
         self.status_bar.addPermanentWidget(self.cursor_pos_label)
 
+        # Notification bell + drawer (Phase 3). Bell lives in the
+        # status bar's permanent-widget area; drawer is a popup
+        # anchored under the bell on click.
+        self.notification_bell = NotificationBellButton(self.ctx.notifications)
+        self.notification_drawer = NotificationDrawer(self.ctx.notifications)
+        self.notification_bell.clicked.connect(self._show_notification_drawer)
+        self.status_bar.addPermanentWidget(self.notification_bell)
+
         self.status_bar.showMessage("Ready")
+
+    def _show_notification_drawer(self):
+        """Pop the drawer up under the bell. Marks all notifications read."""
+        bell = self.notification_bell
+        drawer = self.notification_drawer
+        # Position the drawer so its top-right aligns with the bell's
+        # top-right (bell sits at the right edge of the status bar).
+        global_top_right = bell.mapToGlobal(bell.rect().topRight())
+        drawer.adjustSize()
+        # Open above the status bar (drawer flows upward from the bell).
+        drawer.move(
+            global_top_right.x() - drawer.width(),
+            global_top_right.y() - drawer.sizeHint().height(),
+        )
+        drawer.show_drawer()
 
     def _init_shortcuts(self):
         """Set up additional keyboard shortcuts."""

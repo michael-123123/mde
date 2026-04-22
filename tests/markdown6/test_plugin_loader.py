@@ -42,7 +42,7 @@ def _make_plugin_dir(
         py_filename = f"{name}.py"
     if toml_body is None:
         toml_body = textwrap.dedent(f"""
-            [plugin]
+            [tool.mde.plugin]
             name = "{name}"
             version = "1.0"
         """).lstrip()
@@ -109,7 +109,7 @@ def test_discovery_skips_non_directory_entries(tmp_path: Path) -> None:
 def test_discovery_rejects_dir_without_py_file(tmp_path: Path) -> None:
     d = tmp_path / "broken"
     d.mkdir()
-    (d / "broken.toml").write_text('[plugin]\nname="x"\nversion="0.1"\n')
+    (d / "broken.toml").write_text('[tool.mde.plugin]\nname="x"\nversion="0.1"\n')
     # No broken.py
     found = discover_plugins([(tmp_path, PluginSource.USER)])
     assert len(found) == 1
@@ -167,11 +167,11 @@ def test_load_plugin_missing_python_dep(tmp_path: Path) -> None:
         tmp_path,
         "needs_missing",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "needs_missing"
             version = "0.1"
 
-            [plugin.dependencies]
+            [tool.mde.plugin.dependencies]
             python = ["this_module_definitely_does_not_exist_xyz"]
         """).lstrip(),
     )
@@ -188,11 +188,11 @@ def test_load_plugin_present_dep_ok(tmp_path: Path) -> None:
         tmp_path,
         "needs_os",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "needs_os"
             version = "0.1"
 
-            [plugin.dependencies]
+            [tool.mde.plugin.dependencies]
             python = ["os", "sys"]
         """).lstrip(),
     )
@@ -212,11 +212,11 @@ def test_load_plugin_version_spec_tolerated(tmp_path: Path) -> None:
         tmp_path,
         "needs_versioned",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "needs_versioned"
             version = "0.1"
 
-            [plugin.dependencies]
+            [tool.mde.plugin.dependencies]
             python = ["os >= 1.0", "sys==1.0"]
         """).lstrip(),
     )
@@ -302,7 +302,7 @@ def test_api_version_mismatch_post_1_0(tmp_path: Path, monkeypatch: pytest.Monke
         tmp_path,
         "oldplugin",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "oldplugin"
             version = "1.0"
             mde_api_version = "1"
@@ -322,7 +322,7 @@ def test_api_version_match_post_1_0(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         tmp_path,
         "ok",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "ok"
             version = "1.0"
             mde_api_version = "2"
@@ -342,7 +342,7 @@ def test_api_version_pre_1_0_never_rejects(tmp_path: Path, monkeypatch: pytest.M
         tmp_path,
         "any",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "any"
             version = "1.0"
             mde_api_version = "42"
@@ -369,11 +369,11 @@ def test_load_all_combines_discover_and_load(tmp_path: Path) -> None:
         tmp_path,
         "offlimits",
         toml_body=textwrap.dedent("""
-            [plugin]
+            [tool.mde.plugin]
             name = "offlimits"
             version = "0.1"
 
-            [plugin.dependencies]
+            [tool.mde.plugin.dependencies]
             python = ["nonexistent_xyz_module"]
         """).lstrip(),
     )

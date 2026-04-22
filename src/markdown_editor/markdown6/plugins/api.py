@@ -469,6 +469,51 @@ def get_main_window():
     return _MAIN_WINDOW_PROVIDER()
 
 
+# --- Plugin-authored notifications ------------------------------------------
+
+
+def _notify(severity: str, title: str, message: str, source: str | None) -> None:
+    """Internal helper: route a plugin-authored notification to the
+    AppContext's NotificationCenter. Source defaults to
+    ``"plugin:<current_plugin_name>"`` when called inside a loader-managed
+    import; pass an explicit ``source=`` to override.
+    """
+    from markdown_editor.markdown6.app_context import get_app_context
+
+    if source is None:
+        source = f"plugin:{_CURRENT_PLUGIN_NAME}" if _CURRENT_PLUGIN_NAME else ""
+    ctx = get_app_context()
+    poster = getattr(ctx.notifications, f"post_{severity}")
+    poster(title, message, source=source)
+
+
+def notify_info(title: str, message: str = "", *, source: str | None = None) -> None:
+    """Post an info-level notification to the editor's notification drawer.
+
+    Use for non-error events the user might want to see: "Export
+    finished", "Cache rebuilt", etc. ``source`` defaults to
+    ``"plugin:<name>"`` when called inside a loader-managed plugin
+    import; pass explicitly to override.
+    """
+    _notify("info", title, message, source)
+
+
+def notify_warning(title: str, message: str = "", *, source: str | None = None) -> None:
+    """Post a warning-level notification (yellow icon in the drawer)."""
+    _notify("warning", title, message, source)
+
+
+def notify_error(title: str, message: str = "", *, source: str | None = None) -> None:
+    """Post an error-level notification.
+
+    Note: the framework already auto-routes uncaught exceptions from
+    plugin actions / transforms / exporters / signal handlers to the
+    drawer — you only need this when reporting an error you handled
+    yourself but still want to surface to the user.
+    """
+    _notify("error", title, message, source)
+
+
 # --- Settings schema (auto-rendered Configure dialog) ----------------------
 
 
@@ -489,7 +534,7 @@ def register_settings_schema(
 
     Args:
         fields: Non-empty list of :class:`Field` descriptors.
-        plugin_id: The plugin's id (must match its TOML ``[plugin].name``).
+        plugin_id: The plugin's id (must match its TOML ``[tool.mde.plugin].name``).
             When omitted and called inside a plugin's import
             (loader-managed context), defaults to the current plugin
             being loaded.

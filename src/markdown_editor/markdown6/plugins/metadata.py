@@ -6,15 +6,20 @@ plugin module, so any declared dependencies can be verified up-front and
 the plugin can be disabled with a clear reason instead of crashing at
 import time with an obscure ImportError.
 
-Schema (all under the ``[plugin]`` table):
+Section name: ``[tool.mde.plugin]``. The ``[tool.<name>]`` prefix is
+the pyproject.toml convention (every tool nests under ``tool``), which
+means a plugin's metadata file can also live as a slice of a wider
+``pyproject.toml`` without conflicting with anything else.
 
-    name             str, required, non-empty
+Schema (all under the ``[tool.mde.plugin]`` table):
+
+    name             str, required, non-empty; MUST match dir name
     version          str, required
     description      str, optional
     author           str, optional
     mde_api_version  str, optional, defaults to "0" (pre-stable)
 
-    [plugin.dependencies]
+    [tool.mde.plugin.dependencies]
     python           list[str], optional — importable module names or
                      pip-style requirements (only the module-name part
                      is actually checked at load time; version specs
@@ -66,10 +71,13 @@ def load_metadata(toml_path: Path) -> PluginMetadata:
     except OSError as exc:
         raise MetadataError(f"could not read {toml_path}: {exc}") from exc
 
-    plugin_tbl = raw.get("plugin")
+    # Walk raw["tool"]["mde"]["plugin"] — pyproject-style namespacing
+    # so the same TOML body can also live inside a project's
+    # pyproject.toml without colliding with [tool.<other>] sections.
+    plugin_tbl: Any = raw.get("tool", {}).get("mde", {}).get("plugin")
     if not isinstance(plugin_tbl, dict):
         raise MetadataError(
-            f"{toml_path}: missing required [plugin] table"
+            f"{toml_path}: missing required [tool.mde.plugin] table"
         )
 
     name = _require_str(plugin_tbl, "name", toml_path, allow_empty=False)
@@ -100,14 +108,14 @@ def _require_str(
     allow_empty: bool,
 ) -> str:
     if key not in table:
-        raise MetadataError(f"{path}: [plugin] is missing required key '{key}'")
+        raise MetadataError(f"{path}: [tool.mde.plugin] is missing required key '{key}'")
     val = table[key]
     if not isinstance(val, str):
         raise MetadataError(
-            f"{path}: [plugin].{key} must be a string, got {type(val).__name__}"
+            f"{path}: [tool.mde.plugin].{key} must be a string, got {type(val).__name__}"
         )
     if not allow_empty and not val.strip():
-        raise MetadataError(f"{path}: [plugin].{key} must be non-empty")
+        raise MetadataError(f"{path}: [tool.mde.plugin].{key} must be non-empty")
     return val
 
 
@@ -117,7 +125,7 @@ def _optional_str(table: dict[str, Any], key: str, path: Path) -> str:
     val = table[key]
     if not isinstance(val, str):
         raise MetadataError(
-            f"{path}: [plugin].{key} must be a string, got {type(val).__name__}"
+            f"{path}: [tool.mde.plugin].{key} must be a string, got {type(val).__name__}"
         )
     return val
 
@@ -130,7 +138,7 @@ def _parse_dependencies(
         return ()
     if not isinstance(deps_tbl, dict):
         raise MetadataError(
-            f"{path}: [plugin.dependencies] must be a table"
+            f"{path}: [tool.mde.plugin.dependencies] must be a table"
         )
 
     python = deps_tbl.get("python")
@@ -138,13 +146,13 @@ def _parse_dependencies(
         return ()
     if not isinstance(python, list):
         raise MetadataError(
-            f"{path}: [plugin.dependencies].python must be a list, "
+            f"{path}: [tool.mde.plugin.dependencies].python must be a list, "
             f"got {type(python).__name__}"
         )
     for i, item in enumerate(python):
         if not isinstance(item, str):
             raise MetadataError(
-                f"{path}: [plugin.dependencies].python[{i}] must be a string, "
+                f"{path}: [tool.mde.plugin.dependencies].python[{i}] must be a string, "
                 f"got {type(item).__name__}"
             )
     return tuple(python)

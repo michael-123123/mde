@@ -45,7 +45,7 @@ def _make_plugin_dir(root: Path, name: str, body: str) -> None:
     d = root / name
     d.mkdir(parents=True)
     (d / f"{name}.toml").write_text(textwrap.dedent(f"""
-        [plugin]
+        [tool.mde.plugin]
         name = "{name}"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

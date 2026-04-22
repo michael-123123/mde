@@ -75,9 +75,14 @@ def dispatch(
         try:
             h.callback(doc)
         except BaseException as exc:    # noqa: BLE001 — plugin code
+            handler_name = getattr(h.callback, "__name__", repr(h.callback))
             logger.warning(
                 "Plugin signal handler %r (kind=%s) raised: %s",
-                getattr(h.callback, "__name__", repr(h.callback)),
-                kind.value, exc,
-                exc_info=True,
+                handler_name, kind.value, exc, exc_info=True,
+            )
+            from markdown_editor.markdown6.notifications import _post_plugin_error
+            _post_plugin_error(
+                h.plugin_name,
+                f"Plugin {kind.value} handler failed: {handler_name}",
+                f"{type(exc).__name__}: {exc}",
             )

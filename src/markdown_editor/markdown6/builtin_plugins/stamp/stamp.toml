@@ -1,4 +1,4 @@
-[plugin]
+[tool.mde.plugin]
 name = "stamp"
 version = "1.0.0"
 description = "Insert a configurable stamp at the cursor (reference for the schema-driven Configure UI)."

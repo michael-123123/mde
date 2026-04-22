@@ -127,6 +127,29 @@ def discover_plugins(
                     plugin.status = PluginStatus.METADATA_ERROR
                     plugin.detail = str(exc)
 
+                # The TOML's [tool.mde.plugin].name MUST match the
+                # directory name. Otherwise the plugin's internal
+                # identity disagrees silently with how it's referenced
+                # in plugins.disabled, plugin_settings(id), the schema
+                # registry, etc. — a recipe for hard-to-debug bugs.
+                if (
+                    plugin.metadata is not None
+                    and plugin.metadata.name != plugin.name
+                ):
+                    plugin.status = PluginStatus.METADATA_ERROR
+                    plugin.detail = (
+                        f"TOML [tool.mde.plugin].name = "
+                        f"{plugin.metadata.name!r} does not match "
+                        f"plugin directory name {plugin.name!r}; they "
+                        f"must match."
+                    )
+
+            # Optional README.md alongside the plugin's .py / .toml.
+            # Read by the Settings → Plugins info dialog.
+            readme = entry / "README.md"
+            if readme.is_file():
+                plugin.readme_path = readme
+
             # Name collision: user plugin overrides builtin with the
             # same name. Record and skip the duplicate so we don't double-
             # register.

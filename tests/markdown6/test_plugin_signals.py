@@ -96,7 +96,7 @@ def test_handlers_stamped_with_plugin_name(tmp_path: Path) -> None:
     disabled plugins."""
     (tmp_path / "p1").mkdir()
     (tmp_path / "p1" / "p1.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "p1"
         version = "1.0"
     """).lstrip(), encoding="utf-8")
@@ -153,7 +153,7 @@ def test_dispatch_skips_disabled_plugin_handlers(tmp_path: Path, qtbot) -> None:
     # Plugin "loud" registers an on_save handler that records its call.
     (tmp_path / "loud").mkdir()
     (tmp_path / "loud" / "loud.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "loud"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

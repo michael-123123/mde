@@ -54,7 +54,7 @@ def test_register_fence_returns_original_function() -> None:
 def test_register_fence_stamps_plugin_name(tmp_path: Path) -> None:
     (tmp_path / "fenceplug").mkdir()
     (tmp_path / "fenceplug" / "fenceplug.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "fenceplug"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

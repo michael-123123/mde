@@ -49,6 +49,9 @@ from markdown_editor.markdown6.plugins.api import (
     get_all_documents,
     get_app_context,
     get_main_window,
+    notify_error,
+    notify_info,
+    notify_warning,
     on_content_changed,
     on_file_closed,
     on_file_opened,
@@ -85,6 +88,10 @@ __all__ = [
     "plugin_settings",
     "DocumentHandle",
     "Field",
+    # Notifications (post info/warning/error to the bell drawer)
+    "notify_info",
+    "notify_warning",
+    "notify_error",
     # Escape hatches (opt-in; not guaranteed stable across versions)
     "get_app_context",
     "get_main_window",

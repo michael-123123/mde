@@ -63,7 +63,7 @@ def test_registration_stamps_plugin_name(tmp_path: Path) -> None:
     decorators must apply here too — needed for live disable filtering."""
     (tmp_path / "extplug").mkdir()
     (tmp_path / "extplug" / "extplug.toml").write_text(textwrap.dedent("""
-        [plugin]
+        [tool.mde.plugin]
         name = "extplug"
         version = "1.0"
     """).lstrip(), encoding="utf-8")

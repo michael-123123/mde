@@ -71,6 +71,7 @@ class _PluginRow:
     status_label: QLabel
     detail_label: QLabel
     configure_button: QPushButton | None = None
+    info_button: QPushButton | None = None
 
 
 class PluginsSettingsPage(QWidget):
@@ -241,6 +242,13 @@ class PluginsSettingsPage(QWidget):
             )
             layout.addWidget(configure_button, 0, Qt.AlignmentFlag.AlignTop)
 
+        info_button = QPushButton("ℹ Info")
+        info_button.setToolTip("Show plugin metadata + README")
+        info_button.clicked.connect(
+            lambda _checked=False, _p=plugin: self._open_info_dialog(_p),
+        )
+        layout.addWidget(info_button, 0, Qt.AlignmentFlag.AlignTop)
+
         self._rows.append(_PluginRow(
             plugin=plugin,
             checkbox=checkbox,
@@ -250,8 +258,16 @@ class PluginsSettingsPage(QWidget):
             status_label=status_label,
             detail_label=detail_label,
             configure_button=configure_button,
+            info_button=info_button,
         ))
         return frame
+
+    def _open_info_dialog(self, plugin: Plugin) -> None:
+        from markdown_editor.markdown6.components.plugin_info_dialog import (
+            PluginInfoDialog,
+        )
+        dialog = PluginInfoDialog(plugin, parent=self)
+        dialog.exec()
 
     def _open_configure_dialog(self, plugin_id: str) -> None:
         from markdown_editor.markdown6.components.plugin_configure_dialog import (
