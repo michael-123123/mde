@@ -20,7 +20,7 @@ Schema (all under the ``[tool.mde.plugin]`` table):
     mde_api_version  str, optional, defaults to "0" (pre-stable)
 
     [tool.mde.plugin.dependencies]
-    python           list[str], optional — importable module names or
+    python           list[str], optional - importable module names or
                      pip-style requirements (only the module-name part
                      is actually checked at load time; version specs
                      are advisory and will be handled in a later phase)
@@ -56,7 +56,7 @@ def load_metadata(toml_path: Path) -> PluginMetadata:
     """Parse a plugin's ``<name>.toml`` file.
 
     Raises :class:`MetadataError` if the file is missing, unparseable,
-    or fails schema validation. Never raises any other exception type —
+    or fails schema validation. Never raises any other exception type -
     the loader relies on that to record a clean "bad metadata" status
     for the plugin.
     """
@@ -71,7 +71,7 @@ def load_metadata(toml_path: Path) -> PluginMetadata:
     except OSError as exc:
         raise MetadataError(f"could not read {toml_path}: {exc}") from exc
 
-    # Walk raw["tool"]["mde"]["plugin"] — pyproject-style namespacing
+    # Walk raw["tool"]["mde"]["plugin"] - pyproject-style namespacing
     # so the same TOML body can also live inside a project's
     # pyproject.toml without colliding with [tool.<other>] sections.
     plugin_tbl: Any = raw.get("tool", {}).get("mde", {}).get("plugin")

@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QLineEdit,
-                               QSpinBox, QTextEdit)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QLineEdit,
+    QSpinBox,
+    QTextEdit,
+)
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_configure_dialog import (

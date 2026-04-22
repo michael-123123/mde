@@ -4,7 +4,7 @@ Plugins register a ``(source: str) -> str`` callback for a named
 fence (``"plantuml"``, ``"chart"``, etc.). When a fenced code block
 with that language tag appears in the markdown source, the framework
 invokes the callback and embeds the returned HTML in the rendered
-output — same conceptual mechanism as the built-in mermaid/graphviz
+output - same conceptual mechanism as the built-in mermaid/graphviz
 fences, just routed through plugins.
 """
 

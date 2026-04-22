@@ -11,7 +11,7 @@ user toggle state back through the ``plugins.disabled`` setting on
 :meth:`apply`.
 
 Errored plugins (load failure, missing deps, metadata error, API
-version mismatch) render with a grayed-out checkbox — the user can't
+version mismatch) render with a grayed-out checkbox - the user can't
 re-enable them from the UI; they need to fix the underlying problem
 (install the missing dep, fix the TOML, etc.) and restart the editor.
 Writing errored plugins into ``plugins.disabled`` is avoided so that
@@ -23,15 +23,26 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFrame, QHBoxLayout,
-                               QLabel, QListWidget, QPushButton, QScrollArea,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                      PluginStatus)
-
+from markdown_editor.markdown6.plugins.plugin import (
+    Plugin,
+    PluginSource,
+    PluginStatus,
+)
 
 _ERROR_STATUS_TEXT = {
     PluginStatus.LOAD_FAILURE:     "Error (load failure)",
@@ -62,7 +73,7 @@ def _effective_state(
 
 @dataclass
 class _PluginRow:
-    """Widgets for one plugin's row — exposed as a struct so tests can
+    """Widgets for one plugin's row - exposed as a struct so tests can
     drive the checkbox directly and assert against the labels."""
     plugin: Plugin
     checkbox: QCheckBox
@@ -89,7 +100,7 @@ class PluginsSettingsPage(QWidget):
         self._rows: list[_PluginRow] = []
         self.open_folder_button: QPushButton | None = None
         # Kept as a ``None`` attribute so callers and tests can still
-        # reference it even though the button is gone — the add/remove
+        # reference it even though the button is gone - the add/remove
         # handlers now auto-run discovery, so a separate Reload click
         # was redundant.
         self.reload_button: QPushButton | None = None
@@ -130,7 +141,7 @@ class PluginsSettingsPage(QWidget):
     def pending_disabled_set(self) -> set[str]:
         """Names the user currently wants disabled, based on checkbox state.
 
-        Errored plugins are excluded regardless of their checkbox — we
+        Errored plugins are excluded regardless of their checkbox - we
         don't want a transient error to stamp the plugin as disabled
         in the user's persistent settings.
         """
@@ -147,7 +158,7 @@ class PluginsSettingsPage(QWidget):
 
         If the extra-dirs list actually changed, post a WARNING-level
         notification to the drawer so the user sees a bold
-        ⚠-prefixed reminder that restarting is required — the bell
+        ⚠-prefixed reminder that restarting is required - the bell
         keeps the history after the dialog closes.
         """
         self._ctx.set("plugins.disabled", sorted(self.pending_disabled_set()))
@@ -159,7 +170,7 @@ class PluginsSettingsPage(QWidget):
     # ------------------------------------------------------------------
     # Extra plugin directories (additional discovery roots on top of the
     # default user dir). Mutating these takes effect at the next editor
-    # restart — they're added to `_plugin_roots()`.
+    # restart - they're added to `_plugin_roots()`.
     # ------------------------------------------------------------------
 
     def pending_extra_dirs(self) -> list[str]:
@@ -183,7 +194,7 @@ class PluginsSettingsPage(QWidget):
     def remove_extra_dir(self, path) -> None:
         """Remove ``path`` from the pending list (no-op if absent).
 
-        Re-runs the discover preview after the change — mirror of
+        Re-runs the discover preview after the change - mirror of
         :meth:`add_extra_dir`.
         """
         s = str(path)
@@ -210,7 +221,7 @@ class PluginsSettingsPage(QWidget):
         body_layout.setContentsMargins(10, 10, 10, 10)
         body_layout.setSpacing(8)
 
-        # Page-level action bar (Open Folder, etc.) — always shown,
+        # Page-level action bar (Open Folder, etc.) - always shown,
         # regardless of whether any plugins are installed. The Open
         # Folder action especially makes sense on an empty page since
         # that's exactly when a user wants to *get* their first plugin
@@ -227,7 +238,7 @@ class PluginsSettingsPage(QWidget):
         action_row.addStretch()
         body_layout.addLayout(action_row)
 
-        # Extra plugin directories — list + Add/Remove buttons. Layered
+        # Extra plugin directories - list + Add/Remove buttons. Layered
         # on top of the default user dir; takes effect at next restart.
         body_layout.addWidget(self._build_extra_dirs_section())
 
@@ -394,7 +405,7 @@ class PluginsSettingsPage(QWidget):
         path = self._user_plugin_dir()
         if path is None:
             return
-        # Create on demand — saves the user a confusing
+        # Create on demand - saves the user a confusing
         # "folder doesn't exist" error from the file manager.
         path.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
@@ -423,7 +434,7 @@ class PluginsSettingsPage(QWidget):
         layout.addWidget(intro)
 
         self._extra_dirs_list = QListWidget()
-        # Cap the list's height so it doesn't dominate the page — the
+        # Cap the list's height so it doesn't dominate the page - the
         # installed-plugin list below is the main content. ~100px is
         # four rows; the list scrolls for more.
         self._extra_dirs_list.setMaximumHeight(100)
@@ -442,7 +453,7 @@ class PluginsSettingsPage(QWidget):
 
         # Inline status line for reload/apply feedback. The Settings
         # dialog is modal, so the notification-drawer bell in the
-        # status bar is hidden — without this label the user sees the
+        # status bar is hidden - without this label the user sees the
         # dialog do nothing in response to Add + Apply.
         self._reload_status_label = QLabel("")
         self._reload_status_label.setWordWrap(True)
@@ -474,7 +485,7 @@ class PluginsSettingsPage(QWidget):
         self.remove_extra_dir(item.text())
 
     # ------------------------------------------------------------------
-    # Discovery preview — inline feedback on add/remove
+    # Discovery preview - inline feedback on add/remove
     # ------------------------------------------------------------------
 
     def reload_status_text(self) -> str:

@@ -132,7 +132,7 @@ def test_register_text_transform_duplicate_id_raises() -> None:
 
 
 def test_actions_and_transforms_dont_share_id_namespace() -> None:
-    """Text transform is a specialisation of action — IDs must not collide."""
+    """Text transform is a specialisation of action - IDs must not collide."""
     @plugin_api.register_action(id="cross", label="action")
     def handler(ctx) -> None:  # noqa: ANN001
         pass
@@ -196,7 +196,7 @@ def test_invoke_text_transform_success_marks_dirty(qtbot) -> None:
     )
     result = plugin_api.invoke_text_transform(t, doc)
     assert result.ok is True
-    # We don't need the framework to flip dirty itself — Qt's textChanged
+    # We don't need the framework to flip dirty itself - Qt's textChanged
     # signal on the editor does that via DocumentTab's _on_text_changed.
     # Unit test can just verify text was mutated.
     assert editor.toPlainText() == "before!"

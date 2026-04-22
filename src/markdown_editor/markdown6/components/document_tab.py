@@ -1,4 +1,4 @@
-"""Document tab component — container for a single open document.
+"""Document tab component - container for a single open document.
 
 Holds an EnhancedEditor, a preview pane (QWebEngineView with QTextBrowser
 fallback), find/replace bar, and external change bar. Tracks file_path
@@ -13,13 +13,20 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QApplication, QSplitter, QTextBrowser,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QSplitter,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
 
-from markdown_editor.markdown6.components.external_change_bar import \
-    ExternalChangeBar
-from markdown_editor.markdown6.components.find_replace_bar import \
-    FindReplaceBar
+from markdown_editor.markdown6.components.external_change_bar import (
+    ExternalChangeBar,
+)
+from markdown_editor.markdown6.components.find_replace_bar import (
+    FindReplaceBar,
+)
 from markdown_editor.markdown6.diagram_helpers import _render_diagram
 from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
 from markdown_editor.markdown6.logger import getLogger
@@ -37,6 +44,11 @@ try:
 except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
+    logger.error(
+        "QtWebEngine is not available - preview will fall back to QTextBrowser. "
+        "Diagrams, math, code-block copy buttons, and rich CSS are disabled. "
+        "Install PySide6-Addons to restore full preview functionality."
+    )
 
 
 def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | None:
@@ -44,8 +56,10 @@ def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | No
     import json
     import subprocess
 
-    from markdown_editor.markdown6.temp_files import (create_temp_dir,
-                                                      create_temp_file)
+    from markdown_editor.markdown6.temp_files import (
+        create_temp_dir,
+        create_temp_file,
+    )
 
     if kind == 'mermaid':
         from markdown_editor.markdown6.tool_paths import get_mmdc_path
@@ -162,18 +176,18 @@ class _PreviewKeyFilter(QObject):
 
     Keys handled (event consumed):
 
-    - ``Down`` / ``Up``           — single-step scroll
-    - ``PageDown`` / ``PageUp``   — page-step scroll
-    - ``Space`` / ``Shift+Space`` — page-step scroll (WebEngine's native
+    - ``Down`` / ``Up``           - single-step scroll
+    - ``PageDown`` / ``PageUp``   - page-step scroll
+    - ``Space`` / ``Shift+Space`` - page-step scroll (WebEngine's native
       alias for PageDown/PageUp)
-    - ``Home`` / ``End``          — jump to top / bottom
+    - ``Home`` / ``End``          - jump to top / bottom
 
     All other keys pass through so the preview retains normal keyboard
     behavior (Left/Right, Tab, character input, shortcuts).
 
     Gate: the filter is a no-op when ``_sync_scrolling`` is off (user
     disabled editor↔preview sync in settings) or the editor isn't
-    visible (preview-only layout — then native preview scrolling is the
+    visible (preview-only layout - then native preview scrolling is the
     right thing). Same gating as ``_PreviewWheelFilter``.
     """
 
@@ -264,7 +278,7 @@ class DocumentTab(QWidget):
             from PySide6.QtWebEngineCore import QWebEngineSettings
             self.preview = QWebEngineView()
             # Custom page to intercept link clicks. Parented to self (not
-            # the view) so Qt destroys the page before the view — avoiding
+            # the view) so Qt destroys the page before the view - avoiding
             # "Release of profile requested but WebEnginePage still not
             # deleted" warnings.
             self._custom_page = LinkInterceptPage(self)
@@ -339,15 +353,15 @@ class DocumentTab(QWidget):
         self.render_timer.timeout.connect(self.render_markdown)
         # A destroyed tab must not leave a live render_timer behind: if it
         # does, the timer fires during a later test's pytest-qt
-        # processEvents window — after pytest's LogCaptureHandler has been
-        # closed for the previous test — and render_markdown's logger
+        # processEvents window - after pytest's LogCaptureHandler has been
+        # closed for the previous test - and render_markdown's logger
         # call writes to a closed StringIO.
         self.destroyed.connect(self.render_timer.stop)
 
     def _connect_signals(self):
         """Connect signals."""
         # ``textChanged`` is one-way (fires on every buffer mutation,
-        # including undo/redo) — we keep it only for side effects that
+        # including undo/redo) - we keep it only for side effects that
         # should run on any content change: preview re-render and
         # outline update scheduling.
         self.editor.textChanged.connect(self._on_text_changed)
@@ -357,7 +371,7 @@ class DocumentTab(QWidget):
         # it returns to that baseline (e.g. user undoes every edit).
         # Without this, the dirty flag would ratchet to ``True`` on
         # the first keystroke and never turn off until an explicit
-        # save or reload — even if the buffer is byte-identical to
+        # save or reload - even if the buffer is byte-identical to
         # the saved state.
         self.editor.document().modificationChanged.connect(
             self._on_modification_changed
@@ -365,7 +379,7 @@ class DocumentTab(QWidget):
         self.editor.file_externally_modified.connect(self._on_file_externally_modified)
         self.ctx.settings_changed.connect(self._on_setting_changed)
 
-        # Sync scrolling — editor is the source of truth.
+        # Sync scrolling - editor is the source of truth.
         # For WebEngine, wheel and vertical-scroll key events on the
         # preview's internal rendering widget are forwarded to the editor
         # so scrolling either pane (via mouse or keyboard) keeps them in
@@ -393,14 +407,14 @@ class DocumentTab(QWidget):
 
         host = url.host()
         if host == 'diagram':
-            # Rendered diagram — get source from JS, re-render with native text
+            # Rendered diagram - get source from JS, re-render with native text
             kind = parse_qs(url.query()).get('kind', ['mermaid'])[0]
             self.preview.page().runJavaScript(
                 'window._pendingDiagramSource || ""',
                 lambda source, _kind=kind: self._export_diagram(source, _kind),
             )
         elif host == 'img':
-            # Linked image — src is in query param
+            # Linked image - src is in query param
             src = unquote(url.query().replace('src=', '', 1)) if url.query().startswith('src=') else ''
             if not src:
                 return
@@ -410,7 +424,7 @@ class DocumentTab(QWidget):
             elif img_url.scheme() in ('http', 'https'):
                 QDesktopServices.openUrl(img_url)
             else:
-                # Relative path — resolve against document dir
+                # Relative path - resolve against document dir
                 if self.file_path:
                     resolved = self.file_path.parent / src
                     if resolved.exists():
@@ -424,7 +438,7 @@ class DocumentTab(QWidget):
         source = html_mod.unescape(source)
         dark_mode = self.ctx.get("view.theme") == "dark"
 
-        # Override cursor app-wide — survives Ctrl keyup and CSS changes
+        # Override cursor app-wide - survives Ctrl keyup and CSS changes
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
 
         future = self.main_window._diagram_executor.submit(
@@ -571,7 +585,7 @@ class DocumentTab(QWidget):
         """Whether the document has unsaved changes.
 
         Derived read-only view of ``self.editor.document().isModified()``
-        — the single source of truth. Direct assignment is deliberately
+        - the single source of truth. Direct assignment is deliberately
         not supported; callers that want to reset the modification
         baseline (file load, save, etc.) call
         ``self.editor.document().setModified(False)`` instead, which
@@ -585,7 +599,7 @@ class DocumentTab(QWidget):
         modification state flips.
 
         ``unsaved_changes`` itself is a derived property reading
-        ``document().isModified()`` — no local mirror to update here,
+        ``document().isModified()`` - no local mirror to update here,
         only the UI side effects that used to live in this handler.
         """
         self.main_window.update_tab_title(self)
@@ -623,7 +637,7 @@ class DocumentTab(QWidget):
         """
         import json
 
-        # Cancel any pending debounced render — we're rendering now.
+        # Cancel any pending debounced render - we're rendering now.
         self.render_timer.stop()
 
         text = self.editor.toPlainText()

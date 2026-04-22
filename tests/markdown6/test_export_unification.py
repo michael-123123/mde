@@ -5,7 +5,7 @@ must PASS after the renderer-unification refactor
 (see local/html-export-unify.md). They lock the post-refactor behavioral
 contract:
 
-1. CLI `mde export -f html` produces preview-grade HTML — wiki links,
+1. CLI `mde export -f html` produces preview-grade HTML - wiki links,
    callouts, math markers, mermaid/graphviz containers, task-list
    checkboxes, syntax-highlighted code.
 2. Project export (via `export_service.export_html`) produces the same.
@@ -20,13 +20,13 @@ contract:
    AppContext instance.
 7. CLI argparse surface includes `--theme` and `--canonical-fonts`.
 8. WeasyPrint PDF still produces non-empty output (H1 degradation
-   contract — no feature-parity assertion).
+   contract - no feature-parity assertion).
 9. Exported HTML carries `<meta charset="UTF-8">` and a non-empty
    `<title>...</title>` (decision N+T1).
 
 Assertions are structural properties of the output (e.g. "contains a
 `<div class=\"callout callout-note\">`" or "`[[foo]]` does not appear
-literally") — not byte-equal snapshots. Class II is a *contract* spec,
+literally") - not byte-equal snapshots. Class II is a *contract* spec,
 not a golden master. The Class I invariance tests are the byte-equal
 spec for the preview path.
 """
@@ -42,7 +42,6 @@ import pytest
 
 from markdown_editor.markdown6 import export_service
 from markdown_editor.markdown6.app_context import get_app_context
-
 
 # ─── Source-tree references ─────────────────────────────────────────
 
@@ -109,7 +108,7 @@ def mixed_md_file(tmp_path):
 @pytest.fixture
 def no_diagram_tools(monkeypatch):
     """Force mermaid/graphviz binaries absent so the JS-fallback path
-    is deterministic — same setup as Class I invariance tests."""
+    is deterministic - same setup as Class I invariance tests."""
     monkeypatch.setattr(
         "markdown_editor.markdown6.mermaid_service.has_mermaid",
         lambda: False,
@@ -123,7 +122,7 @@ def no_diagram_tools(monkeypatch):
 # ─── Assertion helpers ──────────────────────────────────────────────
 
 def _assert_preview_grade(html: str, *, label: str):
-    """Structural assertions — the HTML was produced by the full
+    """Structural assertions - the HTML was produced by the full
     extension stack (wiki links, callouts, math, diagrams, tasks,
     syntax highlighting). Used by every export-path test."""
     # Wiki link rendered, not literal
@@ -162,7 +161,7 @@ def _assert_preview_grade(html: str, *, label: str):
 
 class TestExportServiceProducesPreviewGradeHTML:
     """`export_service.markdown_to_html` and `export_html` must produce
-    full preview-grade HTML — not the stripped `[extra, codehilite,
+    full preview-grade HTML - not the stripped `[extra, codehilite,
     tables, toc]` output they produce today."""
 
     def test_markdown_to_html_contains_full_feature_set(self, no_diagram_tools):

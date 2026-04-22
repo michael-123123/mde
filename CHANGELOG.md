@@ -11,16 +11,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Extra plugin directories** layer on top of the user dir: pass `--plugins-dir DIR` (repeatable) on the command line or manage a persistent list via **Settings → Plugins → Extra plugin directories**. Useful for per-project plugin sets without copying into the user config.
 - **Settings → Plugins tab** lists every discovered plugin with status, enable/disable toggle, ℹ Info dialog (metadata + README), Open plugins folder, and Reload plugins buttons. Plugins with a registered settings schema get an auto-generated Configure… dialog.
 - **🔔 Notifications drawer** in the status bar. Plugin runtime errors and plugin-authored notifications surface here without blocking the editor; click the bell to see history.
-- **Three example plugins** under [`docs/plugins-examples/`](docs/plugins-examples/) — `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), `stamp` (action + every settings-schema field type). Not bundled — copy into your user plugin folder, or run `mde --plugins-dir docs/plugins-examples` to try them in place.
+- **Three example plugins** under [`docs/plugins-examples/`](docs/plugins-examples/) - `em_dash_to_hyphen` (text transform), `wordcount` (sidebar panel + signals + scoped settings), `stamp` (action + every settings-schema field type). Not bundled - copy into your user plugin folder, or run `mde --plugins-dir docs/plugins-examples` to try them in place.
 
 ## [0.1.13] - 2026-04-21
 
 ### Added
 - Pre-built binaries shipped on every GitHub release:
-  - `MarkdownEditor-<version>-x86_64.AppImage` — Linux AppImage (static runtime — no libfuse2 dependency on Ubuntu 24+)
-  - `MarkdownEditor-<version>-x86_64.exe` — Windows portable onefile
-  - `MarkdownEditor-<version>-x86_64-setup.exe` — Windows installer (Start Menu shortcut, uninstaller, optional "add to PATH" and ".md file association")
-  - `MarkdownEditor-<version>-x86_64-portable.zip` — Windows portable dist (unzip and run)
+  - `MarkdownEditor-<version>-x86_64.AppImage` - Linux AppImage (static runtime - no libfuse2 dependency on Ubuntu 24+)
+  - `MarkdownEditor-<version>-x86_64.exe` - Windows portable onefile
+  - `MarkdownEditor-<version>-x86_64-setup.exe` - Windows installer (Start Menu shortcut, uninstaller, optional "add to PATH" and ".md file association")
+  - `MarkdownEditor-<version>-x86_64-portable.zip` - Windows portable dist (unzip and run)
 - `install-desktop` / `install-autocomplete` CLI subcommands detect when invoked from a Nuitka-compiled binary and register the absolute bundled-binary path with the OS
 
 ### Fixed
@@ -30,7 +30,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Copy-to-clipboard button on code blocks in the preview
-- Copy-to-clipboard button on rendered mermaid/graphviz diagrams — copies the original source back to the clipboard
+- Copy-to-clipboard button on rendered mermaid/graphviz diagrams - copies the original source back to the clipboard
 - CLI `mde export` now accepts `--theme {light,dark}` and `--canonical-fonts` flags
 - New `examples/DIAGRAMS.md` showcasing richer mermaid and graphviz samples
 
@@ -76,7 +76,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.1.9] - 2026-04-11
 
 ### Added
-- Bidirectional scroll sync — scrolling the preview now scrolls the editor
+- Bidirectional scroll sync - scrolling the preview now scrolls the editor
 - Logging infrastructure across all modules for diagnostics
 
 ### Changed

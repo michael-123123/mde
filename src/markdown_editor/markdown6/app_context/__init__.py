@@ -1,4 +1,4 @@
-"""Application context — settings, shortcuts, and session state.
+"""Application context - settings, shortcuts, and session state.
 
 NON-QT-APPLICATION-SAFE: This module (and its subpackages) must remain
 loadable in non-Qt-application environments. AppContext is used by
@@ -17,9 +17,13 @@ from PySide6.QtCore import QObject, QStandardPaths
 
 from markdown_editor.markdown6.app_context.session_state import SessionState
 from markdown_editor.markdown6.app_context.settings_manager import (
-    DEFAULT_SETTINGS, SettingsManager)
+    DEFAULT_SETTINGS,
+    SettingsManager,
+)
 from markdown_editor.markdown6.app_context.shortcut_manager import (
-    DEFAULT_SHORTCUTS, ShortcutManager)
+    DEFAULT_SHORTCUTS,
+    ShortcutManager,
+)
 
 # Re-export subsystem classes so callers can import from app_context directly
 __all__ = [
@@ -155,7 +159,7 @@ class AppContext(QObject):
             ephemeral=ephemeral,
         )
 
-        # Plugin registry — populated by MarkdownEditor after startup
+        # Plugin registry - populated by MarkdownEditor after startup
         # plugin load completes. Consumed by Settings → Plugins tab.
         self._plugins: list = []
 
@@ -171,7 +175,9 @@ class AppContext(QObject):
         that actually use it.
         """
         if self._notifications is None:
-            from markdown_editor.markdown6.notifications import NotificationCenter
+            from markdown_editor.markdown6.notifications import (
+                NotificationCenter,
+            )
             self._notifications = NotificationCenter()
         return self._notifications
 
@@ -275,10 +281,10 @@ class AppContext(QObject):
         """Return an ephemeral AppContext with the same state as `self`.
 
         The returned instance:
-          - Is independent — mutations on it do NOT affect `self`.
+          - Is independent - mutations on it do NOT affect `self`.
           - Starts with copies of `self`'s settings, shortcuts, and
             session-state dicts.
-          - Is ephemeral — calling `.set(...)` on it never writes to disk.
+          - Is ephemeral - calling `.set(...)` on it never writes to disk.
           - Has its own signal connections (nothing wired to the original).
 
         Intended for export paths that need to override a few settings
@@ -287,7 +293,7 @@ class AppContext(QObject):
         decision E.
 
         Named `ephemeral_copy` (not `copy` or `clone`) to make the
-        ephemerality unambiguous — callers should not persist or share
+        ephemerality unambiguous - callers should not persist or share
         the returned instance.
 
         Uses `copy.deepcopy` on the inner state dicts so nested mutable

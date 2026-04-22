@@ -2,9 +2,9 @@
 # Build a Windows .exe of mde on a native Windows host (dev box or GHA
 # `windows-latest` runner). Native sibling of packaging/build.sh (Linux).
 #
-# For building from Linux via Wine — a genuinely different pipeline with
+# For building from Linux via Wine - a genuinely different pipeline with
 # bottle setup, depends.exe workarounds, MSVC runtime staging, ICU DLL
-# staging, Chromium flags — see packaging/build-windows.sh. Real Windows
+# staging, Chromium flags - see packaging/build-windows.sh. Real Windows
 # needs none of those: the OS provides MSVC redist + ICU, Nuitka compiles
 # with the preinstalled MSVC/MinGW, and Qt resolves its DLL imports
 # naturally against System32 + the PySide6 wheel.
@@ -25,7 +25,7 @@
 #   1. Python 3.12 on PATH
 #        GHA:       actions/setup-python@v5
 #        Dev box:   python.org installer or conda
-#   2. Git for Windows (provides Git Bash — the shell this script runs in)
+#   2. Git for Windows (provides Git Bash - the shell this script runs in)
 #   3. Project + build deps:  pip install -e ".[build]"
 #      (brings PySide6, Nuitka, etc.)
 
@@ -88,7 +88,7 @@ mkdir -p "$WIN_OUT"
 # build dir and patch per-run values (paths, mode, --jobs) on the copy so
 # the committed files stay pristine.
 #
-# Use forward slashes for Windows paths via `cygpath -m` — Python, Nuitka,
+# Use forward slashes for Windows paths via `cygpath -m` - Python, Nuitka,
 # and pyside6-deploy all accept them, and they avoid the shlex-eats-
 # backslash pitfall if any future change injects paths into extra_args.
 to_win() { command -v cygpath >/dev/null && cygpath -m "$1" || echo "$1"; }
@@ -120,7 +120,7 @@ echo "==> staged spec (at $WIN_SPEC):"
 grep -E "^mode|^extra_args|^input_file|^project_dir|^exec_directory|^icon" "$WIN_SPEC" | sed 's/^/    /'
 
 # -------- Build via pyside6-deploy --------------------------------------------
-# Fail fast if PySide6 can't be imported — Nuitka's pyside6 plugin does the
+# Fail fast if PySide6 can't be imported - Nuitka's pyside6 plugin does the
 # same import during its build-time scan, so a 15-minute Nuitka run that ends
 # with "PySide6 not installed" is a waste.
 python -c "from PySide6 import QtCore; import sys; sys.stderr.write(f'PySide6 {QtCore.__version__} ready\n')"

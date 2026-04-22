@@ -15,7 +15,7 @@ Field-to-widget mapping:
 * ``float`` → :class:`QDoubleSpinBox`
 * ``bool`` → :class:`QCheckBox`
 
-The dialog is intentionally simple — no validators beyond bounds,
+The dialog is intentionally simple - no validators beyond bounds,
 no async, no conditional fields. The plan calls these out as future
 extensions if a plugin needs them; for now this covers the common
 "API key + a few toggles + a count" cases.
@@ -26,11 +26,21 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                               QDoubleSpinBox, QFormLayout, QLabel, QLineEdit,
-                               QPushButton, QSpinBox, QTextEdit, QVBoxLayout,
-                               QWidget)
-
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 _INT_MAX = 2**31 - 1
 _INT_MIN = -(2**31)

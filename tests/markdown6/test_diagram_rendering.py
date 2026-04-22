@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 import markdown
 
-from markdown_editor.markdown6.extensions import (GraphvizExtension,
-                                                  MermaidExtension)
+from markdown_editor.markdown6.extensions import (
+    GraphvizExtension,
+    MermaidExtension,
+)
 
 
 class TestMermaidServerSideRendering:
@@ -204,8 +206,10 @@ class TestMermaidService:
 
     @patch("markdown_editor.markdown6.tool_paths.get_mmdc_path", return_value=None)
     def test_render_without_mmdc(self, mock_path):
-        from markdown_editor.markdown6.mermaid_service import (clear_cache,
-                                                               render_mermaid)
+        from markdown_editor.markdown6.mermaid_service import (
+            clear_cache,
+            render_mermaid,
+        )
         clear_cache()
         svg, error = render_mermaid("graph TD\n    A --> B")
         assert error is not None
@@ -215,8 +219,10 @@ class TestMermaidService:
     @patch("markdown_editor.markdown6.mermaid_service._render_mermaid_impl")
     def test_caching(self, mock_impl):
         """Second call with same source should use cache."""
-        from markdown_editor.markdown6.mermaid_service import (clear_cache,
-                                                               render_mermaid)
+        from markdown_editor.markdown6.mermaid_service import (
+            clear_cache,
+            render_mermaid,
+        )
         clear_cache()
         mock_impl.return_value = ("<svg>cached</svg>", None)
         result1 = render_mermaid("graph TD\n    A --> B")
@@ -332,7 +338,7 @@ class TestMermaidAndGraphvizTogether:
 
 class TestNestedCodeBlocksNotRendered:
     """Diagram blocks nested inside outer fenced code blocks must NOT be
-    rendered as diagrams — they should be treated as literal code text."""
+    rendered as diagrams - they should be treated as literal code text."""
 
     def _make_md(self):
         from markdown.extensions.fenced_code import FencedCodeExtension
@@ -389,8 +395,7 @@ class TestGraphvizDarkModeTextContrast:
     """
 
     def test_text_inside_user_fillcolor_node_gets_dark_text(self):
-        from markdown_editor.markdown6.graphviz_service import \
-            _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = (
             '<svg>'
@@ -411,8 +416,7 @@ class TestGraphvizDarkModeTextContrast:
         )
 
     def test_text_outside_node_groups_still_gets_light_text(self):
-        from markdown_editor.markdown6.graphviz_service import \
-            _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         # Edge labels and graph titles sit outside any <g class="node">.
         svg = (
@@ -426,10 +430,9 @@ class TestGraphvizDarkModeTextContrast:
         )
 
     def test_text_inside_unfilled_node_gets_light_text(self):
-        from markdown_editor.markdown6.graphviz_service import \
-            _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
-        # Default graphviz nodes emit fill="none" — no user fillcolor,
+        # Default graphviz nodes emit fill="none" - no user fillcolor,
         # so text should be light (sits on dark page background).
         svg = (
             '<svg>'
@@ -443,8 +446,7 @@ class TestGraphvizDarkModeTextContrast:
         assert 'fill="#d4d4d4">plain' in out
 
     def test_existing_text_fill_preserved(self):
-        from markdown_editor.markdown6.graphviz_service import \
-            _apply_dark_mode
+        from markdown_editor.markdown6.graphviz_service import _apply_dark_mode
 
         svg = (
             '<svg>'

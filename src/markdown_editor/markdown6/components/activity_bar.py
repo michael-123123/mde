@@ -10,8 +10,11 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QWidget
 
-from markdown_editor.markdown6.theme import (StyleSheets, ThemeColors,
-                                             get_theme_from_ctx)
+from markdown_editor.markdown6.theme import (
+    StyleSheets,
+    ThemeColors,
+    get_theme_from_ctx,
+)
 
 
 class ActivityTab(QWidget):
@@ -213,7 +216,7 @@ class ActivityBar(QFrame):
             self._tabs[index].setVisible(visible)
 
     def isTabVisible(self, index: int) -> bool:
-        # Use `not isHidden()` rather than `isVisible()` — the latter
+        # Use `not isHidden()` rather than `isVisible()` - the latter
         # requires the parent widget to be shown, but we want to query
         # the explicit visibility intent regardless of whether the
         # window is currently rendered.

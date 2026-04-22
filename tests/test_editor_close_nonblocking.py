@@ -7,7 +7,7 @@ autouse autodismiss fixture in ``tests/conftest.py`` which replaces
 ``QMessageBox.{question,warning,critical,information}`` with
 non-blocking stubs for the duration of the test session.
 
-These two tests exercise both the clean and the dirty close paths —
+These two tests exercise both the clean and the dirty close paths -
 they must both complete in well under a second.
 
 See ``local/tech-debt/headless-close-dirty-tab-hang.md`` for the
@@ -29,7 +29,7 @@ def test_close_clean_tab(qtbot) -> None:
     qtbot.addWidget(editor)
 
     editor.new_tab()
-    # deliberately do NOT mutate tab.editor — leaves tab clean
+    # deliberately do NOT mutate tab.editor - leaves tab clean
     editor.close()
     QApplication.processEvents()
 
@@ -39,7 +39,7 @@ def test_close_dirty_tab_auto_discards(qtbot) -> None:
     """Close with a dirty tab proceeds because the autodismiss fixture
     returns ``Discard`` from the "unsaved changes" ``QMessageBox.question``.
 
-    Without the fixture this hangs forever — see the ``tests/conftest.py``
+    Without the fixture this hangs forever - see the ``tests/conftest.py``
     module docstring.
     """
     editor = MarkdownEditor()

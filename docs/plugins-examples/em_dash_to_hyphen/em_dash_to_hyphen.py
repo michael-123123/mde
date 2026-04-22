@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from markdown_editor.plugins import register_text_transform
 
-
 EM_DASH = "\u2014"   # —
 
 

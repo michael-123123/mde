@@ -3,7 +3,7 @@
 Re-runs discovery on the same plugin roots, diffs against the
 in-process plugin list, and posts a NotificationCenter entry listing
 what's new on disk vs. what's been removed. Does NOT hot-reload
-existing plugins (their code stays as-is in memory) — that's why the
+existing plugins (their code stays as-is in memory) - that's why the
 notification recommends a restart for changes to take effect.
 
 This v1 scope honestly reflects what we can safely do without
@@ -22,8 +22,7 @@ from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.notifications import Severity
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.loader import load_all
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                       PluginStatus)
+from markdown_editor.markdown6.plugins.plugin import PluginSource
 from markdown_editor.markdown6.plugins.reload import reload_plugins
 
 

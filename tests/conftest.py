@@ -11,8 +11,8 @@ be killed externally).
 This autouse fixture replaces the four static methods on ``QMessageBox``
 with non-blocking stubs that return a sensible default button without
 ever creating a real dialog. That lets tests drive through code paths
-that would otherwise prompt — notably ``MarkdownEditor.closeEvent``'s
-"unsaved changes" prompt — without hanging.
+that would otherwise prompt - notably ``MarkdownEditor.closeEvent``'s
+"unsaved changes" prompt - without hanging.
 
 Defaults chosen to keep tests moving forward rather than cancelling:
 
@@ -21,7 +21,7 @@ Defaults chosen to keep tests moving forward rather than cancelling:
 
 If a future test needs to assert that a prompt was shown, it can
 monkeypatch the specific method back to a custom stub in the test body
-— the autouse fixture runs before any test-local monkeypatching.
+- the autouse fixture runs before any test-local monkeypatching.
 """
 
 from __future__ import annotations

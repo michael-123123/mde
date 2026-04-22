@@ -36,7 +36,7 @@ class FakeTabWidget:
 
 
 class TestAutosaveLogic:
-    """Test autosave save logic using fakes — no GUI needed."""
+    """Test autosave save logic using fakes - no GUI needed."""
 
     def test_saves_dirty_tab_with_path(self, tmp_path):
         """Autosave writes content to disk for dirty tabs with a file path."""
@@ -103,7 +103,7 @@ class TestAutosaveLogic:
 
 
 class TestAutosaveTimer:
-    """Test timer configuration via settings — uses a real QTimer but no editor."""
+    """Test timer configuration via settings - uses a real QTimer but no editor."""
 
     def test_default_off(self):
         """Auto-save is disabled by default."""

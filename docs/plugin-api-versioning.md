@@ -24,7 +24,7 @@ from markdown_editor.plugins import (
 )
 ```
 
-These names will not be removed or renamed within the same major version of MDE (post-1.0 — see "Pre-1.0 caveat" below).
+These names will not be removed or renamed within the same major version of MDE (post-1.0 - see "Pre-1.0 caveat" below).
 
 The **TOML metadata schema** (`[tool.mde.plugin]` section) is also part of the public API. Required fields' semantics are stable across the same major version; new optional fields may be added.
 
@@ -64,13 +64,13 @@ Behavior:
 |---|---|---|
 | same | same | loads normally |
 | `0` (pre-stable) | any | loads normally (no enforcement; advisory only) |
-| `1` or later | mismatched major | loaded with status `API_MISMATCH` — disabled, reason shown in Settings → Plugins |
+| `1` or later | mismatched major | loaded with status `API_MISMATCH` - disabled, reason shown in Settings → Plugins |
 
 This means once we tag MDE 1.0.0, a plugin declaring `mde_api_version = "1"` continues to work through 1.x; if/when MDE 2.0 ships, that plugin needs an updated `mde_api_version` (and possibly code changes) to load.
 
 ## Pre-1.0 caveat (current state)
 
-MDE is currently at 0.x. The plugin API is **not stable** — minor version bumps may break plugins. The `mde_api_version` field is parsed but not enforced.
+MDE is currently at 0.x. The plugin API is **not stable** - minor version bumps may break plugins. The `mde_api_version` field is parsed but not enforced.
 
 The contract above takes effect once we tag 1.0.0. Until then, plugins that ship with the editor (the bundled `em_dash_to_hyphen`, `wordcount`, `stamp` examples) are kept in sync with API changes; external plugin authors should expect to make small updates between minor releases.
 
@@ -78,7 +78,7 @@ The contract above takes effect once we tag 1.0.0. Until then, plugins that ship
 
 When a public-API symbol needs to be removed or renamed:
 
-1. The symbol is **deprecated** in a minor release — kept working, but a `DeprecationWarning` is logged at plugin load time naming the deprecated symbol and the recommended replacement.
+1. The symbol is **deprecated** in a minor release - kept working, but a `DeprecationWarning` is logged at plugin load time naming the deprecated symbol and the recommended replacement.
 2. The deprecation period is at least one full minor release.
 3. The next major version may then remove the symbol.
 

@@ -24,7 +24,6 @@ from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource, PluginStatus
 
-
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "plugins"
 
 
@@ -172,7 +171,7 @@ def test_stamp_action_includes_timestamp_when_enabled(qtbot, ctx) -> None:
     plugin_api._set_active_document_provider(lambda: doc)
 
     action.callback()
-    # Loose check: timestamp format is "YYYY-MM-DD HH:MM" — assert the
+    # Loose check: timestamp format is "YYYY-MM-DD HH:MM" - assert the
     # YYYY-MM-DD portion is present.
     assert "Note" in doc.text
     import re

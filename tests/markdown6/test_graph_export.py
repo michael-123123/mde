@@ -3,7 +3,10 @@
 from pathlib import Path
 
 from markdown_editor.markdown6.components.graph_export import (
-    MD_LINK_PATTERN, WIKI_LINK_PATTERN, VerticalTab)
+    MD_LINK_PATTERN,
+    WIKI_LINK_PATTERN,
+    VerticalTab,
+)
 
 
 class TestLinkPatterns:
@@ -117,9 +120,9 @@ class TestVerticalTab:
         """Test setting collapsed state."""
         tab = VerticalTab("TEST", width=28)
         qtbot.addWidget(tab)
-        assert tab._collapsed == False
+        assert tab._collapsed is False
         tab.setCollapsed(True)
-        assert tab._collapsed == True
+        assert tab._collapsed is True
 
     def test_vertical_tab_click_emits_signal(self, qtbot):
         """Test that clicking emits clicked signal."""
@@ -137,7 +140,7 @@ class TestVerticalTab:
         qtbot.addWidget(tab)
         tab.show()
 
-        assert tab._hovered == False
+        assert tab._hovered is False
         # Note: Actually testing hover would require more complex event simulation
 
 

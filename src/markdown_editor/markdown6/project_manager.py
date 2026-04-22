@@ -3,22 +3,37 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from markdown_editor.markdown6.logger import getLogger
-
-logger = getLogger(__name__)
-
 from PySide6.QtCore import QDir, Qt, Signal
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
-                               QDialogButtonBox, QFileDialog, QFileSystemModel,
-                               QGroupBox, QHBoxLayout, QInputDialog, QLabel,
-                               QLineEdit, QMenu, QMessageBox, QProgressDialog,
-                               QPushButton, QToolButton, QTreeView,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFileSystemModel,
+    QGroupBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QProgressDialog,
+    QPushButton,
+    QToolButton,
+    QTreeView,
+    QVBoxLayout,
+    QWidget,
+)
 
 from markdown_editor.markdown6 import export_service
 from markdown_editor.markdown6.app_context import get_project_markdown_files
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
+
+logger = getLogger(__name__)
 
 
 @dataclass

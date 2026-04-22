@@ -27,7 +27,7 @@ class SourceLinePreprocessor(Preprocessor):
         for i, line in enumerate(lines):
             stripped = line.strip()
 
-            # Track fenced code blocks — don't inject markers inside them
+            # Track fenced code blocks - don't inject markers inside them
             if not in_fence:
                 fm = self.FENCE_PATTERN.match(stripped)
                 if fm:

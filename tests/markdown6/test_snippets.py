@@ -4,9 +4,12 @@ from datetime import datetime
 
 import pytest
 
-from markdown_editor.markdown6.snippets import (DEFAULT_SNIPPETS, Snippet,
-                                                SnippetManager,
-                                                get_snippet_manager)
+from markdown_editor.markdown6.snippets import (
+    DEFAULT_SNIPPETS,
+    Snippet,
+    SnippetManager,
+    get_snippet_manager,
+)
 
 
 @pytest.fixture

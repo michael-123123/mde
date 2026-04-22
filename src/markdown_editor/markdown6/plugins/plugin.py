@@ -1,4 +1,4 @@
-"""Plugin record types — data carried around by the loader.
+"""Plugin record types - data carried around by the loader.
 
 The loader returns a list of :class:`Plugin` records. Each has a
 :class:`PluginStatus` explaining why it is (or isn't) active, plus a
@@ -26,10 +26,10 @@ class PluginSource(Enum):
     (``BUILTIN``) or installed / pointed at by the end user
     (``USER``). Plugins contributed by ``--plugins-dir`` on the CLI
     or by the ``plugins.extra_dirs`` setting are all tagged ``USER``
-    — they're user-controlled, just via different entry points.
+    - they're user-controlled, just via different entry points.
     Collapsing those into one variant keeps the enum focused on
     "is this a ship-with-the-app plugin?" (the only distinction any
-    consumer currently cares about — builtin plugins ship
+    consumer currently cares about - builtin plugins ship
     guaranteed-compatible, user plugins may not). If a later UX
     decision needs to surface "which entry point" separately (e.g.
     "added via CLI in this session"), add a sibling field on the

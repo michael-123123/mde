@@ -6,7 +6,7 @@
 #   - pysidedeploy.spec   (Nuitka + pyside6-deploy config)
 #   - mde_launch.py       (entry point that dispatches to the full CLI)
 #
-# These inputs are never modified by the script — they are copied into the
+# These inputs are never modified by the script - they are copied into the
 # build dir at the start of each run, and the copies are patched with per-run
 # values (mode, --jobs, etc.). Fresh copies every run = reproducible builds
 # + no git dirt.
@@ -29,12 +29,12 @@
 # Runtime notes for the produced AppImage:
 #   - Packaged with the AppImage *static* runtime (see APPIMAGE_RUNTIME_URL
 #     below), which embeds libfuse inside the image itself. End users therefore
-#     do NOT need libfuse2 installed — this is the main issue on Ubuntu 24.04+
+#     do NOT need libfuse2 installed - this is the main issue on Ubuntu 24.04+
 #     where libfuse2 was dropped from the default install.
 #   - If the host has no FUSE kernel support at all (WSL1, minimal containers,
 #     hardened sandboxes), end users can still launch via:
 #         ./MarkdownEditor-*-x86_64.AppImage --appimage-extract-and-run
-#     which extracts to a temp dir and runs from there — no mount needed.
+#     which extracts to a temp dir and runs from there - no mount needed.
 #
 # One-time prerequisites (not auto-installed by this script):
 #   1. mamba (or conda) with an 'algo' env on Python 3.11+:
@@ -50,7 +50,7 @@
 #      downloads; both are cached under $BUILD_DIR/.tools/ and reused).
 #
 # Runtime-optional system tools (not bundled, detected at runtime): pandoc,
-# graphviz, mmdc — see CLAUDE.md "Optional System Dependencies".
+# graphviz, mmdc - see CLAUDE.md "Optional System Dependencies".
 
 set -euo pipefail
 
@@ -115,7 +115,7 @@ APPDIR="$BUILD_DIR/.appdir"
 TOOLS_DIR="$BUILD_DIR/.tools"
 APPIMAGETOOL="$TOOLS_DIR/appimagetool-x86_64.AppImage"
 APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
-# Static AppImage runtime — embeds FUSE so end-users don't need libfuse2.
+# Static AppImage runtime - embeds FUSE so end-users don't need libfuse2.
 APPIMAGE_RUNTIME="$TOOLS_DIR/runtime-x86_64"
 APPIMAGE_RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
 
@@ -141,7 +141,7 @@ if [ "$CLEAN_ALL" -eq 1 ]; then
 fi
 
 # -------- Stage inputs in build dir -------------------------------------------
-# Fresh copies every run — the tracked originals in packaging/ are never touched.
+# Fresh copies every run - the tracked originals in packaging/ are never touched.
 cp "$SPEC_SRC"   "$SPEC"
 cp "$LAUNCH_SRC" "$LAUNCH"
 
@@ -171,8 +171,8 @@ grep -E "^mode|^extra_args|^input_file|^project_dir|^exec_directory|^icon" "$SPE
 # entry-point plugin discovery.
 
 # Resolve how to invoke pyside6-deploy + python:
-#   1. If `mamba` + `algo` env exist (dev's primary workflow) — use them.
-#   2. Else if pyside6-deploy is on PATH (GHA, activated venv, etc.) — use
+#   1. If `mamba` + `algo` env exist (dev's primary workflow) - use them.
+#   2. Else if pyside6-deploy is on PATH (GHA, activated venv, etc.) - use
 #      it directly, with `python` for helper calls.
 #   3. Else fail.
 if command -v mamba >/dev/null 2>&1 && mamba env list 2>/dev/null | awk '{print $1}' | grep -qx algo; then

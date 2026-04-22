@@ -128,13 +128,13 @@ def test_extra_dirs_list_has_bounded_height(qtbot, ctx):
     page = PluginsSettingsPage(ctx)
     qtbot.addWidget(page)
     assert page._extra_dirs_list is not None
-    # 150 is a generous cap — four to five rows is the expectation;
+    # 150 is a generous cap - four to five rows is the expectation;
     # the current design is tighter than that.
     assert page._extra_dirs_list.maximumHeight() <= 150
 
 
 # ---------------------------------------------------------------------------
-# No Reload button — add/remove auto-discover, apply posts a warning
+# No Reload button - add/remove auto-discover, apply posts a warning
 # ---------------------------------------------------------------------------
 
 
@@ -149,7 +149,7 @@ def test_add_extra_dir_auto_detects_plugins_in_inline_label(
     qtbot, ctx, tmp_path: Path,
 ):
     """The moment the user adds a directory, the inline label must
-    reflect what was detected in it — no Reload / Apply click needed."""
+    reflect what was detected in it - no Reload / Apply click needed."""
     extra = tmp_path / "extra"
     extra.mkdir()
     _make_plugin_dir(extra, "auto_detected")
@@ -208,7 +208,7 @@ def test_apply_with_changed_dirs_posts_warning_notification(
     qtbot, ctx, tmp_path: Path,
 ):
     """Apply / OK must surface the change in the notification area as
-    a WARNING severity entry — the dialog is about to close, so the
+    a WARNING severity entry - the dialog is about to close, so the
     inline label is no longer visible."""
     from markdown_editor.markdown6.notifications import Severity
 
@@ -270,7 +270,7 @@ def test_remove_directory_shows_plugins_that_will_be_removed(
     qtbot, ctx, tmp_path: Path,
 ):
     """Removing a directory that contained currently-loaded plugins
-    surfaces them in the preview — user sees exactly which plugins
+    surfaces them in the preview - user sees exactly which plugins
     will vanish after restart."""
     from markdown_editor.markdown6.plugins.loader import discover_plugins
 
@@ -300,7 +300,7 @@ def test_broken_plugin_in_added_dir_surfaces_in_preview(
 ):
     """If the new directory contains a plugin with a detectable
     problem (bad TOML, missing deps, API mismatch), the preview must
-    call it out — the user shouldn't have to restart to find out
+    call it out - the user shouldn't have to restart to find out
     something is wrong."""
     extra = tmp_path / "extra"
     extra.mkdir()

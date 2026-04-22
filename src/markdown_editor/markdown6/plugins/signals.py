@@ -15,10 +15,10 @@ a :class:`DocumentHandle` for the affected document and the current
 
 * Skips handlers whose plugin is in ``disabled``.
 * Calls each remaining handler with the handle as its single argument.
-* Catches and logs exceptions from individual handlers — one bad
+* Catches and logs exceptions from individual handlers - one bad
   plugin doesn't abort the dispatch loop or affect the editor.
 
-Plugin handlers receive a Qt-free ``DocumentHandle`` — never a raw
+Plugin handlers receive a Qt-free ``DocumentHandle`` - never a raw
 ``DocumentTab`` or ``QObject``. This keeps the documented API surface
 free of Qt types per the core design invariant.
 """
@@ -61,7 +61,7 @@ def dispatch(
 
     Skips handlers whose ``plugin_name`` is in ``disabled``. Catches
     and logs any exception raised by an individual handler so the
-    dispatch loop continues — one buggy plugin does not break the
+    dispatch loop continues - one buggy plugin does not break the
     editor or starve other plugins.
     """
     # Imported here to avoid a circular import at module load time
@@ -75,13 +75,15 @@ def dispatch(
         try:
             with _api._current_plugin(h.plugin_name):
                 h.callback(doc)
-        except BaseException as exc:    # noqa: BLE001 — plugin code
+        except BaseException as exc:    # noqa: BLE001 - plugin code
             handler_name = getattr(h.callback, "__name__", repr(h.callback))
             logger.warning(
                 "Plugin signal handler %r (kind=%s) raised: %s",
                 handler_name, kind.value, exc, exc_info=True,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 h.plugin_name,
                 f"Plugin {kind.value} handler failed: {handler_name}",

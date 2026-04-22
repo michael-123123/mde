@@ -54,25 +54,25 @@ The main window class. Responsibilities:
 - Theme application coordination
 
 **Key methods:**
-- `open_file(path)` — opens file, checks for duplicates, creates tab
-- `save_file()` / `save_file_as()` — save operations
-- `new_tab()` — creates empty `DocumentTab`
-- `update_window_title()` — updates title with project-relative path
-- `_handle_link_click(url)` — handles preview link clicks
-- `_handle_editor_link_click(path)` — handles Ctrl+click on editor links
+- `open_file(path)` - opens file, checks for duplicates, creates tab
+- `save_file()` / `save_file_as()` - save operations
+- `new_tab()` - creates empty `DocumentTab`
+- `update_window_title()` - updates title with project-relative path
+- `_handle_link_click(url)` - handles preview link clicks
+- `_handle_editor_link_click(path)` - handles Ctrl+click on editor links
 
 #### `DocumentTab` (`components/document_tab.py`)
 A container widget for a single document. Contains:
-- `EnhancedEditor` — the text editor
+- `EnhancedEditor` - the text editor
 - Preview pane (`QWebEngineView` or `QTextBrowser` fallback)
 - `FindReplaceBar`
 - `ExternalChangeBar` (non-modal reload notification)
 - Splitter between editor and preview
 
 **Key attributes:**
-- `file_path: Path | None` — current file path
-- `unsaved_changes: bool` — dirty state (read-only `@property` derived from `self.editor.document().isModified()`; reset the baseline by calling `document().setModified(False)` on load/save)
-- `editor: EnhancedEditor` — the text editor widget
+- `file_path: Path | None` - current file path
+- `unsaved_changes: bool` - dirty state (read-only `@property` derived from `self.editor.document().isModified()`; reset the baseline by calling `document().setModified(False)` on load/save)
+- `editor: EnhancedEditor` - the text editor widget
 
 **Signals:**
 - `file_changed(path)`
@@ -145,9 +145,9 @@ Backlinks panel showing files that reference the current document.
 Package containing the application-context facade. Owns `SettingsManager`, `ShortcutManager`, `SessionState`. JSON persistence to `~/.config/markdown-editor/` via `temp_files.atomic_write()`.
 
 **Signals:**
-- `settings_changed(str, object)` — key, new_value
-- `shortcut_changed(str, str)` — action, new_shortcut (delegated from `ShortcutManager`)
-- `theme_changed(str)` — theme name
+- `settings_changed(str, object)` - key, new_value
+- `shortcut_changed(str, str)` - action, new_shortcut (delegated from `ShortcutManager`)
+- `theme_changed(str)` - theme name
 
 **Access:** `from markdown_editor.markdown6.app_context import get_app_context`
 
@@ -304,7 +304,7 @@ Preview HTML contains a placeholder <div data-mermaid-src="..."> or <div data-do
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
-from ..theme import get_theme_from_ctx
+from markdown_editor.markdown6.theme import get_theme_from_ctx
 
 class MyPanel(QWidget):
     item_clicked = Signal(str)
@@ -332,7 +332,7 @@ self.sidebar.add_panel("my", "🧩", "My Panel", self.my_panel)
 self.my_panel.item_clicked.connect(self._on_my_panel_item_clicked)
 ```
 
-4. If the panel should be toggleable via shortcut / command palette, add a toggle `ActionDef` to `actions.MENU_STRUCTURE` — that single entry handles menu, shortcut, and palette registration.
+4. If the panel should be toggleable via shortcut / command palette, add a toggle `ActionDef` to `actions.MENU_STRUCTURE` - that single entry handles menu, shortcut, and palette registration.
 
 ### Adding a New Menu Item / Keyboard Shortcut
 
@@ -388,13 +388,13 @@ elif format_type == "xyz":
 
 ### Adding a Plugin
 
-Plugins live outside the core code — they're Python directories the editor discovers from any of three roots: `markdown_editor/markdown6/builtin_plugins/<name>/` (reserved for plugins shipped with the editor; currently empty), `<config_dir>/plugins/<name>/` (the user's installed plugins), and any extra dirs added via `--plugins-dir DIR` (CLI, repeatable) or the `plugins.extra_dirs` setting (managed in **Settings → Plugins → Extra plugin directories**). All sources are additive. The plugin API is documented for *plugin authors* in [`docs/plugins.md`](../../../docs/plugins.md); the stability contract is in [`docs/plugin-api-versioning.md`](../../../docs/plugin-api-versioning.md).
+Plugins live outside the core code - they're Python directories the editor discovers from any of three roots: `markdown_editor/markdown6/builtin_plugins/<name>/` (reserved for plugins shipped with the editor; currently empty), `<config_dir>/plugins/<name>/` (the user's installed plugins), and any extra dirs added via `--plugins-dir DIR` (CLI, repeatable) or the `plugins.extra_dirs` setting (managed in **Settings → Plugins → Extra plugin directories**). All sources are additive. The plugin API is documented for *plugin authors* in [`docs/plugins.md`](../../../docs/plugins.md); the stability contract is in [`docs/plugin-api-versioning.md`](../../../docs/plugin-api-versioning.md).
 
 When adding a plugin yourself:
 
-1. Use the public shim only — `from markdown_editor.plugins import register_action, on_save, plugin_settings, ...`. Do **not** import from `markdown_editor.markdown6.plugins.*` (the deeper internal namespace is not stable).
+1. Use the public shim only - `from markdown_editor.plugins import register_action, on_save, plugin_settings, ...`. Do **not** import from `markdown_editor.markdown6.plugins.*` (the deeper internal namespace is not stable).
 2. Match the directory name in `<name>.py`, `<name>.toml`, and `[tool.mde.plugin].name`. The loader fails `METADATA_ERROR` if any of those disagree.
-3. Read the example plugins as references — they live under [`docs/plugins-examples/`](../../../docs/plugins-examples/): `em_dash_to_hyphen` (text transform), `wordcount` (panel + signals + scoped settings), `stamp` (action + settings schema with every supported field type).
+3. Read the example plugins as references - they live under [`docs/plugins-examples/`](../../../docs/plugins-examples/): `em_dash_to_hyphen` (text transform), `wordcount` (panel + signals + scoped settings), `stamp` (action + settings schema with every supported field type).
 
 Internal plugin-system architecture lives under `markdown6/plugins/`:
 
@@ -436,7 +436,7 @@ class MyExtension(Extension):
 
 2. Register it where the preview markdown instance is constructed (`components/document_tab.py`):
 ```python
-from ..extensions.my_ext import MyExtension
+from markdown_editor.markdown6.extensions.my_ext import MyExtension
 self.md = markdown.Markdown(extensions=[..., MyExtension()])
 ```
 
@@ -496,12 +496,12 @@ The editor recognizes these link patterns:
 ## Known Technical Debt
 
 ### Architecture Issues
-1. **MarkdownEditor is still large** (~1800 lines) — could still extract `TabManager` and `PanelManager`. `ActionManager`-style concerns are already addressed by `actions.py`.
-2. **No Model layer** — document state is mixed with UI in `DocumentTab`.
-3. ~~**Global settings singleton**~~ — resolved: settings refactored into `AppContext` with dependency injection.
-4. ~~**Action/shortcut/palette duplication** (three-place registration)~~ — resolved: single `ActionDef` in `actions.py` wires all three.
-5. ~~**DocumentTab defined inside markdown_editor.py**~~ — resolved: extracted to `components/document_tab.py` (0.1.11).
-6. **Duplicated theme handling** — each widget implements its own `_apply_theme()`.
+1. **MarkdownEditor is still large** (~1800 lines) - could still extract `TabManager` and `PanelManager`. `ActionManager`-style concerns are already addressed by `actions.py`.
+2. **No Model layer** - document state is mixed with UI in `DocumentTab`.
+3. ~~**Global settings singleton**~~ - resolved: settings refactored into `AppContext` with dependency injection.
+4. ~~**Action/shortcut/palette duplication** (three-place registration)~~ - resolved: single `ActionDef` in `actions.py` wires all three.
+5. ~~**DocumentTab defined inside markdown_editor.py**~~ - resolved: extracted to `components/document_tab.py` (0.1.11).
+6. **Duplicated theme handling** - each widget implements its own `_apply_theme()`.
 
 ### Code Duplication
 1. Theme application code repeated in ~10 widget classes.
@@ -545,9 +545,9 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 | File | Lines | Purpose |
 |------|------:|---------|
 | `__init__.py`          | 246 | `AppContext` facade, `get_app_context()`, `init_app_context()` |
-| `settings_manager.py`  | 133 | `SettingsManager` — user preferences |
-| `shortcut_manager.py`  | 206 | `ShortcutManager` — keyboard-shortcut defaults + persistence |
-| `session_state.py`     | 129 | `SessionState` — recent files, open tabs, sidebar state |
+| `settings_manager.py`  | 133 | `SettingsManager` - user preferences |
+| `shortcut_manager.py`  | 206 | `ShortcutManager` - keyboard-shortcut defaults + persistence |
+| `session_state.py`     | 129 | `SessionState` - recent files, open tabs, sidebar state |
 
 ### `components/`
 
@@ -555,7 +555,7 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 |------|------:|---------|
 | `activity_bar.py`       |  232 | `ActivityBar`, `ActivityTab` |
 | `sidebar.py`            |  255 | Collapsible `Sidebar` tool window |
-| `document_tab.py`       |  661 | `DocumentTab` — per-document editor + preview container |
+| `document_tab.py`       |  661 | `DocumentTab` - per-document editor + preview container |
 | `outline_panel.py`      |  167 | `OutlinePanel`, `Heading` |
 | `references_panel.py`   |  261 | `ReferencesPanel`, `Reference` |
 | `search_panel.py`       |  281 | `SearchPanel`, `SearchMatch` |
@@ -565,9 +565,9 @@ All paths are relative to `src/markdown_editor/markdown6/`.
 | `settings_dialog.py`    |  844 | `SettingsDialog` multi-page (Editor, View, Appearance, Files, Tools, Shortcuts, **Plugins**) |
 | `table_editor.py`       |  287 | `TableEditorDialog` |
 | `graph_export.py`       | 1120 | `GraphExportDialog` |
-| `plugins_page.py`       | ~290 | `PluginsSettingsPage` — Settings → Plugins UI (rows, Open Folder, Reload, Configure / Info buttons) |
-| `plugin_configure_dialog.py` | ~190 | `PluginConfigureDialog` — auto-rendered from a plugin's `register_settings_schema` |
-| `plugin_info_dialog.py` | ~130 | `PluginInfoDialog` — metadata + status detail + README rendering |
+| `plugins_page.py`       | ~290 | `PluginsSettingsPage` - Settings → Plugins UI (rows, Open Folder, Reload, Configure / Info buttons) |
+| `plugin_configure_dialog.py` | ~190 | `PluginConfigureDialog` - auto-rendered from a plugin's `register_settings_schema` |
+| `plugin_info_dialog.py` | ~130 | `PluginInfoDialog` - metadata + status detail + README rendering |
 | `notification_bell.py`  | ~225 | `NotificationBellButton` (status bar) + `NotificationDrawer` popup |
 
 ### `plugins/` (plugin system internals)
@@ -590,7 +590,7 @@ The public shim lives one level up at `src/markdown_editor/plugins/__init__.py` 
 
 ### `builtin_plugins/`
 
-Reserved for plugins shipped with the editor. **Currently empty** — nothing is bundled by default. The loader still scans this directory at startup, so dropping a plugin package here makes it a built-in again.
+Reserved for plugins shipped with the editor. **Currently empty** - nothing is bundled by default. The loader still scans this directory at startup, so dropping a plugin package here makes it a built-in again.
 
 The reference plugins that used to live here are now under [`docs/plugins-examples/`](../../../docs/plugins-examples/) (`em_dash_to_hyphen`, `wordcount`, `stamp`); the test suite carries self-contained copies under `tests/markdown6/fixtures/plugins/`.
 
@@ -631,7 +631,7 @@ pytest tests/markdown6/test_export_service.py
 pytest tests/markdown6/test_export_service.py::TestMarkdownToHtml::test_basic_conversion
 ```
 
-(Never use `-q` or truncate the output — see the rule in top-level `CLAUDE.md`.)
+(Never use `-q` or truncate the output - see the rule in top-level `CLAUDE.md`.)
 
 Example unit test for a stateless service:
 
@@ -647,22 +647,22 @@ def test_markdown_to_html():
 ## Dependencies
 
 Core runtime (from `pyproject.toml`):
-- `PySide6 >= 6.5` — Qt bindings
-- `PySide6-Addons >= 6.5` — WebEngine for preview
-- `markdown >= 3.5` — Markdown parsing
-- `Pygments >= 2.0` — syntax highlighting
-- `weasyprint >= 60.0` — PDF export fallback
-- `python-docx >= 1.0` — DOCX export fallback
-- `graphviz >= 0.20` — Python bindings for Graphviz
-- `pydantic >= 2.0` — data models and validation
-- `email-validator` — dependency of pydantic's `EmailStr`
-- `argcomplete >= 3.0` — shell tab-completion for `mde`
+- `PySide6 >= 6.5` - Qt bindings
+- `PySide6-Addons >= 6.5` - WebEngine for preview
+- `markdown >= 3.5` - Markdown parsing
+- `Pygments >= 2.0` - syntax highlighting
+- `weasyprint >= 60.0` - PDF export fallback
+- `python-docx >= 1.0` - DOCX export fallback
+- `graphviz >= 0.20` - Python bindings for Graphviz
+- `pydantic >= 2.0` - data models and validation
+- `email-validator` - dependency of pydantic's `EmailStr`
+- `argcomplete >= 3.0` - shell tab-completion for `mde`
 
 Dev extras (`pip install -e ".[dev]"`):
 - `pytest >= 7.0`
 - `pytest-qt >= 4.0`
 
 Optional system tools (configurable paths in Settings → Tools):
-- `pandoc` + `texlive-xetex` — high-quality PDF/DOCX export
-- `graphviz` (`dot`) — native Graphviz rendering
-- `@mermaid-js/mermaid-cli` (`mmdc`) — native Mermaid rendering
+- `pandoc` + `texlive-xetex` - high-quality PDF/DOCX export
+- `graphviz` (`dot`) - native Graphviz rendering
+- `@mermaid-js/mermaid-cli` (`mmdc`) - native Mermaid rendering

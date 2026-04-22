@@ -4,31 +4,94 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from markdown_editor.markdown6.logger import getLogger
-
-logger = getLogger(__name__)
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import (QColor, QDesktopServices, QIcon, QKeySequence,
-                           QPalette, QShortcut, QTextCursor)
-from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QHBoxLayout,
-                               QInputDialog, QLabel, QMainWindow, QMessageBox,
-                               QSplitter, QStyle, QTabWidget, QToolButton,
-                               QWidget)
+from PySide6.QtGui import (
+    QColor,
+    QDesktopServices,
+    QIcon,
+    QKeySequence,
+    QPalette,
+    QShortcut,
+    QTextCursor,
+)
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QSplitter,
+    QStyle,
+    QTabWidget,
+    QToolButton,
+    QWidget,
+)
 
-from markdown_editor.markdown6 import export_service
-from markdown_editor.markdown6.actions import (_action_attr, _shortcut_id,
-                                               apply_shortcuts,
-                                               build_command_palette,
-                                               build_menu_bar)
+from markdown_editor.markdown6 import export_service, graphviz_service
+from markdown_editor.markdown6.actions import (
+    _action_attr,
+    _shortcut_id,
+    apply_shortcuts,
+    build_command_palette,
+    build_menu_bar,
+)
+from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.components.command_palette import CommandPalette
+from markdown_editor.markdown6.components.document_tab import DocumentTab
+from markdown_editor.markdown6.components.graph_export import GraphExportDialog
+from markdown_editor.markdown6.components.outline_panel import OutlinePanel
+from markdown_editor.markdown6.components.references_panel import (
+    ReferencesPanel,
+)
+from markdown_editor.markdown6.components.search_panel import SearchPanel
+from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
+from markdown_editor.markdown6.components.sidebar import Sidebar
+from markdown_editor.markdown6.components.table_editor import TableEditorDialog
+from markdown_editor.markdown6.extensions import (
+    get_callout_css,
+    get_math_js,
+    get_mermaid_css,
+    get_mermaid_js,
+    get_tasklist_css,
+)
+from markdown_editor.markdown6.html_renderer_core import (
+    build_markdown,
+    get_cached_html_formatter,
+    wrap_html_in_full_template,
+)
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (
-    apply_disabled_set, apply_panel_disabled_set, inject_plugin_actions,
-    install_plugin_panels, plugin_palette_commands_filtered,
-    register_existing_menu)
+    apply_disabled_set,
+    apply_panel_disabled_set,
+    inject_plugin_actions,
+    install_plugin_panels,
+    plugin_palette_commands_filtered,
+    register_existing_menu,
+)
 from markdown_editor.markdown6.plugins.loader import load_all
 from markdown_editor.markdown6.plugins.plugin import PluginSource
-from markdown_editor.markdown6.plugins.signals import SignalKind, dispatch as plugin_dispatch
+from markdown_editor.markdown6.plugins.signals import SignalKind
+from markdown_editor.markdown6.plugins.signals import (
+    dispatch as plugin_dispatch,
+)
+from markdown_editor.markdown6.project_manager import ProjectPanel
+from markdown_editor.markdown6.snippets import (
+    SnippetPopup,
+    get_snippet_manager,
+)
+from markdown_editor.markdown6.templates.preview import PREVIEW_TEMPLATE_SIMPLE
+from markdown_editor.markdown6.theme import (
+    StyleSheets,
+    get_theme,
+    get_theme_from_ctx,
+)
+
+logger = getLogger(__name__)
 
 
 
@@ -83,33 +146,6 @@ def apply_application_theme(dark_mode: bool):
         StyleSheets.splitter(theme) +
         StyleSheets.tooltip(theme)
     )
-
-
-
-from markdown_editor.markdown6 import graphviz_service
-from markdown_editor.markdown6.app_context import get_app_context
-from markdown_editor.markdown6.components.command_palette import CommandPalette
-from markdown_editor.markdown6.components.document_tab import DocumentTab
-from markdown_editor.markdown6.components.graph_export import GraphExportDialog
-from markdown_editor.markdown6.components.outline_panel import OutlinePanel
-from markdown_editor.markdown6.components.references_panel import \
-    ReferencesPanel
-from markdown_editor.markdown6.components.search_panel import SearchPanel
-from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
-from markdown_editor.markdown6.components.sidebar import Sidebar
-from markdown_editor.markdown6.components.table_editor import TableEditorDialog
-from markdown_editor.markdown6.html_renderer_core import (
-    build_markdown, get_cached_html_formatter, wrap_html_in_full_template)
-from markdown_editor.markdown6.extensions import (
-    get_callout_css, get_math_js, get_mermaid_css, get_mermaid_js,
-    get_tasklist_css)
-from markdown_editor.markdown6.project_manager import ProjectPanel
-from markdown_editor.markdown6.snippets import (SnippetPopup,
-                                                get_snippet_manager)
-from markdown_editor.markdown6.templates.preview import \
-    PREVIEW_TEMPLATE_SIMPLE
-from markdown_editor.markdown6.theme import (StyleSheets, get_theme,
-                                             get_theme_from_ctx)
 
 
 class MarkdownEditor(QMainWindow):
@@ -183,7 +219,9 @@ class MarkdownEditor(QMainWindow):
         excluded. The plugin-fence dispatcher (``PluginFenceExtension``)
         is also added with the current disabled set captured.
         """
-        from markdown_editor.markdown6.plugins.fence import PluginFenceExtension
+        from markdown_editor.markdown6.plugins.fence import (
+            PluginFenceExtension,
+        )
         disabled = set(self.ctx.get("plugins.disabled", []) or [])
         extras = list(
             plugin_api._REGISTRY.active_markdown_extensions(disabled=disabled)
@@ -293,7 +331,8 @@ class MarkdownEditor(QMainWindow):
     def _create_status_bar(self):
         """Create the status bar."""
         from markdown_editor.markdown6.components.notification_bell import (
-            NotificationBellButton, NotificationDrawer,
+            NotificationBellButton,
+            NotificationDrawer,
         )
 
         self.status_bar = self.statusBar()

@@ -14,8 +14,14 @@ often want to track progress against a daily/article word target.
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QProgressBar, QSpinBox,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
 
 from markdown_editor.plugins import (
     get_active_document,
@@ -24,7 +30,6 @@ from markdown_editor.plugins import (
     plugin_settings,
     register_panel,
 )
-
 
 _DEFAULT_TARGET = 500
 _PANEL: "WordCountPanel | None" = None

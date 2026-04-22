@@ -14,10 +14,10 @@
 # Default output: $BUILD_DIR/MarkdownEditor-<version>-x86_64-setup.exe
 #
 # Prerequisites:
-#   - NSIS 3.x (`apt install nsis`). Runs natively on Linux — NSIS has a
+#   - NSIS 3.x (`apt install nsis`). Runs natively on Linux - NSIS has a
 #     native Linux port, no Wine needed for the installer-build step.
 #   - Python 3.11+ with the mde package installed somewhere resolvable
-#     (for version detection). Same resolver as build.sh — prefers the
+#     (for version detection). Same resolver as build.sh - prefers the
 #     `algo` mamba env, falls back to `python` on PATH.
 #
 # Usage:
@@ -53,7 +53,7 @@ if [ ! -d "$DIST_DIR" ]; then
 fi
 # Accept either name: native build renames to mde.exe, Wine build keeps mde_launch.exe.
 if [ ! -f "$DIST_DIR/mde.exe" ] && [ ! -f "$DIST_DIR/mde_launch.exe" ]; then
-    echo "ERROR: no mde.exe or mde_launch.exe in $DIST_DIR — is that a Nuitka standalone dist?" >&2
+    echo "ERROR: no mde.exe or mde_launch.exe in $DIST_DIR - is that a Nuitka standalone dist?" >&2
     exit 1
 fi
 
@@ -73,7 +73,7 @@ ICON="$REPO_ROOT/src/markdown_editor/markdown6/icons/markdown-mark-solid-win10.i
 
 # Find makensis. On Linux `apt install nsis` puts it on PATH directly. On
 # Windows after `choco install nsis`, PATH propagation into the current bash
-# step can be flaky — fall back to common install locations. Chocolatey's
+# step can be flaky - fall back to common install locations. Chocolatey's
 # NSIS installs under "Program Files (x86)\NSIS\" on 64-bit Windows.
 MAKENSIS=""
 if command -v makensis >/dev/null 2>&1; then
@@ -96,7 +96,7 @@ fi
 # Git Bash (e.g. /d/a/mde/...) get fed through MSYS's argument-
 # translation layer, which is flaky for -D<name>=<value> forms. Convert
 # any paths we pass to makensis into Windows-friendly forward-slash paths
-# (D:/a/mde/...) via cygpath -m — same as build-windows-native.sh.
+# (D:/a/mde/...) via cygpath -m - same as build-windows-native.sh.
 to_win() { command -v cygpath >/dev/null && cygpath -m "$1" || echo "$1"; }
 
 # -------- Version -------------------------------------------------------------

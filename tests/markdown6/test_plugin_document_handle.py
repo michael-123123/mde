@@ -10,7 +10,6 @@ from PySide6.QtWidgets import QPlainTextEdit
 
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

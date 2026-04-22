@@ -1,6 +1,6 @@
 # Example plugins
 
-These are reference plugins showing how to use each extension point of the [`mde` plugin API](../plugins.md). **They are not bundled with the editor** — nothing in this directory loads automatically.
+These are reference plugins showing how to use each extension point of the [`mde` plugin API](../plugins.md). **They are not bundled with the editor** - nothing in this directory loads automatically.
 
 | Plugin | Demonstrates |
 |---|---|
@@ -29,4 +29,4 @@ The **Open plugins folder** button in **Settings → Plugins** reveals that dire
 
 ## Writing your own
 
-Start with [`../plugins.md`](../plugins.md) (the authoring guide) — it walks through each extension point with worked code. The examples here are mirrored from that guide, so you can read them side by side.
+Start with [`../plugins.md`](../plugins.md) (the authoring guide) - it walks through each extension point with worked code. The examples here are mirrored from that guide, so you can read them side by side.

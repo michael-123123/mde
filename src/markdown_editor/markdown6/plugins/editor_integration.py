@@ -22,7 +22,7 @@ Invocation rules enforced here:
 * Any exception raised by a plugin action is caught and logged. The
   editor never propagates a plugin failure out of a Qt slot.
 * Text transforms are applied through :func:`invoke_text_transform`
-  which snapshots the document and rolls back on error — content is
+  which snapshots the document and rolls back on error - content is
   either fully transformed or left byte-identical.
 """
 
@@ -31,7 +31,7 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import QMainWindow, QMenu, QMenuBar
+from PySide6.QtWidgets import QMainWindow, QMenu
 
 from markdown_editor.markdown6.components.command_palette import Command
 from markdown_editor.markdown6.logger import getLogger
@@ -58,7 +58,7 @@ logger = getLogger(__name__)
 #
 # PySide6 ownership quirk: ``QAction.menu()`` creates/returns a Python
 # wrapper that PySide6 considers to own the C++ QMenu. When the
-# wrapper dies, PySide6 destroys the underlying C++ menu — even though
+# wrapper dies, PySide6 destroys the underlying C++ menu - even though
 # Qt's parent-child ownership would normally keep it alive. After
 # that, other wrappers around the same C++ pointer raise "Internal
 # C++ object already deleted" on any call.
@@ -69,12 +69,12 @@ logger = getLogger(__name__)
 # ownership to the window and makes the menu Qt-owned rather than
 # Python-owned. We also maintain a ``{path: QMenu}`` cache on the
 # window, both to speed lookups and to hold a strong Python reference
-# to every menu we touch — so even the Python wrapper never gets GC'd
+# to every menu we touch - so even the Python wrapper never gets GC'd
 # while the window is alive.
 _MENU_CACHE_ATTR = "_mde_plugin_menu_cache"
 # Set of paths that resolve_menu_path CREATED (vs. pre-registered via
 # register_existing_menu). Only these may be hidden by
-# apply_disabled_set when all their plugin actions are invisible — a
+# apply_disabled_set when all their plugin actions are invisible - a
 # pre-existing editor menu like "Edit" must never be hidden.
 _PLUGIN_CREATED_MENUS_ATTR = "_mde_plugin_created_menu_paths"
 
@@ -112,7 +112,7 @@ def resolve_menu_path(window: QMainWindow, path: str) -> QMenu:
       lives there by default).
     * ``"Foo"`` / ``"Foo/Bar"`` → ``Plugins/Foo[/Bar]`` (namespaced).
     * ``"/Foo"`` / ``"/Foo/Bar"`` → top-level ``Foo[/Bar]`` (escape
-      hatch into the editor's real menu structure — used only by
+      hatch into the editor's real menu structure - used only by
       system-style plugins that need to live next to a built-in
       command). The escape hatch carries an ordering obligation:
       see :func:`api._validate_place`.
@@ -120,7 +120,7 @@ def resolve_menu_path(window: QMainWindow, path: str) -> QMenu:
     Cached menus (previously registered via
     :func:`register_existing_menu` or created by an earlier call) are
     reused. Newly-created menus are given ``window`` as their Qt
-    parent so PySide6 doesn't own them — that prevents the "Internal
+    parent so PySide6 doesn't own them - that prevents the "Internal
     C++ object already deleted" failure mode that bites when Qt and
     Python disagree on QMenu lifetime.
     """
@@ -133,7 +133,7 @@ def resolve_menu_path(window: QMainWindow, path: str) -> QMenu:
         # Default: namespace everything under top-level "Plugins".
         parts = ["Plugins"] + parts
     elif not parts:
-        # Bare "/" — degenerate; fall back to Plugins so we don't
+        # Bare "/" - degenerate; fall back to Plugins so we don't
         # surface a no-op, but this isn't a real use case.
         parts = ["Plugins"]
 
@@ -227,7 +227,7 @@ def _inject_action(
     qa.triggered.connect(lambda *_args, _cb=callback: _cb())
 
     if not _insert_with_placement(menu, qa, action.place):
-        # Placement failed (unknown anchor, etc. — already logged).
+        # Placement failed (unknown anchor, etc. - already logged).
         # Forgiving fallback: attach to the top-level Plugins menu so
         # the action still has a visible home. The alternative of
         # leaving the QAction orphaned (in the window but in no menu)
@@ -258,7 +258,7 @@ def _inject_exporter(
     Triggering the entry opens a save dialog filtered by the
     exporter's file extensions and (on a non-cancelled selection)
     invokes the plugin's callback with ``(doc, path)``. If there is
-    no active document, the dialog is NOT opened — better UX than
+    no active document, the dialog is NOT opened - better UX than
     making the user click through a save dialog only to find nothing
     happened.
     """
@@ -300,6 +300,7 @@ def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
             return
 
         from pathlib import Path
+
         from PySide6.QtWidgets import QFileDialog
 
         ext_glob = " ".join(f"*.{ext}" for ext in exporter.extensions)
@@ -312,12 +313,14 @@ def _wrap_exporter_callback(window: QMainWindow, exporter: PluginExporter):
         try:
             with _current_plugin(exporter.plugin_name):
                 fn(doc, Path(path_str))
-        except BaseException as exc:   # noqa: BLE001 — plugin code
+        except BaseException as exc:   # noqa: BLE001 - plugin code
             logger.warning(
                 "Plugin exporter %r raised: %s", exporter.id, exc,
                 exc_info=True,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 exporter.plugin_name,
                 f"Plugin export failed: {exporter.label}",
@@ -391,7 +394,7 @@ def _insert_with_placement(menu: QMenu, qa: QAction, place: str) -> bool:
     if place == "start":
         actions = list(menu.actions())
         # Cluster of existing "start"-tagged actions at the top of the
-        # menu — append after the last one to preserve load order.
+        # menu - append after the last one to preserve load order.
         last_start = None
         for a in actions:
             if a.property(_PLACE_PROPERTY) == "start":
@@ -418,7 +421,7 @@ def _insert_with_placement(menu: QMenu, qa: QAction, place: str) -> bool:
         return _insert_relative(menu, qa, anchor_id, place, before=True)
 
     logger.error(
-        "plugin action %r in menu %r: unknown place= form %r — "
+        "plugin action %r in menu %r: unknown place= form %r - "
         "expected one of: 'after:<id>', 'before:<id>', 'start', 'end'.",
         qa.text(), menu.title(), place,
     )
@@ -437,7 +440,7 @@ def _insert_relative(
     if anchor is None:
         logger.error(
             "plugin action %r in menu %r: place=%r references unknown "
-            "anchor id %r — anchor not found in this menu. Action will "
+            "anchor id %r - anchor not found in this menu. Action will "
             "not be inserted; the palette entry still works.",
             qa.text(), menu.title(), place, anchor_id,
         )
@@ -481,14 +484,14 @@ def apply_disabled_set(window: QMainWindow, disabled: set[str]) -> None:
 
     Called by the editor at startup and again whenever
     ``plugins.disabled`` changes. Disabled actions are both
-    ``setVisible(False)`` and ``setEnabled(False)`` — the former hides
+    ``setVisible(False)`` and ``setEnabled(False)`` - the former hides
     them from the menu, the latter blocks shortcut dispatch and
     explicit ``.trigger()`` calls.
 
     After the per-plugin visibility pass, any menu that was created
     by :func:`resolve_menu_path` (i.e. a plugin-created submenu, not
     a pre-existing editor menu) is hidden if all its child actions
-    are now invisible — no empty dropdowns.
+    are now invisible - no empty dropdowns.
     """
     groups = _actions_by_name(window)
     for name, actions in groups.items():
@@ -504,7 +507,7 @@ def apply_disabled_set(window: QMainWindow, disabled: set[str]) -> None:
 def _hide_empty_plugin_menus(window: QMainWindow) -> None:
     cache = _menu_cache(window)
     created: set[str] = getattr(window, _PLUGIN_CREATED_MENUS_ATTR, None) or set()
-    # Longest paths first — a parent's visibility check uses the
+    # Longest paths first - a parent's visibility check uses the
     # already-updated child visibility.
     for path in sorted(created, key=lambda p: -p.count("/")):
         menu = cache.get(path)
@@ -555,7 +558,7 @@ def install_plugin_panels(sidebar, registry: PluginRegistry, *, disabled: set[st
     editor can later toggle visibility on
     ``plugins.disabled`` change. Disabled panels are still installed
     (their factory runs, the widget exists in the stack) but their
-    activity-bar tab is hidden — this is what enables live re-enable
+    activity-bar tab is hidden - this is what enables live re-enable
     without restart.
 
     Plugin factory exceptions are caught + logged; the panel is
@@ -568,7 +571,7 @@ def install_plugin_panels(sidebar, registry: PluginRegistry, *, disabled: set[st
     for panel in registry.panels():
         try:
             widget = panel.factory()
-        except BaseException as exc:    # noqa: BLE001 — plugin code
+        except BaseException as exc:    # noqa: BLE001 - plugin code
             logger.warning(
                 "Plugin panel %r factory raised: %s", panel.id, exc,
                 exc_info=True,
@@ -576,7 +579,7 @@ def install_plugin_panels(sidebar, registry: PluginRegistry, *, disabled: set[st
             continue
         if not isinstance(widget, QWidget):
             logger.warning(
-                "Plugin panel %r factory returned %r — must return a "
+                "Plugin panel %r factory returned %r - must return a "
                 "QWidget; panel skipped.",
                 panel.id, type(widget).__name__,
             )
@@ -612,12 +615,14 @@ def _wrap_action_callback(action: PluginAction):
         try:
             with _current_plugin(action.plugin_name):
                 cb()
-        except BaseException as exc:   # noqa: BLE001 — plugin code
+        except BaseException as exc:   # noqa: BLE001 - plugin code
             logger.warning(
                 "Plugin action %r raised: %s", action.id, exc,
                 exc_info=True,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 action.plugin_name,
                 f"Plugin action failed: {action.label}",
@@ -643,7 +648,9 @@ def _wrap_transform_callback(transform: PluginTextTransform):
                 "Text transform %r failed: %s",
                 transform.id, result.detail,
             )
-            from markdown_editor.markdown6.notifications import _post_plugin_error
+            from markdown_editor.markdown6.notifications import (
+                _post_plugin_error,
+            )
             _post_plugin_error(
                 transform.plugin_name,
                 f"Plugin transform failed: {transform.label}",

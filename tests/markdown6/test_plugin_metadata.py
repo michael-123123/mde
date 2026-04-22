@@ -75,7 +75,7 @@ def test_unknown_keys_tolerated(tmp_path: Path) -> None:
         key = "value"
     """)
     # Unknown keys + unknown subtables + sibling [tool.<other>] sections
-    # must not cause MetadataError — forward compatibility / coexistence
+    # must not cause MetadataError - forward compatibility / coexistence
     # with embedding in a wider pyproject-style TOML.
     m = load_metadata(toml)
     assert m.name == "x"

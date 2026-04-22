@@ -42,7 +42,7 @@ class DocumentHandle:
 
     @property
     def editor(self):
-        """Underlying ``QPlainTextEdit`` — escape hatch, not stable.
+        """Underlying ``QPlainTextEdit`` - escape hatch, not stable.
 
         Plugins that need fine-grained Qt control (custom selection
         manipulation, signal connections, etc.) reach into this. The
@@ -163,7 +163,7 @@ class DocumentHandle:
             # ``modificationChanged`` signal to the derived
             # ``unsaved_changes`` property and refreshes the tab title.
             # SimpleNamespace test stubs keep whatever ``unsaved_changes``
-            # value the test set up — no write needed (and would fail
+            # value the test set up - no write needed (and would fail
             # against a read-only property on a real tab).
             self._editor.document().setModified(snapshot_dirty)
             raise

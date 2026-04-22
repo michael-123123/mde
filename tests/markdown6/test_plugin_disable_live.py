@@ -1,7 +1,7 @@
 """Tests for live enable/disable of loaded plugins.
 
 When the user toggles a plugin in Settings → Plugins and clicks Apply,
-the change must take effect immediately for in-memory plugins — the
+the change must take effect immediately for in-memory plugins - the
 menu entries should be hidden and the palette commands should vanish,
 without requiring an editor restart.
 
@@ -12,16 +12,14 @@ test.
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
-import textwrap
-from PySide6.QtWidgets import QMainWindow, QPlainTextEdit
+from PySide6.QtWidgets import QMainWindow
 
 from markdown_editor.markdown6.components.command_palette import Command
 from markdown_editor.markdown6.plugins import api as plugin_api
-from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (
     apply_disabled_set,
     inject_plugin_actions,
@@ -34,7 +32,6 @@ from markdown_editor.markdown6.plugins.registry import (
     PluginRegistry,
     PluginTextTransform,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture plugin dir used by several tests
@@ -304,7 +301,7 @@ def test_startup_disabled_plugin_can_be_reenabled_live(qtbot, tmp_path: Path) ->
 
 def test_disable_hides_empty_plugin_submenu(qtbot) -> None:
     """When all actions under a plugin-created submenu are hidden,
-    the submenu node itself should also be hidden — no empty dropdowns.
+    the submenu node itself should also be hidden - no empty dropdowns.
     Tests the plain (Plugins-namespaced) path here; the same logic
     handles ``/Edit/Transform`` escape-hatch submenus identically.
     """
@@ -337,6 +334,7 @@ def test_disable_does_not_hide_editor_builtin_submenu(qtbot) -> None:
     """Pre-existing non-plugin menus must NEVER be hidden by apply_disabled_set,
     even if all of their (plugin) contents are."""
     from PySide6.QtWidgets import QMenu
+
     from markdown_editor.markdown6.plugins.editor_integration import (
         register_existing_menu,
     )
@@ -361,7 +359,7 @@ def test_disable_does_not_hide_editor_builtin_submenu(qtbot) -> None:
     assert edit_action_on_bar.isVisible() is True
 
     apply_disabled_set(win, {"p"})
-    # Edit must remain visible — it's a pre-existing menu, not plugin-created.
+    # Edit must remain visible - it's a pre-existing menu, not plugin-created.
     assert edit_action_on_bar.isVisible() is True
 
 

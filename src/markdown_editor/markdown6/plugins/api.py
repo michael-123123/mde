@@ -8,9 +8,9 @@ across MDE minor versions once we hit 1.0.
 
 The implementation keeps two pieces of module-level state:
 
-* ``_REGISTRY`` — a :class:`PluginRegistry` that accumulates
+* ``_REGISTRY`` - a :class:`PluginRegistry` that accumulates
   registrations as plugin modules are imported by the loader.
-* ``_ACTIVE_DOCUMENT_PROVIDER`` — a callable set by the editor at
+* ``_ACTIVE_DOCUMENT_PROVIDER`` - a callable set by the editor at
   startup, which returns the currently-active
   :class:`DocumentHandle`. Plugins reach the active document through
   this indirection so we never hand them a ``DocumentTab`` directly.
@@ -25,6 +25,7 @@ from typing import Callable
 
 from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
+from markdown_editor.markdown6.plugins.fence import FENCE_NAME_CHARS
 from markdown_editor.markdown6.plugins.registry import (
     Field,
     PluginAction,
@@ -43,9 +44,28 @@ logger = getLogger(__name__)
 # --- Module-level state ------------------------------------------------------
 
 _REGISTRY: PluginRegistry = PluginRegistry()
-_ACTIVE_DOCUMENT_PROVIDER: Callable[[], DocumentHandle | None] = lambda: None
-_ALL_DOCUMENTS_PROVIDER: Callable[[], list[DocumentHandle]] = lambda: []
-_MAIN_WINDOW_PROVIDER: Callable[[], object] = lambda: None
+
+
+# Default no-op providers for the three "inject an editor callable
+# here" hooks. The real editor overrides these at startup via the
+# ``_set_*_provider`` helpers below; the defaults let the API surface
+# stay usable without a MarkdownEditor wired in (unit tests, plugin
+# authoring in isolation).
+def _no_active_document() -> DocumentHandle | None:
+    return None
+
+
+def _no_documents() -> list[DocumentHandle]:
+    return []
+
+
+def _no_window() -> object:
+    return None
+
+
+_ACTIVE_DOCUMENT_PROVIDER: Callable[[], DocumentHandle | None] = _no_active_document
+_ALL_DOCUMENTS_PROVIDER: Callable[[], list[DocumentHandle]] = _no_documents
+_MAIN_WINDOW_PROVIDER: Callable[[], object] = _no_window
 
 # Name of the plugin currently being imported by the loader. Read by
 # the registration decorators so each registration can be stamped with
@@ -139,7 +159,7 @@ def register_action(
             (Plugins-namespaced) paths.
 
     The decorated function may take any signature that makes sense for
-    the plugin — the framework calls it with no arguments. Use
+    the plugin - the framework calls it with no arguments. Use
     :func:`get_active_document` inside to reach the current document.
     """
     _require_non_empty("register_action", id=id, label=label)
@@ -166,7 +186,7 @@ def _validate_place(action_id: str, menu: str, place: str) -> None:
     """Reject `/`-prefixed menu paths that don't carry a ``place=``.
 
     Called at decoration time so the error surfaces during plugin
-    import — the loader records LOAD_FAILURE and the user sees a
+    import - the loader records LOAD_FAILURE and the user sees a
     clear reason in Settings → Plugins.
     """
     if menu.startswith("/") and not place:
@@ -186,7 +206,7 @@ def _require_non_empty(decorator_name: str, **fields: str) -> None:
     "" id (id-collision check would also catch it, but only on the
     second plugin); a blank ``label`` would render a blank menu item
     with no clue what plugin owns it. Either is almost certainly a
-    plugin-author typo — fail loud so they see it on import.
+    plugin-author typo - fail loud so they see it on import.
     """
     for name, value in fields.items():
         if not isinstance(value, str) or not value.strip():
@@ -211,14 +231,14 @@ def register_text_transform(
     function, and applies the result atomically inside
     :meth:`DocumentHandle.atomic_edit`. If the transform raises, the
     document is restored byte-identically to its pre-call state and the
-    error is reported through the notifications drawer (future) — the
+    error is reported through the notifications drawer (future) - the
     exception does not propagate.
 
     Use this for simple, stateless text rewrites. For anything cursor-
     aware or multi-step, use :func:`register_action` + manual mutators.
 
     See :func:`register_action` for the ``menu`` and ``place``
-    semantics — they are identical.
+    semantics - they are identical.
     """
     _require_non_empty("register_text_transform", id=id, label=label)
     _validate_place(id, menu, place)
@@ -305,7 +325,7 @@ def register_panel(
     panel's header text).
 
     NOTE: this is the one extension point that necessarily exposes
-    Qt — building UI is intrinsically Qt-tied. The framework keeps
+    Qt - building UI is intrinsically Qt-tied. The framework keeps
     the *registration* surface Qt-free (no Qt types in
     ``register_panel``), but the factory's return value is a
     ``QWidget``.
@@ -327,8 +347,6 @@ def register_panel(
 
 # --- Fenced code blocks ------------------------------------------------------
 
-
-from markdown_editor.markdown6.plugins.fence import FENCE_NAME_CHARS
 
 _FENCE_NAME_RE = re.compile(rf"^{FENCE_NAME_CHARS}+$")
 
@@ -352,7 +370,7 @@ def register_fence(
     the tag) falls through to python-markdown's built-in code-block
     handler and the plugin renderer is not invoked. If your plugin
     needs per-fence options, parse them from the fence body instead
-    — add them as the first few lines of content or use a
+    - add them as the first few lines of content or use a
     front-matter-style header your callback strips before rendering.
     Passing mermaid-style options on the opening line is not yet
     supported for plugin fences.
@@ -360,7 +378,7 @@ def register_fence(
     Args:
         name: The language tag the fence will match (e.g. ``"plantuml"``).
             Must be non-empty, globally unique across plugins, and
-            composed only of ``[A-Za-z0-9_-]`` — the same character
+            composed only of ``[A-Za-z0-9_-]`` - the same character
             set the fence preprocessor matches. Any other character
             would make the fence silently never fire.
     """
@@ -399,7 +417,7 @@ def register_markdown_extension(
     editor builds via :func:`build_markdown`. Both the live preview
     and the export pipeline pick it up automatically.
 
-    Disabled plugins' extensions are excluded — a toggle in
+    Disabled plugins' extensions are excluded - a toggle in
     Settings → Plugins rebuilds the preview's converter so the
     change takes effect immediately.
 
@@ -421,7 +439,7 @@ def on_save(fn: Callable) -> Callable:
 
     The handler receives a :class:`DocumentHandle` for the just-saved
     document. Multiple plugins may subscribe; all fire on every save.
-    Exceptions are caught and logged — a buggy handler doesn't break
+    Exceptions are caught and logged - a buggy handler doesn't break
     the editor or starve other handlers.
     """
     return _register_signal(fn, _SignalKind.SAVE)
@@ -430,7 +448,7 @@ def on_save(fn: Callable) -> Callable:
 def on_content_changed(fn: Callable) -> Callable:
     """Decorator: subscribe to "document text changed".
 
-    Fires on every editor textChanged event — that's after every
+    Fires on every editor textChanged event - that's after every
     keystroke. Plugins doing expensive work should debounce inside
     their handler.
     """
@@ -490,7 +508,7 @@ _SignalKind = _LazySignalKind()
 def get_active_document() -> DocumentHandle | None:
     """Return a :class:`DocumentHandle` for the active document, or ``None``.
 
-    Plugins should tolerate ``None`` — actions may fire with no active
+    Plugins should tolerate ``None`` - actions may fire with no active
     tab (palette with an empty workspace, etc.).
     """
     return _ACTIVE_DOCUMENT_PROVIDER()
@@ -512,7 +530,7 @@ def get_app_context():
     """Return the editor's :class:`AppContext` (escape hatch).
 
     Lets plugins read editor settings, observe theme changes, etc.
-    Documented as an unstable opt-in — the plugin author writes
+    Documented as an unstable opt-in - the plugin author writes
     ``from markdown_editor.plugins import get_app_context`` to
     deliberately reach into the editor's internals.
     """
@@ -524,7 +542,7 @@ def get_main_window():
     """Return the editor's ``QMainWindow`` (escape hatch), or ``None``
     if no editor is constructed (tests, CLI).
 
-    Use sparingly — for parenting plugin-owned dialogs, popping
+    Use sparingly - for parenting plugin-owned dialogs, popping
     custom toolbars, etc. Plugin authors who reach for this accept
     that internal QMainWindow refactors may break their plugin.
     """
@@ -570,7 +588,7 @@ def notify_error(title: str, message: str = "", *, source: str | None = None) ->
 
     Note: the framework already auto-routes uncaught exceptions from
     plugin actions / transforms / exporters / signal handlers to the
-    drawer — you only need this when reporting an error you handled
+    drawer - you only need this when reporting an error you handled
     yourself but still want to surface to the user.
     """
     _notify("error", title, message, source)
@@ -642,7 +660,7 @@ def plugin_settings(plugin_id: str):
       editor's existing settings save flow);
     * is isolated per plugin id (plugin ``a`` and plugin ``b`` may both
       use ``"target"`` without collision);
-    * cannot leak into editor settings — a plugin storing
+    * cannot leak into editor settings - a plugin storing
       ``editor.font_size`` actually writes
       ``plugins.<id>.editor.font_size``.
 
@@ -681,7 +699,7 @@ def invoke_text_transform(
       returned.
 
     The caller (editor or settings UI) decides what to do with the
-    result — typically: post an entry to the notifications drawer on
+    result - typically: post an entry to the notifications drawer on
     failure, otherwise nothing.
     """
     if transform.transform is None:
@@ -693,7 +711,7 @@ def invoke_text_transform(
         with doc.atomic_edit():
             try:
                 new_text = fn(snapshot)
-            except BaseException as exc:   # noqa: BLE001 — plugin code
+            except BaseException as exc:   # noqa: BLE001 - plugin code
                 logger.warning(
                     "Text transform %r raised: %s", transform.id, exc
                 )

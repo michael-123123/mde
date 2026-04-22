@@ -90,7 +90,6 @@ class CommandPalette(SearchablePopup):
                 display_text = cmd.name
 
             if cmd.shortcut:
-                padding = pad_to - len(display_text)
                 display_text = display_text.ljust(pad_to) + cmd.shortcut
 
             item = QListWidgetItem(display_text)

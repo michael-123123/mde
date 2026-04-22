@@ -11,7 +11,7 @@ In the live PREVIEW this is resolved asynchronously via JavaScript:
 JS doesn't care about attribute order on the outer div.
 
 In EXPORTS (decision B1 in local/html-export-unify.md) there is no
-browser JS runtime — `html_renderer_core._resolve_pending_diagrams`
+browser JS runtime - `html_renderer_core._resolve_pending_diagrams`
 resolves each diagram synchronously and must substitute the rendered
 SVG into the HTML body before the file is written.
 
@@ -32,7 +32,7 @@ import pytest
 
 @pytest.fixture
 def mermaid_rendering_mocks(monkeypatch):
-    """`has_mermaid` True + `is_cached` False — forces the preprocessor
+    """`has_mermaid` True + `is_cached` False - forces the preprocessor
     to emit a pending placeholder and schedule async render. The sync
     resolver then calls `render_mermaid` which we stub to return a
     sentinel SVG."""
@@ -54,7 +54,7 @@ def mermaid_rendering_mocks(monkeypatch):
 
 @pytest.fixture
 def graphviz_rendering_mocks(monkeypatch):
-    """`has_graphviz` True + `is_cached` False — forces pending placeholder."""
+    """`has_graphviz` True + `is_cached` False - forces pending placeholder."""
     monkeypatch.setattr(
         "markdown_editor.markdown6.graphviz_service.has_graphviz",
         lambda: True,
@@ -144,7 +144,7 @@ class TestSyncPendingDiagramResolution:
     def test_mixed_mermaid_and_graphviz_both_replaced(
         self, mermaid_rendering_mocks, graphviz_rendering_mocks,
     ):
-        """Document with BOTH a mermaid and a graphviz block — each
+        """Document with BOTH a mermaid and a graphviz block - each
         placeholder must be replaced with its own rendered SVG."""
         from markdown_editor.markdown6 import html_renderer_core
         from markdown_editor.markdown6.app_context import init_app_context
@@ -178,7 +178,7 @@ class TestSyncPendingDiagramResolution:
             `<div class="mermaid-diagram" data-source="..." id="diagram-pending-N">...`
         SourceLineExtension mutates the outer div to:
             `<div data-source-line="N" class="mermaid-diagram" data-source="..." id="diagram-pending-N">...`
-        (prepending `data-source-line="N"` — changing the attribute
+        (prepending `data-source-line="N"` - changing the attribute
         order of the outer opening tag).
 
         A placeholder-replacement strategy that reconstructs the
@@ -203,7 +203,7 @@ class TestSyncPendingDiagramResolution:
             "Likely a literal-string-reconstruct-and-replace approach "
             "that doesn't tolerate attribute-order changes."
         )
-        # And crucially — confirm the data-source-line attribute WAS
+        # And crucially - confirm the data-source-line attribute WAS
         # added (so we know we're actually exercising the mutation
         # path, not a code path where SourceLineExtension didn't run).
         assert "data-source-line=" in html, (

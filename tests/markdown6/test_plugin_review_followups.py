@@ -3,7 +3,7 @@
 * ``atomic_edit`` rollback must clear the tab-title ``*`` marker on
   a real ``DocumentTab`` (not just reset the attribute on a stub).
 * ``PluginInfoDialog`` must render the plugin description exactly
-  once — previously it was tacked onto both the metadata block and
+  once - previously it was tacked onto both the metadata block and
   a separate description panel.
 * ``register_fence`` must validate the language tag against the
   preprocessor's character class (``[A-Za-z0-9_-]``); invalid names
@@ -25,10 +25,9 @@ Plus coverage additions:
 from __future__ import annotations
 
 import textwrap
-from types import SimpleNamespace
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel, QPlainTextEdit, QTextBrowser
+from PySide6.QtWidgets import QApplication, QLabel
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.plugin_info_dialog import (
@@ -45,16 +44,15 @@ from markdown_editor.markdown6.plugins.plugin import (
     PluginStatus,
 )
 
-
 # ---------------------------------------------------------------------------
-# Finding #1 — atomic_edit rollback must clear the stale tab-title `*`
+# Finding #1 - atomic_edit rollback must clear the stale tab-title `*`
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.timeout(15, method="thread")
 def test_atomic_edit_rollback_clears_stale_dirty_title(qtbot) -> None:
     """A failing plugin transform on a previously-clean tab must leave
-    the tab title with no ``*`` marker — the rollback clears
+    the tab title with no ``*`` marker - the rollback clears
     ``unsaved_changes`` but pre-fix it didn't repaint the title.
     """
     editor = MarkdownEditor()
@@ -89,7 +87,7 @@ def test_atomic_edit_rollback_clears_stale_dirty_title(qtbot) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Finding #2 — PluginInfoDialog must not render the description twice
+# Finding #2 - PluginInfoDialog must not render the description twice
 # ---------------------------------------------------------------------------
 
 
@@ -126,7 +124,7 @@ def test_plugin_info_dialog_renders_description_once(qtbot) -> None:
     for lbl in dialog.findChildren(QLabel):
         if desc in lbl.text():
             hits += 1
-    # QTextBrowser (README block) uses setMarkdown, we can ignore it —
+    # QTextBrowser (README block) uses setMarkdown, we can ignore it -
     # the dialog under test doesn't include a README, and the duplicate
     # is in two QLabels anyway. One hit is the expected panel; two hits
     # is the duplicated metadata-block render.
@@ -134,7 +132,7 @@ def test_plugin_info_dialog_renders_description_once(qtbot) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Finding #5 — register_fence must validate the language tag
+# Finding #5 - register_fence must validate the language tag
 # ---------------------------------------------------------------------------
 
 
@@ -171,7 +169,7 @@ def test_register_fence_accepts_valid_names(ok_name: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Finding #6 — runtime notify_* must auto-attribute via wrapped callbacks
+# Finding #6 - runtime notify_* must auto-attribute via wrapped callbacks
 # ---------------------------------------------------------------------------
 
 
@@ -185,13 +183,13 @@ def ctx():
 
 
 # ---------------------------------------------------------------------------
-# Finding #8 — test-coverage tightening
+# Finding #8 - test-coverage tightening
 # ---------------------------------------------------------------------------
 
 
 def test_disabled_plugin_fence_source_appears_verbatim(qtbot, ctx) -> None:
     """A disabled plugin's fence MUST NOT be re-rendered AND MUST leave
-    the fence source visible in the rendered output — the user shouldn't
+    the fence source visible in the rendered output - the user shouldn't
     see the raw ``source`` text disappear just because they toggled the
     plugin off.
     """

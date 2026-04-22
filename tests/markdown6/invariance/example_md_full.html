@@ -504,11 +504,11 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
             </style>
         </head>
         <body class="light" data-total-lines="308">
-            <div id="md-content"><h1 data-source-line="0" id="sample-document-feature-showcase">Sample Document — Feature Showcase</h1>
+            <div id="md-content"><h1 data-source-line="0" id="sample-document-feature-showcase">Sample Document - Feature Showcase</h1>
 <p data-source-line="2">Opening this file in the editor exercises every renderable feature. Each section below maps to a specific markdown extension configured in <code>markdown_editor._init_markdown()</code>.</p>
 <div data-source-line="4" class="toc">
 <ul>
-<li><a href="#sample-document-feature-showcase">Sample Document — Feature Showcase</a><ul>
+<li><a href="#sample-document-feature-showcase">Sample Document - Feature Showcase</a><ul>
 <li><a href="#inline-text">Inline text</a></li>
 <li><a href="#lists">Lists</a></li>
 <li><a href="#blockquote">Blockquote</a></li>
@@ -518,16 +518,16 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 </ul>
 </li>
 <li><a href="#code">Code</a><ul>
-<li><a href="#python-function-with-type-hints-and-f-strings">Python — function with type hints and f-strings</a></li>
-<li><a href="#python-dataclass-decorators-classmethods-properties">Python — dataclass, decorators, classmethods, properties</a></li>
-<li><a href="#python-async-io-context-managers-comprehensions-numbers">Python — async I/O, context managers, comprehensions, numbers</a></li>
+<li><a href="#python-function-with-type-hints-and-f-strings">Python - function with type hints and f-strings</a></li>
+<li><a href="#python-dataclass-decorators-classmethods-properties">Python - dataclass, decorators, classmethods, properties</a></li>
+<li><a href="#python-async-io-context-managers-comprehensions-numbers">Python - async I/O, context managers, comprehensions, numbers</a></li>
 <li><a href="#shell">Shell</a></li>
-<li><a href="#plain-fenced-code-no-language-monospace-only-no-highlighting">Plain fenced code (no language — monospace only, no highlighting)</a></li>
+<li><a href="#plain-fenced-code-no-language-monospace-only-no-highlighting">Plain fenced code (no language - monospace only, no highlighting)</a></li>
 </ul>
 </li>
 <li><a href="#tables">Tables</a></li>
-<li><a href="#callouts-github-syntax">Callouts — GitHub syntax</a></li>
-<li><a href="#callouts-admonition-syntax">Callouts — admonition syntax</a></li>
+<li><a href="#callouts-github-syntax">Callouts - GitHub syntax</a></li>
+<li><a href="#callouts-admonition-syntax">Callouts - admonition syntax</a></li>
 <li><a href="#math-katex-mathjax">Math (KaTeX / MathJax)</a></li>
 <li><a href="#mermaid-diagram">Mermaid diagram</a></li>
 <li><a href="#graphviz-dot">Graphviz (dot)</a></li>
@@ -598,11 +598,11 @@ followed by a trailing line using the Markdown backslash break.</p>
 <li>Image (remote URL): <img alt="Placeholder" src="https://placehold.co/120x40.png" title="alt text" /></li>
 </ul>
 <h3 data-source-line="72" id="local-image-files">Local image files</h3>
-<p data-source-line="74">These exercise the preview's local-file image rendering — a raster format (PNG) and a vector format (SVG), resolved relative to the markdown file.</p>
-<p data-source-line="76"><img alt="A red square" src="./square.png" title="square.png — raster/PNG" />
-<img alt="A blue circle" src="./circle.svg" title="circle.svg — vector/SVG" /></p>
+<p data-source-line="74">These exercise the preview's local-file image rendering - a raster format (PNG) and a vector format (SVG), resolved relative to the markdown file.</p>
+<p data-source-line="76"><img alt="A red square" src="./square.png" title="square.png - raster/PNG" />
+<img alt="A blue circle" src="./circle.svg" title="circle.svg - vector/SVG" /></p>
 <h2 data-source-line="79" id="code">Code</h2>
-<h3 data-source-line="81" id="python-function-with-type-hints-and-f-strings">Python — function with type hints and f-strings</h3>
+<h3 data-source-line="81" id="python-function-with-type-hints-and-f-strings">Python - function with type hints and f-strings</h3>
 <div data-source-line="83" class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">punctuation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;!&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a friendly greeting.</span>
 
@@ -617,7 +617,7 @@ followed by a trailing line using the Markdown backslash break.</p>
     <span class="nb">print</span><span class="p">(</span><span class="n">greet</span><span class="p">(</span><span class="s2">&quot;mde&quot;</span><span class="p">,</span> <span class="n">punctuation</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">))</span>
 </code></pre></div>
 
-<h3 data-source-line="98" id="python-dataclass-decorators-classmethods-properties">Python — dataclass, decorators, classmethods, properties</h3>
+<h3 data-source-line="98" id="python-dataclass-decorators-classmethods-properties">Python - dataclass, decorators, classmethods, properties</h3>
 <div data-source-line="100" class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
@@ -657,7 +657,7 @@ followed by a trailing line using the Markdown backslash break.</p>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;doc #</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">title</span><span class="si">!r}</span><span class="s2"> (</span><span class="si">{</span><span class="n">doc</span><span class="o">.</span><span class="n">word_count</span><span class="si">}</span><span class="s2"> words)&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 data-source-line="140" id="python-async-io-context-managers-comprehensions-numbers">Python — async I/O, context managers, comprehensions, numbers</h3>
+<h3 data-source-line="140" id="python-async-io-context-managers-comprehensions-numbers">Python - async I/O, context managers, comprehensions, numbers</h3>
 <div data-source-line="142" class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -710,7 +710,7 @@ mde<span class="w"> </span><span class="nb">export</span><span class="w"> </span
 mde<span class="w"> </span>validate<span class="w"> </span>-p<span class="w"> </span>./docs<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.broken&#39;</span>
 </code></pre></div>
 
-<h3 data-source-line="197" id="plain-fenced-code-no-language-monospace-only-no-highlighting">Plain fenced code (no language — monospace only, no highlighting)</h3>
+<h3 data-source-line="197" id="plain-fenced-code-no-language-monospace-only-no-highlighting">Plain fenced code (no language - monospace only, no highlighting)</h3>
 <div data-source-line="199" class="highlight"><pre><span></span><code>no highlighting here
 just monospace text
 </code></pre></div>
@@ -742,7 +742,7 @@ just monospace text
 </tr>
 </tbody>
 </table>
-<h2 data-source-line="212" id="callouts-github-syntax">Callouts — GitHub syntax</h2>
+<h2 data-source-line="212" id="callouts-github-syntax">Callouts - GitHub syntax</h2>
 <div data-source-line="214" class="callout callout-note">
 <div class="callout-title">
 <span class="callout-icon"></span>
@@ -793,7 +793,7 @@ Negative potential consequences of an action.
 </div>
 </div>
 
-<h2 data-source-line="229" id="callouts-admonition-syntax">Callouts — admonition syntax</h2>
+<h2 data-source-line="229" id="callouts-admonition-syntax">Callouts - admonition syntax</h2>
 <div data-source-line="231" class="admonition note">
 <p class="admonition-title">A titled note</p>
 <p>Admonition callouts accept an optional title.</p>
@@ -808,7 +808,7 @@ Negative potential consequences of an action.
 </div>
 <div data-source-line="240" class="admonition bug">
 <p class="admonition-title">Bug</p>
-<p>Admonition supports exotic types too — <code>bug</code>, <code>danger</code>, <code>failure</code>, <code>question</code>, <code>abstract</code>, <code>example</code>, <code>quote</code>, <code>success</code>, <code>info</code>.</p>
+<p>Admonition supports exotic types too - <code>bug</code>, <code>danger</code>, <code>failure</code>, <code>question</code>, <code>abstract</code>, <code>example</code>, <code>quote</code>, <code>success</code>, <code>info</code>.</p>
 </div>
 <h2 data-source-line="243" id="math-katex-mathjax">Math (KaTeX / MathJax)</h2>
 <p data-source-line="245">Inline: <span class="math-inline">$E = mc^2$</span>, <span class="math-inline">$\forall x \in \mathbb{R}$</span>, and <span class="math-inline">$\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$</span>.</p>
@@ -865,7 +865,7 @@ graph LR
 <hr />
 <ol>
 <li id="fn:1">
-<p>First footnote — appears at the bottom of the rendered document.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+<p>First footnote - appears at the bottom of the rendered document.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
 </li>
 <li id="fn:named">
 <p>Named footnotes keep the source readable.&#160;<a class="footnote-backref" href="#fnref:named" title="Jump back to footnote 2 in the text">&#8617;</a></p>

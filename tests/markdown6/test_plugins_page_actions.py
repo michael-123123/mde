@@ -1,10 +1,10 @@
 """Tests for the action buttons at the top of Settings → Plugins.
 
 Covers the page-level controls (not per-plugin row controls):
-* "Open plugins folder" — reveals the user plugin dir in the OS file
+* "Open plugins folder" - reveals the user plugin dir in the OS file
   manager via QDesktopServices, creating it on demand if needed.
-* "Reload plugins" — re-runs discovery so newly-dropped plugin dirs
-  are picked up without an editor restart (within limits — see the
+* "Reload plugins" - re-runs discovery so newly-dropped plugin dirs
+  are picked up without an editor restart (within limits - see the
   palette-command test).
 """
 
@@ -16,10 +16,15 @@ from unittest import mock
 import pytest
 
 from markdown_editor.markdown6.app_context import init_app_context
-from markdown_editor.markdown6.components.plugins_page import PluginsSettingsPage
+from markdown_editor.markdown6.components.plugins_page import (
+    PluginsSettingsPage,
+)
 from markdown_editor.markdown6.plugins.metadata import PluginMetadata
-from markdown_editor.markdown6.plugins.plugin import (Plugin, PluginSource,
-                                                       PluginStatus)
+from markdown_editor.markdown6.plugins.plugin import (
+    Plugin,
+    PluginSource,
+    PluginStatus,
+)
 
 
 @pytest.fixture
@@ -58,7 +63,7 @@ def test_open_plugins_folder_button_exists(qtbot, ctx) -> None:
 
 def test_open_plugins_folder_creates_dir_if_missing(qtbot, ctx, tmp_path: Path) -> None:
     """Clicking Open Folder should create the plugin dir if a user
-    has never installed a plugin before — saves them a confusing
+    has never installed a plugin before - saves them a confusing
     "folder doesn't exist" error from the file manager."""
     page = PluginsSettingsPage(ctx)
     qtbot.addWidget(page)
@@ -86,7 +91,7 @@ def test_open_plugins_folder_passes_correct_path(qtbot, ctx, tmp_path: Path) -> 
 
     [call] = mock_dsk.openUrl.call_args_list
     qurl = call.args[0]
-    # QUrl has toLocalFile() — the local path it opens
+    # QUrl has toLocalFile() - the local path it opens
     assert qurl.toLocalFile() == str(tmp_path / "plugins")
 
 

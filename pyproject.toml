@@ -29,7 +29,7 @@ dev = [
 ]
 # Build tooling for producing standalone binaries via `pyside6-deploy`.
 # pyside6-deploy itself ships with PySide6 (already a core dep). Nuitka and
-# patchelf are what pyside6-deploy pip-installs on its first run — listing
+# patchelf are what pyside6-deploy pip-installs on its first run - listing
 # them here makes `pip install -e ".[build]"` a complete one-shot setup.
 # patchelf is Linux-only (it modifies ELF binaries), so it's guarded.
 build = [
@@ -59,3 +59,19 @@ where = ["src"]
 version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
 fallback_version = "0.1.0"
+
+[tool.isort]
+# Vertical hanging indent with trailing comma for multi-line imports:
+#     from module import (
+#         x,
+#         y,
+#         z,
+#     )
+# Rationale: one-symbol-per-line diffs minimally when an import is
+# added or removed, and the trailing comma keeps the last line's diff
+# clean too.
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true

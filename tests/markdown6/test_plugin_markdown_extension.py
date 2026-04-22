@@ -12,7 +12,6 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-import markdown
 import pytest
 from markdown import Extension
 from markdown.preprocessors import Preprocessor
@@ -37,7 +36,7 @@ def _clean_registry():
 
 class _ReplacePre(Preprocessor):
     def run(self, lines):
-        return [l.replace("REPLACE_ME", "REPLACED") for l in lines]
+        return [line.replace("REPLACE_ME", "REPLACED") for line in lines]
 
 
 class _ReplaceExt(Extension):
@@ -60,7 +59,7 @@ def test_register_markdown_extension_stores_record() -> None:
 
 def test_registration_stamps_plugin_name(tmp_path: Path) -> None:
     """The same _CURRENT_PLUGIN_NAME context used by other registration
-    decorators must apply here too — needed for live disable filtering."""
+    decorators must apply here too - needed for live disable filtering."""
     (tmp_path / "extplug").mkdir()
     (tmp_path / "extplug" / "extplug.toml").write_text(textwrap.dedent("""
         [tool.mde.plugin]

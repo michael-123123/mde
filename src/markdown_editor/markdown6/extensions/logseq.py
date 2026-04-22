@@ -83,7 +83,7 @@ class LogseqPreprocessor(Preprocessor):
             bullet_match = self.TOPLEVEL_BULLET_PATTERN.match(line)
             if bullet_match:
                 line = bullet_match.group(1)
-                indent_unit = None  # reset — detect from next child
+                indent_unit = None  # reset - detect from next child
             elif line.strip():
                 # Non-blank, non-top-level line: detect or apply indent
                 ws_match = self.LEADING_WS_PATTERN.match(line)

@@ -37,8 +37,7 @@ class TestAsyncDiagramUnit:
         """Uncached mermaid block should produce a placeholder div."""
         import markdown
 
-        from markdown_editor.markdown6.extensions import \
-            MermaidExtension
+        from markdown_editor.markdown6.extensions import MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
         md._pending_diagrams = []
@@ -59,8 +58,7 @@ class TestAsyncDiagramUnit:
         """Cached mermaid block should be inlined, not deferred."""
         import markdown
 
-        from markdown_editor.markdown6.extensions import \
-            MermaidExtension
+        from markdown_editor.markdown6.extensions import MermaidExtension
 
         md = markdown.Markdown(extensions=[MermaidExtension()])
         md._pending_diagrams = []
@@ -74,8 +72,9 @@ class TestAsyncDiagramUnit:
 
     def test_render_diagram_function(self):
         """The _render_diagram function should call the right service."""
-        from markdown_editor.markdown6.components.document_tab import \
-            _render_diagram
+        from markdown_editor.markdown6.components.document_tab import (
+            _render_diagram,
+        )
 
         with patch("markdown_editor.markdown6.mermaid_service.render_mermaid",
                     return_value=("<svg>m</svg>", None)):
@@ -119,10 +118,10 @@ class TestCallbackMechanism:
         future.add_done_callback(
             lambda f: QTimer.singleShot(0, lambda: timer_fired.append(True))
         )
-        # Give it plenty of time — it still won't fire reliably
+        # Give it plenty of time - it still won't fire reliably
         qtbot.wait(2000)
         QApplication.processEvents()
-        # Don't assert either way — it's timing-dependent. The point is
+        # Don't assert either way - it's timing-dependent. The point is
         # that this approach is unreliable and we shouldn't depend on it.
         executor.shutdown(wait=False)
 
@@ -252,7 +251,7 @@ class TestAsyncDiagramWebEngine:
         executor = ThreadPoolExecutor(max_workers=1)
         injected = []
 
-        # setHtml (async) + start polling immediately — just like render_markdown does
+        # setHtml (async) + start polling immediately - just like render_markdown does
         view.setHtml(self.PLACEHOLDER_HTML)
         future = executor.submit(_render_fake_slow, "mermaid", "graph TD", False)
 

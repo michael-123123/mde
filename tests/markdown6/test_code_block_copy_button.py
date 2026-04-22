@@ -28,7 +28,7 @@ except ImportError:
 
 
 class _Ctx:
-    """Minimal stand-in for MarkdownEditor — just enough to drive
+    """Minimal stand-in for MarkdownEditor - just enough to drive
     get_html_template() against a real AppContext."""
 
     def __init__(self):
@@ -117,7 +117,7 @@ class TestCopyButtonInjection:
         assert self._load_and_count(qtbot, html) == 2
 
     def test_bare_pre_tag_gets_button(self, qtbot):
-        """Raw `<pre>` in the markdown source should also get a button —
+        """Raw `<pre>` in the markdown source should also get a button -
         the feature targets all `<pre>` elements, not only fenced blocks."""
         html = _render("<pre>raw preformatted</pre>")
         assert self._load_and_count(qtbot, html) == 1
@@ -133,7 +133,7 @@ class TestCopyButtonInjection:
         with qtbot.waitSignal(view.loadFinished, timeout=10000):
             view.setHtml(html)
 
-        # Resolve the text that the handler would copy — mirror its logic
+        # Resolve the text that the handler would copy - mirror its logic
         # (pre.querySelector('code').textContent fallback to pre.textContent).
         result = []
         view.page().runJavaScript(
@@ -155,17 +155,19 @@ class TestCopyButtonInjection:
 @pytest.mark.skipif(not HAS_WEBENGINE, reason="QWebEngineView not available")
 class TestClipboardAccessEnabled:
     """The DocumentTab must enable JavascriptCanAccessClipboard on the
-    WebEngine settings — without it, navigator.clipboard.writeText silently
+    WebEngine settings - without it, navigator.clipboard.writeText silently
     fails."""
 
     def test_setting_enabled(self, qtbot):
-        from markdown_editor.markdown6.components.document_tab import \
-            DocumentTab
+        from markdown_editor.markdown6.components.document_tab import (
+            DocumentTab,
+        )
 
         class FakeMainWindow:
             def __init__(self):
-                from markdown_editor.markdown6.extensions.math import \
-                    MathExtension
+                from markdown_editor.markdown6.extensions.math import (
+                    MathExtension,
+                )
                 self.ctx = get_app_context()
                 self.md = markdown.Markdown(extensions=["extra", MathExtension()])
 

@@ -2,8 +2,13 @@
 
 import re
 
-from PySide6.QtGui import (QColor, QFont, QSyntaxHighlighter, QTextCharFormat,
-                           QTextDocument)
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QSyntaxHighlighter,
+    QTextCharFormat,
+    QTextDocument,
+)
 
 
 class MarkdownHighlighter(QSyntaxHighlighter):

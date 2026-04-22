@@ -109,10 +109,10 @@ Section "Core files" SecCore
 SectionEnd
 
 ; ----- Optional: add install dir to user PATH --------------------------------
-; User-scoped PATH (HKCU\Environment) — doesn't affect other users, doesn't
+; User-scoped PATH (HKCU\Environment) - doesn't affect other users, doesn't
 ; need special admin beyond the install itself. Off by default; user opts in.
 ;
-; Implemented with pure NSIS (no EnVar plugin) — read the existing PATH,
+; Implemented with pure NSIS (no EnVar plugin) - read the existing PATH,
 ; append ;$INSTDIR if not already present, write back, broadcast
 ; WM_SETTINGCHANGE so running Explorer/cmd sessions pick it up.
 Section /o "Add mde to user PATH" SecPath
@@ -120,7 +120,7 @@ Section /o "Add mde to user PATH" SecPath
     ; Don't duplicate on reinstall.
     ${StrRep} $1 "$0" "$INSTDIR" "##FOUND##"
     ${If} $0 == $1
-        ; $INSTDIR not in PATH yet — append.
+        ; $INSTDIR not in PATH yet - append.
         ${If} $0 == ""
             StrCpy $0 "$INSTDIR"
         ${Else}
@@ -174,7 +174,7 @@ Section "Uninstall"
     Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
     RMDir  "$SMPROGRAMS\${APP_NAME}"
 
-    ; Undo PATH addition (idempotent — no-op if not present). StrFunc
+    ; Undo PATH addition (idempotent - no-op if not present). StrFunc
     ; macros have un.-prefixed variants for use in the uninstall section.
     ReadRegStr $0 HKCU "Environment" "Path"
     ${UnStrRep} $1 "$0" ";$INSTDIR" ""

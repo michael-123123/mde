@@ -32,12 +32,12 @@ class TestHighlighterCreation:
     def test_highlighter_creation_light(self, highlighter):
         """Test creating a light mode highlighter."""
         assert highlighter is not None
-        assert highlighter.dark_mode == False
+        assert highlighter.dark_mode is False
 
     def test_highlighter_creation_dark(self, dark_highlighter):
         """Test creating a dark mode highlighter."""
         assert dark_highlighter is not None
-        assert dark_highlighter.dark_mode == True
+        assert dark_highlighter.dark_mode is True
 
     def test_highlighter_has_formats(self, highlighter):
         """Test that highlighter has formats defined."""
@@ -65,7 +65,7 @@ class TestHighlighterFormats:
     def test_italic_format_is_italic(self, highlighter):
         """Test that italic format is italic."""
         fmt = highlighter.formats["italic"]
-        assert fmt.fontItalic() == True
+        assert fmt.fontItalic() is True
 
     def test_code_format_is_monospace(self, highlighter):
         """Test that code format uses monospace font."""
@@ -81,12 +81,12 @@ class TestDarkModeToggle:
     def test_set_dark_mode_true(self, highlighter):
         """Test switching to dark mode."""
         highlighter.set_dark_mode(True)
-        assert highlighter.dark_mode == True
+        assert highlighter.dark_mode is True
 
     def test_set_dark_mode_false(self, dark_highlighter):
         """Test switching to light mode."""
         dark_highlighter.set_dark_mode(False)
-        assert dark_highlighter.dark_mode == False
+        assert dark_highlighter.dark_mode is False
 
     def test_dark_mode_changes_colors(self, highlighter):
         """Test that dark mode changes colors."""
@@ -125,7 +125,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of headings."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("# Heading 1\n## Heading 2")
         # If no exception, highlighting worked
@@ -134,7 +134,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of bold text."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("This is **bold** text")
         # If no exception, highlighting worked
@@ -143,7 +143,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of italic text."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("This is *italic* text")
         # If no exception, highlighting worked
@@ -152,7 +152,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of inline code."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("This is `code` text")
         # If no exception, highlighting worked
@@ -161,7 +161,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of code blocks."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("```python\nprint('hello')\n```")
         # If no exception, highlighting worked
@@ -170,7 +170,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of links."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("[link text](http://example.com)")
         # If no exception, highlighting worked
@@ -179,7 +179,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of wiki links."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("See [[Other Document]] for more")
         # If no exception, highlighting worked
@@ -188,7 +188,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of lists."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("- Item 1\n- Item 2\n1. Numbered")
         # If no exception, highlighting worked
@@ -197,7 +197,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of blockquotes."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("> This is a quote")
         # If no exception, highlighting worked
@@ -206,7 +206,7 @@ class TestHighlighterWithEditor:
         """Test highlighting of horizontal rules."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         editor.setPlainText("---\n***\n___")
         # If no exception, highlighting worked
@@ -219,7 +219,7 @@ class TestHighlighterPerformance:
         """Test highlighting a large document doesn't hang."""
         editor = QPlainTextEdit()
         qtbot.addWidget(editor)
-        highlighter = MarkdownHighlighter(editor.document())
+        MarkdownHighlighter(editor.document())
 
         # Create a moderately large document
         large_text = "# Heading\n\n" + "This is **bold** and *italic* text. " * 100 + "\n" * 50

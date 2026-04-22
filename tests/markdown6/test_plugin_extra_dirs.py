@@ -2,7 +2,7 @@
 contributed by the constructor, by ``plugins.extra_dirs`` settings, and
 by the ``--plugins-dir`` CLI flag.
 
-The mechanism is purely additive — it never replaces the default
+The mechanism is purely additive - it never replaces the default
 ``builtin_plugins/`` + ``<config_dir>/plugins/`` scan, only stacks
 on top.
 """
@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
-
-import pytest
 
 from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.markdown_editor_cli import create_parser
@@ -139,7 +137,7 @@ def test_constructor_and_settings_dirs_both_scanned(qtbot, tmp_path: Path):
 
 
 def test_nonexistent_extra_dir_is_silently_skipped(qtbot, tmp_path: Path):
-    """A path in extra_dirs that doesn't exist must not crash startup —
+    """A path in extra_dirs that doesn't exist must not crash startup -
     the editor logs and continues, like missing builtin/user dirs do."""
     from PySide6.QtWidgets import QApplication
 

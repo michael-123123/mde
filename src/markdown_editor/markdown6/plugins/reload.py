@@ -14,7 +14,7 @@ True hot-reload would have to tear down every plugin-injected QAction
 every plugin signal handler, every plugin markdown extension wired
 into the live ``self.md`` converter, etc. Doing that safely is its
 own project. Discover-only is honest about the limitation while
-still being useful — most of the time the user just wants to know
+still being useful - most of the time the user just wants to know
 "did my new plugin get picked up?" and discovery answers that.
 
 Future hot-reload work would build on top of this: add an actual

@@ -7,7 +7,7 @@ auto-render a ``Configure…`` dialog from Settings → Plugins, with no
 plugin Qt code required.
 
 Storage routes through the same :func:`plugin_settings(id)` façade
-used for programmatic plugin storage — the schema is just metadata
+used for programmatic plugin storage - the schema is just metadata
 about which keys are user-editable.
 """
 
@@ -134,7 +134,7 @@ def test_register_settings_schema_duplicate_plugin_id_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Field type coverage — supported types only
+# Field type coverage - supported types only
 # ---------------------------------------------------------------------------
 
 

@@ -1,10 +1,10 @@
 """Golden-master invariance tests for the live preview rendering path.
 
 These tests LOCK the current output of:
-  1. `MarkdownEditor._init_markdown()`-constructed `Markdown.convert()` — the
+  1. `MarkdownEditor._init_markdown()`-constructed `Markdown.convert()` - the
      "body" HTML that the live preview's incremental JS update writes into
      `#md-content`.
-  2. `MarkdownEditor.get_html_template(body, ...)` — the full HTML string
+  2. `MarkdownEditor.get_html_template(body, ...)` - the full HTML string
      that QWebEngineView's initial `setHtml` and QTextBrowser's `setHtml`
      receive.
 
@@ -13,8 +13,8 @@ unification refactor (see local/html-export-unify.md). The refactor must
 keep `DocumentTab.render_markdown` output byte-for-byte identical. If
 these tests fail after the refactor, the refactor broke the iron rule.
 
-Fixtures are snippets lifted from `examples/EXAMPLE.md` — the canonical
-preview feature showcase — plus one whole-file fixture that renders the
+Fixtures are snippets lifted from `examples/EXAMPLE.md` - the canonical
+preview feature showcase - plus one whole-file fixture that renders the
 entire EXAMPLE.md document end-to-end.
 
 How the goldens work:
@@ -23,7 +23,7 @@ How the goldens work:
   - Run with `MDE_UPDATE_GOLDENS=1` to (re)generate goldens from current
     output. This should only happen when the goldens are first created
     OR when an iron-rule-exception change is explicitly sanctioned.
-    During the export-unification refactor, do NOT regenerate — the
+    During the export-unification refactor, do NOT regenerate - the
     tests must pass against the existing goldens.
 
 Determinism:
@@ -57,13 +57,13 @@ class _PreviewHarness:
     the live preview uses on `self.main_window`:
         - self.md (built by _init_markdown)
         - self.get_html_template(...)
-    No Qt window is instantiated — we bind the methods to a plain object.
+    No Qt window is instantiated - we bind the methods to a plain object.
     """
 
     def __init__(self):
         self.ctx = get_app_context()
         # Bind and call _init_markdown to produce self.md with the full
-        # extension stack — identical to what MarkdownEditor does on startup.
+        # extension stack - identical to what MarkdownEditor does on startup.
         MarkdownEditor._init_markdown.__get__(self)()
         # Bind get_html_template so calls read self.ctx.
         self.get_html_template = MarkdownEditor.get_html_template.__get__(self)
@@ -143,8 +143,8 @@ def _compare_or_write(name: str, actual: str) -> None:
 
 
 # ─── Input fixtures ─────────────────────────────────────────────────
-# Snippets below are copied verbatim from examples/EXAMPLE.md — the
-# canonical preview feature showcase — so they exercise exactly the
+# Snippets below are copied verbatim from examples/EXAMPLE.md - the
+# canonical preview feature showcase - so they exercise exactly the
 # constructs users see in the live preview. Each fixture is small
 # enough that a golden-file diff will pinpoint what changed.
 
@@ -220,11 +220,11 @@ Below the rule.
 """,
 
     # Local image files (raster + vector)
-    "local_images": """![A red square](./square.png "square.png — raster/PNG")
-![A blue circle](./circle.svg "circle.svg — vector/SVG")
+    "local_images": """![A red square](./square.png "square.png - raster/PNG")
+![A blue circle](./circle.svg "circle.svg - vector/SVG")
 """,
 
-    # Fenced code — python with docstring, f-strings, decorators
+    # Fenced code - python with docstring, f-strings, decorators
     "code_python": """```python
 def greet(name: str, punctuation: str = "!") -> str:
     \"\"\"Return a friendly greeting.
@@ -240,7 +240,7 @@ if __name__ == "__main__":
 ```
 """,
 
-    # Fenced code — shell
+    # Fenced code - shell
     "code_shell": """```bash
 # Export the project to PDF via pandoc, with a TOC and page breaks
 mde export -p ./docs -f pdf -o out.pdf --toc --page-breaks
@@ -250,7 +250,7 @@ mde validate -p ./docs --json | jq '.broken'
 ```
 """,
 
-    # Fenced code — no language (plain monospace, no highlighting)
+    # Fenced code - no language (plain monospace, no highlighting)
     "code_plain": """```
 no highlighting here
 just monospace text
@@ -265,7 +265,7 @@ just monospace text
 | 42       | ✓        |    99.99 |
 """,
 
-    # GitHub-style callouts — all 5 types
+    # GitHub-style callouts - all 5 types
     "callouts_github": """> [!NOTE]
 > Useful information that readers should pay attention to.
 
@@ -282,7 +282,7 @@ just monospace text
 > Negative potential consequences of an action.
 """,
 
-    # Admonition-style callouts — various types including custom title
+    # Admonition-style callouts - various types including custom title
     "callouts_admonition": """!!! note "A titled note"
     Admonition callouts accept an optional title.
 
@@ -353,7 +353,7 @@ mde
     # Footnote (part of python-markdown "extra")
     "footnote": """Here is a sentence with a footnote reference.[^1] And another using a named key.[^named]
 
-[^1]: First footnote — appears at the bottom of the rendered document.
+[^1]: First footnote - appears at the bottom of the rendered document.
 [^named]: Named footnotes keep the source readable.
 """,
 

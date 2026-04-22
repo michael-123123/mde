@@ -13,7 +13,6 @@ import pytest
 import markdown_editor.plugins as shim
 from markdown_editor.markdown6.plugins import api as internal
 
-
 # ---------------------------------------------------------------------------
 # Required exports
 # ---------------------------------------------------------------------------
@@ -48,7 +47,7 @@ def test_shim_exports(name: str) -> None:
 
 def test_shim_decorators_are_internal_objects() -> None:
     """Each shim symbol must point at the same object as the internal
-    api module — this is what makes the shim a true re-export rather
+    api module - this is what makes the shim a true re-export rather
     than an independently-evolving copy."""
     for name in [
         "register_action",
@@ -73,7 +72,7 @@ def test_shim_decorators_are_internal_objects() -> None:
 
 def test_shim_does_not_re_export_internals() -> None:
     """Internal-only names (registry singletons, helpers prefixed with
-    `_`) must NOT be re-exported — they're not part of the contract.
+    `_`) must NOT be re-exported - they're not part of the contract.
     """
     for name in ["_REGISTRY", "_set_active_document_provider",
                  "_set_current_plugin_name", "_validate_place"]:

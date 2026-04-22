@@ -50,7 +50,7 @@ def _count_colored_pixels(image: QImage, r_min, g_min, b_min, r_max, g_max, b_ma
 
 # --- HTML templates with real-ish SVG content ---
 
-# Simple inline SVG (control case — known to work)
+# Simple inline SVG (control case - known to work)
 PLAIN_SVG_HTML = """<!DOCTYPE html>
 <html><head><style>body {{ font-size: 14px; padding: 20px; background: white; }}</style></head>
 <body>
@@ -113,7 +113,7 @@ body.zoomed .graphviz-diagram svg {{ max-width: none; }}
 </div>
 </body></html>"""
 
-# KaTeX-rendered math (if we ever have it inline — uses spans/divs not SVGs)
+# KaTeX-rendered math (if we ever have it inline - uses spans/divs not SVGs)
 # Not SVG-based so setZoomFactor should handle it fine. Include for completeness.
 KATEX_HTML = """<!DOCTYPE html>
 <html><head><style>

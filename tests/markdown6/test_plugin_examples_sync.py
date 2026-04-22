@@ -18,7 +18,6 @@ from pathlib import Path
 
 import pytest
 
-
 _ROOT = Path(__file__).resolve().parents[2]
 _DOCS_DIR = _ROOT / "docs" / "plugins-examples"
 _FIXTURES_DIR = _ROOT / "tests" / "markdown6" / "fixtures" / "plugins"

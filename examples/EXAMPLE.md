@@ -1,4 +1,4 @@
-# Sample Document — Feature Showcase
+# Sample Document - Feature Showcase
 
 Opening this file in the editor exercises every renderable feature. Each section below maps to a specific markdown extension configured in `markdown_editor._init_markdown()`.
 
@@ -72,14 +72,14 @@ Below the rule.
 
 ### Local image files
 
-These exercise the preview's local-file image rendering — a raster format (PNG) and a vector format (SVG), resolved relative to the markdown file.
+These exercise the preview's local-file image rendering - a raster format (PNG) and a vector format (SVG), resolved relative to the markdown file.
 
-![A red square](./square.png "square.png — raster/PNG")
-![A blue circle](./circle.svg "circle.svg — vector/SVG")
+![A red square](./square.png "square.png - raster/PNG")
+![A blue circle](./circle.svg "circle.svg - vector/SVG")
 
 ## Code
 
-### Python — function with type hints and f-strings
+### Python - function with type hints and f-strings
 
 ```python
 def greet(name: str, punctuation: str = "!") -> str:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     print(greet("mde", punctuation="..."))
 ```
 
-### Python — dataclass, decorators, classmethods, properties
+### Python - dataclass, decorators, classmethods, properties
 
 ```python
 from __future__ import annotations
@@ -138,7 +138,7 @@ assert doc.word_count == 5
 print(f"doc #{doc.id}: {doc.title!r} ({doc.word_count} words)")
 ```
 
-### Python — async I/O, context managers, comprehensions, numbers
+### Python - async I/O, context managers, comprehensions, numbers
 
 ```python
 import asyncio
@@ -195,7 +195,7 @@ mde export -p ./docs -f pdf -o out.pdf --toc --page-breaks
 mde validate -p ./docs --json | jq '.broken'
 ```
 
-### Plain fenced code (no language — monospace only, no highlighting)
+### Plain fenced code (no language - monospace only, no highlighting)
 
 ```
 no highlighting here
@@ -210,7 +210,7 @@ just monospace text
 | Data     | Data     |     Data |
 | 42       | ✓        |    99.99 |
 
-## Callouts — GitHub syntax
+## Callouts - GitHub syntax
 
 > [!NOTE]
 > Useful information that readers should pay attention to.
@@ -227,7 +227,7 @@ just monospace text
 > [!CAUTION]
 > Negative potential consequences of an action.
 
-## Callouts — admonition syntax
+## Callouts - admonition syntax
 
 !!! note "A titled note"
     Admonition callouts accept an optional title.
@@ -239,7 +239,7 @@ just monospace text
     Something to watch out for.
 
 !!! bug
-    Admonition supports exotic types too — `bug`, `danger`, `failure`, `question`, `abstract`, `example`, `quote`, `success`, `info`.
+    Admonition supports exotic types too - `bug`, `danger`, `failure`, `question`, `abstract`, `example`, `quote`, `success`, `info`.
 
 ## Math (KaTeX / MathJax)
 
@@ -299,7 +299,7 @@ The HTML spec is defined by the W3C.
 
 Here is a sentence with a footnote reference.[^1] And another using a named key.[^named]
 
-[^1]: First footnote — appears at the bottom of the rendered document.
+[^1]: First footnote - appears at the bottom of the rendered document.
 [^named]: Named footnotes keep the source readable.
 
 ---
