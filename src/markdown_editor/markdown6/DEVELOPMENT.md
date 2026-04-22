@@ -71,7 +71,7 @@ A container widget for a single document. Contains:
 
 **Key attributes:**
 - `file_path: Path | None` — current file path
-- `unsaved_changes: bool` — dirty state
+- `unsaved_changes: bool` — dirty state (read-only `@property` derived from `self.editor.document().isModified()`; reset the baseline by calling `document().setModified(False)` on load/save)
 - `editor: EnhancedEditor` — the text editor widget
 
 **Signals:**

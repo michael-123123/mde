@@ -225,7 +225,6 @@ def test_atomic_edit_on_real_document_tab_title_clean_after_rollback(
     assert tab is not None
     tab.editor.setPlainText("initial content")
     tab.editor.document().setModified(False)
-    tab.unsaved_changes = False
     editor.update_tab_title(tab)
     idx = editor.tab_widget.indexOf(tab)
     assert not editor.tab_widget.tabText(idx).startswith("*")

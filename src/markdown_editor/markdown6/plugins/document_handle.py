@@ -158,14 +158,14 @@ class DocumentHandle:
                     restore.insertText(snapshot)
                 finally:
                     restore.endEditBlock()
-            # Drive the dirty flag via the document's modification state
-            # so the DocumentTab's modificationChanged handler refreshes
-            # ``unsaved_changes`` and the tab title together. Direct
-            # attribute fallback keeps unit tests with SimpleNamespace
-            # tab stand-ins working.
+            # Drive the dirty flag via the document's modification state.
+            # On a real ``DocumentTab`` this propagates through the
+            # ``modificationChanged`` signal to the derived
+            # ``unsaved_changes`` property and refreshes the tab title.
+            # SimpleNamespace test stubs keep whatever ``unsaved_changes``
+            # value the test set up — no write needed (and would fail
+            # against a read-only property on a real tab).
             self._editor.document().setModified(snapshot_dirty)
-            if hasattr(self._tab, "unsaved_changes"):
-                self._tab.unsaved_changes = snapshot_dirty
             raise
         else:
             cursor.endEditBlock()
