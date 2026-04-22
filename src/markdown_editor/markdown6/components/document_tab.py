@@ -44,6 +44,11 @@ try:
 except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
+    logger.error(
+        "QtWebEngine is not available - preview will fall back to QTextBrowser. "
+        "Diagrams, math, code-block copy buttons, and rich CSS are disabled. "
+        "Install PySide6-Addons to restore full preview functionality."
+    )
 
 
 def _export_diagram_to_file(kind: str, source: str, dark_mode: bool) -> str | None:
