@@ -55,7 +55,9 @@ from markdown_editor.markdown6.extensions import (
     LogseqExtension,
     MathExtension,
     MermaidExtension,
+    NormalizeListIndentExtension,
     SourceLineExtension,
+    StrikethroughExtension,
     TaskListExtension,
     WikiLinkExtension,
     get_callout_css,
@@ -140,7 +142,9 @@ def build_markdown(
     """
     extensions = [
         "extra",
+        "sane_lists",
         LogseqExtension(),
+        NormalizeListIndentExtension(),
         BreaklessListExtension(),
         FencedCodeExtension(),
         CodeHiliteExtension(css_class="highlight", guess_lang=True),
@@ -153,6 +157,7 @@ def build_markdown(
         MermaidExtension(),
         GraphvizExtension(),
         TaskListExtension(),
+        StrikethroughExtension(),
         SourceLineExtension(),
     ]
     if extra_extensions:

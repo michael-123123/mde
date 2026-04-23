@@ -17,6 +17,8 @@ from markdown_editor.markdown6.extensions.diagrams import (  # noqa: F401
 from markdown_editor.markdown6.extensions.lists import (  # noqa: F401
     BreaklessListExtension,
     BreaklessListPreprocessor,
+    NormalizeListIndentExtension,
+    NormalizeListIndentPreprocessor,
     TaskListExtension,
     TaskListPostprocessor,
     get_tasklist_css,
@@ -35,6 +37,9 @@ from markdown_editor.markdown6.extensions.source_lines import (  # noqa: F401
     SourceLineExtension,
     SourceLinePostprocessor,
     SourceLinePreprocessor,
+)
+from markdown_editor.markdown6.extensions.strikethrough import (  # noqa: F401
+    StrikethroughExtension,
 )
 from markdown_editor.markdown6.extensions.wikilinks import (  # noqa: F401
     WikiLinkExtension,

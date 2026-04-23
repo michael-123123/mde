@@ -7,6 +7,77 @@ from markdown.postprocessors import Postprocessor
 from markdown.preprocessors import Preprocessor
 
 
+# Shared pattern: unordered (-, *, +) or ordered (N.) list item start.
+# Captures leading whitespace in group 1.
+_LIST_ITEM_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+\S')
+
+
+class NormalizeListIndentPreprocessor(Preprocessor):
+    """Rewrite list-item indentation to 4 spaces per nesting level.
+
+    Python-Markdown requires a nested list item to be indented by
+    ``tab_length`` (4 spaces) relative to its parent; anything less
+    collapses to the parent's level. That conflicts with the
+    CommonMark/GFM-style 2-space convention used throughout our own
+    EXAMPLE.md and most notes users will paste in.
+
+    Approach: walk each contiguous list block, track the distinct
+    leading-whitespace widths we have seen on a stack, and rewrite
+    each list item's leading whitespace to ``4 * depth`` spaces. Only
+    lines that are themselves list items are rewritten; continuation
+    lines, fenced code, and plain prose are passed through untouched.
+    """
+
+    def run(self, lines):
+        result = []
+        indent_stack: list[int] = []
+        in_list_block = False
+
+        for line in lines:
+            m = _LIST_ITEM_RE.match(line)
+            if m:
+                ws_len = len(m.group(1))
+                if not in_list_block:
+                    indent_stack = [ws_len]
+                else:
+                    while indent_stack and ws_len < indent_stack[-1]:
+                        indent_stack.pop()
+                    if not indent_stack or ws_len > indent_stack[-1]:
+                        indent_stack.append(ws_len)
+                depth = len(indent_stack) - 1
+                result.append(('    ' * depth) + line[ws_len:])
+                in_list_block = True
+                continue
+
+            if not line.strip():
+                # Blank line — keep state; lists may contain blank lines.
+                result.append(line)
+                continue
+
+            # Non-blank, non-list-item line. If it is indented, treat as a
+            # continuation of the current list item and leave it alone.
+            # Otherwise the list block ends here.
+            if not (in_list_block and line[:1] in (' ', '\t')):
+                in_list_block = False
+                indent_stack = []
+            result.append(line)
+
+        return result
+
+
+class NormalizeListIndentExtension(Extension):
+    """Extension that installs ``NormalizeListIndentPreprocessor``."""
+
+    def extendMarkdown(self, md):
+        md.preprocessors.register(
+            NormalizeListIndentPreprocessor(md),
+            'normalize_list_indent',
+            # Higher priority than BreaklessList (100) so indent is
+            # already normalized when the blank-line pass runs.
+            105,
+        )
+
+
 class BreaklessListPreprocessor(Preprocessor):
     """Preprocessor to add blank lines before lists that follow non-blank lines.
 
