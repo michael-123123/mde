@@ -33,7 +33,7 @@
 </ul>
 </div>
 <h2 data-source-line="6" id="inline-text">Inline text</h2>
-<p data-source-line="8">Plain paragraph text with <strong>bold</strong>, <em>italic</em>, <strong><em>bold italic</em></strong>, ~~strikethrough~~, and <code>inline code</code>. Lines in the same paragraph wrap softly
+<p data-source-line="8">Plain paragraph text with <strong>bold</strong>, <em>italic</em>, <strong><em>bold italic</em></strong>, <del>strikethrough</del>, and <code>inline code</code>. Lines in the same paragraph wrap softly
 to the next line.</p>
 <p data-source-line="11">A second paragraph with a hard break at the end of this line,\
 followed by a trailing line using the Markdown backslash break.</p>
@@ -42,9 +42,11 @@ followed by a trailing line using the Markdown backslash break.</p>
 <p data-source-line="18">Unordered with nesting:</p>
 <ul data-source-line="20">
 <li>First item</li>
-<li>Second item</li>
+<li>Second item<ul>
 <li>Nested<ul>
 <li>Double-nested</li>
+</ul>
+</li>
 </ul>
 </li>
 <li>Third item</li>
@@ -52,9 +54,11 @@ followed by a trailing line using the Markdown backslash break.</p>
 <p data-source-line="26">Ordered:</p>
 <ol data-source-line="28">
 <li>One</li>
-<li>Two</li>
+<li>Two<ol>
 <li>Two-a</li>
 <li>Two-b</li>
+</ol>
+</li>
 <li>Three</li>
 </ol>
 <p data-source-line="34">Task list:</p>
