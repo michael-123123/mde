@@ -235,3 +235,31 @@ class TestHighlighterPerformance:
         editor.setPlainText("# Test")
         highlighter.rehighlight()
         # If no exception, rehighlight worked
+
+
+class TestFenceFillFormat:
+    """Per-token colors come from the Pygments scheme dynamically (built
+    per-Span at paint time), so there's no static keyword/string/etc.
+    format dict to inspect anymore. Only the `fence_fill` format is
+    pre-built — it's the in-fence background fill (scheme bgcolor +
+    default text color)."""
+
+    def test_fence_fill_exists_in_both_themes(self, highlighter, dark_highlighter):
+        assert "fence_fill" in highlighter.formats
+        assert "fence_fill" in dark_highlighter.formats
+
+    def test_fence_fill_has_distinct_colors_per_theme(self, highlighter, dark_highlighter):
+        light_fg = highlighter.formats["fence_fill"].foreground().color().name()
+        dark_fg = dark_highlighter.formats["fence_fill"].foreground().color().name()
+        assert light_fg != dark_fg
+        light_bg = highlighter.formats["fence_fill"].background().color().name()
+        dark_bg = dark_highlighter.formats["fence_fill"].background().color().name()
+        assert light_bg != dark_bg
+
+    def test_make_span_format_translates_color(self, highlighter):
+        from markdown_editor.markdown6.fenced_code_highlighter import Span
+        span = Span(start=0, length=3, color="#ff0000", bold=True, italic=False)
+        fmt = highlighter._make_span_format(span)
+        assert fmt.foreground().color().name().lower() == "#ff0000"
+        from PySide6.QtGui import QFont
+        assert fmt.fontWeight() == QFont.Weight.Bold

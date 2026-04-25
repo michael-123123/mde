@@ -227,7 +227,15 @@ def wrap_html_in_full_template(
     code_bg = colors.code_bg
     blockquote_color = colors.preview_blockquote
     link_color = colors.link
-    pygments_style = "monokai" if dark_mode else "github-dark"
+    # Preview's code-fence colour scheme matches the editor's (both
+    # read `DEFAULT_SCHEME_*` from the fenced_code_highlighter facade).
+    # "github-dark" was previously used for light mode — a bug, since
+    # it's a dark-bg scheme.
+    from markdown_editor.markdown6.fenced_code_highlighter import (
+        DEFAULT_SCHEME_DARK,
+        DEFAULT_SCHEME_LIGHT,
+    )
+    pygments_style = DEFAULT_SCHEME_DARK if dark_mode else DEFAULT_SCHEME_LIGHT
     body_class = "dark" if dark_mode else "light"
 
     # Font / size values — canonical (decision G True) or from ctx (False)
