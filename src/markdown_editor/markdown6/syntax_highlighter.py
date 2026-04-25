@@ -6,9 +6,63 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QSyntaxHighlighter,
+    QTextBlockUserData,
     QTextCharFormat,
     QTextDocument,
 )
+
+from markdown_editor.markdown6.fenced_code_highlighter import (
+    DEFAULT_SCHEME_DARK,
+    DEFAULT_SCHEME_LIGHT,
+    highlight_line,
+    initial_state,
+    is_language_supported,
+    scheme_defaults,
+)
+
+
+# Fence regexes — python-markdown-compatible.
+_FENCE_OPEN_RE = re.compile(r'^(?P<fence>`{3,}|~{3,})\s*(?P<lang>[\w+#-]*)')
+
+# Sentinel language for "fence was opened with a language Pygments doesn't
+# know"; paint as plain code_block without per-token coloring.
+_PLAIN = "_plain_code_"
+
+
+class FenceState(QTextBlockUserData):
+    """Per-block state for lines inside a fenced code block.
+
+    Stored on each in-fence QTextBlock via `setCurrentBlockUserData`.
+    `lang` is the Pygments alias (or `_PLAIN` for unknown languages);
+    `state` is the opaque `fenced_code_highlighter.State` to resume
+    from on the next line; `fence_kind`/`fence_len` pin the closer
+    regex (same char, length >= opener).
+    """
+
+    __slots__ = ("lang", "state", "fence_kind", "fence_len")
+
+    def __init__(self, lang, state, fence_kind, fence_len):
+        super().__init__()
+        self.lang = lang
+        self.state = state
+        self.fence_kind = fence_kind
+        self.fence_len = fence_len
+
+
+def _is_fence_close(text: str, fence_kind: str, fence_len: int) -> bool:
+    """True iff `text` is a valid closing fence for an opener of
+    `fence_kind` (backtick or tilde) and `fence_len` chars."""
+    stripped = text.rstrip()
+    if not stripped or stripped[0] != fence_kind:
+        return False
+    # count leading fence chars
+    n = 0
+    for ch in stripped:
+        if ch == fence_kind:
+            n += 1
+        else:
+            return False  # fence char then non-whitespace non-fence
+    return n >= fence_len
 
 
 class MarkdownHighlighter(QSyntaxHighlighter):
@@ -163,6 +217,38 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         fmt.setForeground(QColor(colors["math"]))
         self.formats["math"] = fmt
 
+        # ── Code-fence styling ──────────────────────────────────────
+        # The fenced-code highlighter resolves every Pygments token's
+        # color/bold/italic against the chosen scheme and hands back
+        # spans with those primitives baked in. We just build a fresh
+        # QTextCharFormat per span at paint time. The scheme also
+        # provides a default text color and background, which we paint
+        # as the in-fence fill so untokenized tokens (whitespace,
+        # punctuation Pygments doesn't style explicitly) match the
+        # scheme rather than the editor's default colors.
+        self._code_scheme = (
+            DEFAULT_SCHEME_DARK if self.dark_mode else DEFAULT_SCHEME_LIGHT
+        )
+        defaults = scheme_defaults(self._code_scheme)
+        fence_fill = QTextCharFormat()
+        fence_fill.setForeground(QColor(defaults.default_color))
+        fence_fill.setBackground(QColor(defaults.bgcolor))
+        fence_fill.setFontFamilies(["Monospace"])
+        self.formats["fence_fill"] = fence_fill
+
+    def _make_span_format(self, span) -> QTextCharFormat:
+        """Build a QTextCharFormat from a fenced_code_highlighter Span."""
+        fmt = QTextCharFormat()
+        if span.color:
+            fmt.setForeground(QColor(span.color))
+        if span.bgcolor:
+            fmt.setBackground(QColor(span.bgcolor))
+        if span.bold:
+            fmt.setFontWeight(QFont.Weight.Bold)
+        if span.italic:
+            fmt.setFontItalic(True)
+        return fmt
+
     def _init_rules(self):
         """Initialize highlighting rules."""
         self.rules = []
@@ -291,25 +377,69 @@ class MarkdownHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text: str):
         """Highlight a block of text."""
-        # Check for fenced code blocks
-        block_state = self.previousBlockState()
+        prev_block = self.currentBlock().previous()
+        prev_data = prev_block.userData() if prev_block.isValid() else None
 
-        # Fenced code block start/end
-        fence_match = re.match(r"^(`{3,}|~{3,})", text)
+        # ── Fence handling ─────────────────────────────────────────
+        # Three cases:
+        #  (a) Not in a fence and this line opens one.
+        #  (b) In a fence and this line is a valid closer.
+        #  (c) In a fence and this line is code to highlight.
 
-        if fence_match:
-            if block_state == 1:
-                # End of code block
-                self.setFormat(0, len(text), self.formats["code_block"])
-                self.setCurrentBlockState(0)
-            else:
-                # Start of code block
-                self.setFormat(0, len(text), self.formats["code_block"])
+        if not isinstance(prev_data, FenceState):
+            # (a) Possibly opening a fence.
+            m = _FENCE_OPEN_RE.match(text)
+            if m:
+                lang = m.group("lang").lower() or _PLAIN
+                if lang is not _PLAIN and not is_language_supported(lang):
+                    lang = _PLAIN
+                self.setFormat(0, len(text), self.formats["fence_fill"])
+                self.setCurrentBlockUserData(
+                    FenceState(
+                        lang=lang,
+                        state=initial_state(),
+                        fence_kind=m.group("fence")[0],
+                        fence_len=len(m.group("fence")),
+                    )
+                )
+                # block-state int: 1 means "in fence" (coarse flag so Qt's
+                # downstream-rehighlight shortcut sees a state change).
                 self.setCurrentBlockState(1)
-            return
-        elif block_state == 1:
-            # Inside code block
-            self.setFormat(0, len(text), self.formats["code_block"])
+                return
+            # Plain markdown — fall through to rules-based highlighting below.
+            self.setCurrentBlockState(0)
+        else:
+            # Inside a fence. Either this line closes it, or it's code.
+            if _is_fence_close(text, prev_data.fence_kind, prev_data.fence_len):
+                self.setFormat(0, len(text), self.formats["fence_fill"])
+                # clear user-data by not setting new FenceState; block state back to 0
+                self.setCurrentBlockState(0)
+                return
+
+            # Code line. Background fill paints scheme defaults
+            # (default_color + bgcolor) under everything; per-token
+            # spans then overpaint the styled tokens.
+            self.setFormat(0, len(text), self.formats["fence_fill"])
+            if prev_data.lang is _PLAIN:
+                next_state = prev_data.state
+            else:
+                result = highlight_line(
+                    prev_data.lang, text, prev_data.state, self._code_scheme,
+                )
+                for span in result.spans:
+                    self.setFormat(
+                        span.start, span.length, self._make_span_format(span),
+                    )
+                next_state = result.next_state
+
+            self.setCurrentBlockUserData(
+                FenceState(
+                    lang=prev_data.lang,
+                    state=next_state,
+                    fence_kind=prev_data.fence_kind,
+                    fence_len=prev_data.fence_len,
+                )
+            )
             self.setCurrentBlockState(1)
             return
 
