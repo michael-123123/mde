@@ -70,7 +70,7 @@ macos.permissions =
 mode = onefile
 
 # (str) specify any extra nuitka arguments
-extra_args = --noinclude-qt-translations --include-package=markdown_editor --include-package-data=markdown_editor --include-package=pygments --include-package=markdown --include-package-data=docx
+extra_args = --noinclude-qt-translations --include-package=markdown_editor --include-package-data=markdown_editor --include-package=pygments --include-package=markdown --include-package-data=docx --windows-console-mode=attach
 
 [buildozer]
 
