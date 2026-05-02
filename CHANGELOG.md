@@ -5,6 +5,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-05-03
+
+### Added
+
+- **Per-language syntax highlighting inside fenced code blocks.** The editor now colours the body of a fenced code block according to its language tag, for any language Pygments supports — Python, JavaScript, Rust, Go, C/C++, Java, C#, Ruby, PHP, YAML, JSON, HTML, CSS, SQL, TOML, Bash, Haskell, Lisp, OCaml, Elixir, Kotlin, Swift, Lua, R, Julia, Dart, Nim, Zig, Clojure, Prolog, Scheme, Fortran, Haml, Slim, Pug, Sass, Terraform, Crystal, Makefile, Dockerfile, Erb, and many more.
+- Multi-line constructs (Python docstrings, Rust nested `/* */`, JS template literals, Prolog block comments) carry their state across editor blocks via per-line state checkpointing against Pygments' state machines.
+- Editor and preview share a single Pygments colour scheme per theme (`default` for light, `monokai` for dark), so source-code colouring is consistent on both sides.
+- New `examples/SYNTAX_HIGHLIGHTING.md` showcase file with sections for 47 languages, including multi-line state and unknown-language fallback.
+
+### Fixed
+
+- **Nested list indentation.** Lists using 2-space (unordered) or 3-space (ordered) indentation now nest properly in the preview instead of collapsing to flat siblings.
+- **Strikethrough.** `~~text~~` now renders as `<del>text</del>` in the preview.
+- **Preview light-mode code colouring.** Light-mode previews previously used the dark `github-dark` Pygments style on a light background, washing out code. Now uses `default` to match the editor.
+- **Diagram-injection race.** Graphviz / Mermaid diagrams could be permanently dropped if their render workers completed before the preview page finished loading (all 10 graphviz diagrams in `examples/DIAGRAMS.md` were affected). Diagram injections now go through an event-driven queue gated on `loadFinished`, with at most one `runJavaScript` outstanding at any moment. Stale-generation entries are discarded inline.
+
 ## [0.1.14] - 2026-04-23
 
 ### Added
