@@ -234,6 +234,357 @@ for arg in "$@"; do
 done
 ```
 
+## Languages with non-standard Pygments lexer flavours
+
+Pygments has three lexer "shapes": the common `RegexLexer` (most
+languages), `ExtendedRegexLexer` (uses 3-arg callbacks and a
+lexer-specific context object — yaml, ruby, html, php, haml, pug),
+and hand-rolled `Lexer` subclasses that don't share `RegexLexer`'s
+state model at all (json, erb). All three render correctly here.
+
+## Ruby
+
+```ruby
+class Greeter
+  def initialize(name = "world")
+    @name = name
+  end
+
+  def greet
+    puts "Hello, #{@name}!"
+  end
+end
+
+Greeter.new.greet
+```
+
+## PHP
+
+```php
+<?php
+function fizzbuzz(int $n): string {
+    if ($n % 15 === 0) return "FizzBuzz";
+    if ($n % 3 === 0)  return "Fizz";
+    if ($n % 5 === 0)  return "Buzz";
+    return (string) $n;
+}
+
+for ($i = 1; $i <= 15; $i++) {
+    echo fizzbuzz($i) . "\n";
+}
+```
+
+## ERB
+
+```erb
+<h1>Hello, <%= @user.name %>!</h1>
+<ul>
+<% @items.each do |item| %>
+  <li><%= item %></li>
+<% end %>
+</ul>
+```
+
+## Haml
+
+```haml
+!!! 5
+%html
+  %head
+    %title Hello, Haml
+  %body
+    %h1.greeting Hello, #{@name}!
+    - if @logged_in
+      %p Welcome back.
+    - else
+      %p= link_to "Sign in", "/login"
+```
+
+## Slim
+
+```slim
+doctype html
+html
+  head
+    title Hello, Slim
+  body
+    h1.greeting Hello, #{@name}!
+    - if @logged_in
+      p Welcome back.
+    - else
+      p= link_to "Sign in", "/login"
+```
+
+## Pug
+
+```pug
+doctype html
+html
+  head
+    title= pageTitle
+  body
+    h1.greeting Hello, #{name}!
+    if loggedIn
+      p Welcome back.
+    else
+      p
+        a(href="/login") Sign in
+```
+
+## Sass
+
+```sass
+$primary: #0969da
+$radius: 4px
+
+.button
+  background: $primary
+  color: white
+  border-radius: $radius
+  &:hover
+    background: darken($primary, 10%)
+```
+
+## Terraform
+
+```terraform
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+resource "aws_s3_bucket" "example" {
+  bucket = "my-tf-example-bucket"
+  tags = {
+    Name        = "Example"
+    Environment = "Dev"
+  }
+}
+```
+
+## Crystal
+
+```crystal
+class Greeter
+  getter name : String
+
+  def initialize(@name : String); end
+
+  def greet
+    puts "Hello, #{@name}!"
+  end
+end
+
+Greeter.new("World").greet
+```
+
+## XML
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <server host="localhost" port="8080">
+    <database>postgres</database>
+    <!-- inline comment -->
+  </server>
+</config>
+```
+
+## Makefile
+
+```makefile
+CC := gcc
+CFLAGS := -Wall -O2
+
+all: hello
+
+hello: hello.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+clean:
+	rm -f hello
+
+.PHONY: all clean
+```
+
+## Dockerfile
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+CMD ["python", "-m", "myapp"]
+```
+
+## Kotlin
+
+```kotlin
+fun main() {
+    val greeting = "Hello, world"
+    repeat(3) { i ->
+        println("$greeting #${i + 1}")
+    }
+}
+```
+
+## Swift
+
+```swift
+import Foundation
+
+struct Point {
+    let x: Double
+    let y: Double
+
+    func distance(to other: Point) -> Double {
+        let dx = x - other.x
+        let dy = y - other.y
+        return (dx * dx + dy * dy).squareRoot()
+    }
+}
+```
+
+## Elixir
+
+```elixir
+defmodule Fib do
+  def at(0), do: 0
+  def at(1), do: 1
+  def at(n) when n > 1, do: at(n - 1) + at(n - 2)
+end
+
+IO.puts Fib.at(10)
+```
+
+## Lua
+
+```lua
+local function greet(name)
+    name = name or "world"
+    print("Hello, " .. name .. "!")
+end
+
+for _, who in ipairs({"alice", "bob"}) do
+    greet(who)
+end
+```
+
+## R
+
+```r
+fib <- function(n) {
+  if (n < 2) return(n)
+  return(fib(n - 1) + fib(n - 2))
+}
+
+sapply(0:10, fib)
+```
+
+## Julia
+
+```julia
+function fib(n::Int)
+    n < 2 ? n : fib(n - 1) + fib(n - 2)
+end
+
+[fib(i) for i in 0:10]
+```
+
+## Dart
+
+```dart
+void main() {
+  final greeting = 'Hello, world';
+  for (var i = 1; i <= 3; i++) {
+    print('$greeting #$i');
+  }
+}
+```
+
+## Nim
+
+```nim
+proc fib(n: int): int =
+  if n < 2: n
+  else: fib(n - 1) + fib(n - 2)
+
+for i in 0..10:
+  echo fib(i)
+```
+
+## Zig
+
+```zig
+const std = @import("std");
+
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Hello, {s}!\n", .{"world"});
+}
+```
+
+## OCaml
+
+```ocaml
+let rec fib = function
+  | 0 -> 0
+  | 1 -> 1
+  | n -> fib (n - 1) + fib (n - 2)
+
+let () = Printf.printf "%d\n" (fib 10)
+```
+
+## Clojure
+
+```clojure
+(defn fib [n]
+  (if (< n 2)
+    n
+    (+ (fib (- n 1)) (fib (- n 2)))))
+
+(map fib (range 11))
+```
+
+## Python REPL
+
+```pycon
+>>> from datetime import date
+>>> today = date.today()
+>>> today.year
+2026
+>>> [x ** 2 for x in range(5)]
+[0, 1, 4, 9, 16]
+```
+
+## Shell session
+
+```console
+$ git status
+On branch master
+nothing to commit, working tree clean
+$ uname -a
+Linux box 6.8.0 #1 SMP x86_64 GNU/Linux
+```
+
+## DOT (Graphviz)
+
+```dot
+digraph G {
+    rankdir=LR;
+    A -> B [label="step 1"];
+    B -> C [label="step 2"];
+    C -> A [style=dashed, label="loop"];
+}
+```
+
 ## Exotic languages — Pygments handles them anyway
 
 ```haskell

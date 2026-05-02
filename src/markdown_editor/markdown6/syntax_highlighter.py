@@ -237,12 +237,26 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         self.formats["fence_fill"] = fence_fill
 
     def _make_span_format(self, span) -> QTextCharFormat:
-        """Build a QTextCharFormat from a fenced_code_highlighter Span."""
+        """Build a QTextCharFormat from a fenced_code_highlighter Span.
+
+        Always carries the scheme bg (from `fence_fill`) unless the span
+        specifies its own explicit bgcolor. Qt's `setFormat` REPLACES the
+        previous range's format rather than merging — so without copying
+        the bg here, in-fence spans would lose the scheme background and
+        fall back to Qt's default (black), breaking visual fidelity.
+
+        Also carries the scheme's default foreground when the span has
+        `color=None` (token unstyled by this scheme), again because the
+        replace-not-merge semantics would otherwise drop it.
+        """
         fmt = QTextCharFormat()
-        if span.color:
-            fmt.setForeground(QColor(span.color))
-        if span.bgcolor:
-            fmt.setBackground(QColor(span.bgcolor))
+        fence_fill = self.formats["fence_fill"]
+        fmt.setForeground(
+            QColor(span.color) if span.color else fence_fill.foreground().color()
+        )
+        fmt.setBackground(
+            QColor(span.bgcolor) if span.bgcolor else fence_fill.background().color()
+        )
         if span.bold:
             fmt.setFontWeight(QFont.Weight.Bold)
         if span.italic:

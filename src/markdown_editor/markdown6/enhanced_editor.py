@@ -36,8 +36,16 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.app_context import get_app_context
+from markdown_editor.markdown6.fenced_code_highlighter import (
+    DEFAULT_SCHEME_DARK,
+    DEFAULT_SCHEME_LIGHT,
+    scheme_defaults,
+)
 from markdown_editor.markdown6.logger import getLogger
-from markdown_editor.markdown6.syntax_highlighter import MarkdownHighlighter
+from markdown_editor.markdown6.syntax_highlighter import (
+    FenceState,
+    MarkdownHighlighter,
+)
 from markdown_editor.markdown6.theme import StyleSheets, get_theme
 
 logger = getLogger(__name__)
@@ -334,6 +342,9 @@ class EnhancedEditor(QPlainTextEdit):
     def _on_text_changed(self):
         """Handle text changes."""
         self.word_count_timer.start(500)
+        # Refresh ExtraSelections so newly-added/removed fenced blocks
+        # immediately get / lose their full-width scheme background.
+        self._highlight_current_line()
 
     def _on_cursor_position_changed(self):
         """Handle cursor position changes."""
@@ -347,8 +358,15 @@ class EnhancedEditor(QPlainTextEdit):
             self._highlight_current_line()
 
     def _highlight_current_line(self):
-        """Highlight the current line."""
+        """Refresh ExtraSelections: full-width scheme bg for fenced
+        code blocks (under), then current-line highlight (on top).
+
+        Order matters: ExtraSelections paint in list order, later entries
+        on top. Fence selections go first so the current-line highlight
+        can overlay them when the cursor is inside a fence.
+        """
         extra_selections = []
+        extra_selections.extend(self._fenced_block_selections())
 
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
@@ -366,6 +384,38 @@ class EnhancedEditor(QPlainTextEdit):
             extra_selections.append(selection)
 
         self.setExtraSelections(extra_selections)
+
+    def _fenced_block_selections(self):
+        """Build full-width ExtraSelections that paint the scheme background
+        behind every block whose user-data is a `FenceState`.
+
+        Why this exists: `QPlainTextEdit` paints `QTextCharFormat.background`
+        only behind glyph extents. Inter-character gaps and trailing line
+        area show the widget bg, not the scheme bg — so the editor's fenced
+        code blocks render as striped/muddy. ExtraSelections with
+        `FullWidthSelection` paint across the entire line, matching what
+        the HTML preview gets via `<pre style="background: ...">`.
+        """
+        theme = self.ctx.get("view.theme", "light")
+        scheme = DEFAULT_SCHEME_DARK if theme == "dark" else DEFAULT_SCHEME_LIGHT
+        bg = QColor(scheme_defaults(scheme).bgcolor)
+
+        selections = []
+        block = self.document().firstBlock()
+        while block.isValid():
+            data = block.userData()
+            if isinstance(data, FenceState):
+                sel = QTextEdit.ExtraSelection()
+                sel.format.setBackground(bg)
+                sel.format.setProperty(
+                    QTextFormat.Property.FullWidthSelection, True,
+                )
+                cur = QTextCursor(block)
+                cur.clearSelection()
+                sel.cursor = cur
+                selections.append(sel)
+            block = block.next()
+        return selections
 
     def _update_word_count(self):
         """Update word and character counts."""

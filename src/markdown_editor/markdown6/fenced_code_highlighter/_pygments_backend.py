@@ -6,26 +6,65 @@ surface in `api.py` is the stable contract.
 
 ─── Acknowledged smell ────────────────────────────────────────────────
 
-We re-implement ~30 lines of Pygments' `RegexLexer.get_tokens_unprocessed`
-match loop below (`_run_driver`). This is not gratuitous: Pygments'
-published API accepts an initial `stack` kwarg but discards its final
-`statestack` local on StopIteration. There is no public way to read
-end-of-line state, which we need to resume lexing on the next editor
-block.
+Pygments has THREE flavours of lexer in the wild and our per-line
+state-resuming model has to handle each. None of them expose a clean
+"give me (tokens, end_state) for this line, resuming from this state"
+function, so we bridge each one differently.
 
-Two consequences we accept:
+  Flavour 1: `RegexLexer` (most languages — python, c, rust, sql, ...)
 
-  1. We read `lexer._tokens` (the compiled rule table), which is
-     underscore-prefixed. Structurally it has been a dict[str, list]
-     of 3-tuples since Pygments 0.x. A canary test (see
-     tests/markdown6/test_pygments_api_canary.py) asserts this shape
-     so a future Pygments bump fails loudly rather than silently
-     miscoloring.
+    `get_tokens_unprocessed(text, stack=...)` takes a starting state
+    stack as a public kwarg, but its final `statestack` local is
+    discarded on StopIteration — no way to read end-of-line state.
 
-  2. Our driver must faithfully mirror Pygments' state-transition
-     handling (`#pop` / `#push` / int / tuple / string).
-     `_apply_state_transition` below is a literal translation of the
-     upstream code.
+    We run our own match-loop driver (`_run_regex_driver`) that
+    mirrors Pygments' loop and exposes the final stack. It reads
+    `lexer._tokens` (the compiled rule table) and replays Pygments'
+    state-transition logic (`#pop` / `#push` / int / tuple / str) by
+    hand. Stable for ~15 years of Pygments; canary tests (see
+    `tests/markdown6/test_pygments_api_canary.py`) pin the data
+    shapes so a future bump fails loudly.
+
+  Flavour 2: `ExtendedRegexLexer` (yaml, ruby, php, html, xml, ...)
+
+    Uses callable actions of the form `action(lexer, match, context)`
+    — three arguments — plus a `LexerContext` object whose CONCRETE
+    SUBCLASS varies per lexer. YAML uses `YamlLexerContext` with extra
+    `indent`/`next_indent` fields that its callbacks read; passing the
+    generic `LexerContext` crashes mid-callback with `AttributeError`.
+
+    We don't track cross-line state for this flavour. Each line is
+    lexed in isolation by calling Pygments' own `get_tokens_unprocessed`
+    with no context — Pygments constructs the right subclass for the
+    lexer and lexes correctly. Cost: cross-line constructs (YAML `|`/
+    `>` block scalars, Ruby heredocs, multi-line PHP HEREDOC) won't
+    carry colour from line N to line N+1. Acceptable for the fenced-
+    code-block use case, where blocks are short and the per-line
+    constructs (keys, values, tags, attributes) all work correctly.
+
+  Flavour 3: hand-rolled `Lexer` subclasses (json, ...)
+
+    Don't inherit from `RegexLexer` at all; no `_tokens`, no resumable
+    state. We re-lex the line in isolation each call and return a
+    sentinel "no carryover" stack. Cross-line constructs in such
+    lexers are not preserved across editor blocks. Acceptable because
+    the few lexers that fall here have no multi-line state (JSON's
+    grammar is line-local).
+
+  Flavour 4: `RegexLexer` subclasses that OVERRIDE
+            `get_tokens_unprocessed` (elixir, common lisp, prolog
+            in some versions, ...)
+
+    These lexers run `RegexLexer.get_tokens_unprocessed` to get raw
+    tokens, then post-process — e.g. ElixirLexer turns `Name` into
+    `Keyword.Declaration` based on the value. Our `_run_regex_driver`
+    bypasses the override (it walks `lexer._tokens` directly), so the
+    post-processing is lost and the editor sees raw `Name` everywhere
+    while the preview gets the reclassified colours.
+
+    Detected via `type(lexer).get_tokens_unprocessed is not
+    RegexLexer.get_tokens_unprocessed`. Treated like flavour 3:
+    per-line lex via the lexer's own method, no state carry-over.
 
 Alternatives considered (rejected):
 
@@ -34,9 +73,13 @@ Alternatives considered (rejected):
   - Monkey-patch `RegexLexer.get_tokens_unprocessed`. Same amount of
     duplicated code, but with additional process-global side effects.
   - `sys.settrace` to read the generator's frame. Slow, fragile.
+  - Use Pygments' built-in formatters and parse their output. Adds
+    an HTML pass per keystroke; doesn't expose end-state either.
 
-If Pygments ever exposes end-state (e.g. `tokens, state = lexer.lex_line(...)`),
-delete this whole block and call through.
+If Pygments ever exposes end-state via a public API
+(`tokens, state = lexer.lex_line(...)`), delete `_run_regex_driver`
+and call through. The ExtendedRegexLexer path can stay as-is — it's
+already using Pygments' own driver.
 
 See `local/plans/fenced-code-highlighting-pygments.md` for the full
 design discussion.
@@ -47,7 +90,7 @@ from __future__ import annotations
 
 import functools
 
-from pygments.lexer import RegexLexer
+from pygments.lexer import ExtendedRegexLexer, RegexLexer
 from pygments.lexers import get_lexer_by_name
 from pygments.styles import get_all_styles, get_style_by_name
 from pygments.token import Token, _TokenType
@@ -126,7 +169,7 @@ def highlight_line(
         return LineResult(spans=[], next_state=prev_state)
     style = _get_style(scheme)
     text_len = len(text)
-    raw_tokens, end_stack = _run_driver(lexer, text + "\n", prev_state._opaque)
+    raw_tokens, end_stack = _lex_line(lexer, text + "\n", prev_state._opaque)
     spans: list[Span] = []
     for pos, tok_type, tok_text in raw_tokens:
         if pos >= text_len:
@@ -135,17 +178,11 @@ def highlight_line(
         if end <= pos:
             continue
         styling = _resolve_styling(style, tok_type)
-        color = _hex(styling.get("color"))
-        bgcolor = _hex(styling.get("bgcolor"))
-        if color is None and bgcolor is None and not styling.get("bold") and not styling.get("italic"):
-            # Token is unstyled by this scheme — skip; the consumer's
-            # SchemeDefaults background fill covers this character.
-            continue
         spans.append(Span(
             start=pos,
             length=end - pos,
-            color=color,
-            bgcolor=bgcolor,
+            color=_hex(styling.get("color")),
+            bgcolor=_hex(styling.get("bgcolor")),
             bold=bool(styling.get("bold")),
             italic=bool(styling.get("italic")),
         ))
@@ -182,13 +219,47 @@ def _resolve_styling(style, token_type) -> dict:
     return _EMPTY_STYLING
 
 
-def _run_driver(lexer, text, in_stack):
+_NO_CARRYOVER_STATE = ("__no_carryover__",)
+
+
+def _lex_line(lexer, text, in_stack):
     """Tokenize one line, resuming from `in_stack`, returning
     (tokens, final_stack).
 
-    Faithful copy of `RegexLexer.get_tokens_unprocessed`'s match loop —
-    see "Acknowledged smell" above for why this exists.
+    Dispatches on the lexer's flavour. See the "Acknowledged smell"
+    block at the top of this module for why each path looks different.
     """
+    if isinstance(lexer, ExtendedRegexLexer):
+        # See "Acknowledged smell" above: ExtendedRegexLexer subclasses
+        # use lexer-specific LexerContext subclasses (e.g. YamlLexerContext)
+        # whose extra fields its callbacks read. Constructing a generic
+        # LexerContext crashes mid-callback. Lex this line in isolation
+        # with no context; Pygments constructs the right subclass.
+        tokens = list(lexer.get_tokens_unprocessed(text))
+        return tokens, _NO_CARRYOVER_STATE
+    if isinstance(lexer, RegexLexer):
+        # Some RegexLexer subclasses (ElixirLexer, CommonLispLexer, ...)
+        # override get_tokens_unprocessed to post-process the parent's
+        # token stream — e.g. reclassifying Name -> Keyword.Declaration
+        # based on value. Our driver walks `_tokens` directly and would
+        # bypass that override. Detect it and fall back to per-line.
+        if type(lexer).get_tokens_unprocessed is not RegexLexer.get_tokens_unprocessed:
+            tokens = list(lexer.get_tokens_unprocessed(text))
+            return tokens, _NO_CARRYOVER_STATE
+        return _run_regex_driver(lexer, text, in_stack)
+    # Hand-rolled Lexer subclass — no `_tokens`, no resumable state.
+    # Lex this line in isolation and return a sentinel so we don't
+    # try to resume from it on the next call.
+    tokens = list(lexer.get_tokens_unprocessed(text))
+    return tokens, _NO_CARRYOVER_STATE
+
+
+def _run_regex_driver(lexer, text, in_stack):
+    """RegexLexer-flavour driver: faithful copy of
+    `RegexLexer.get_tokens_unprocessed`'s match loop, exposing the final
+    stack. See "Acknowledged smell" at the top of this module."""
+    if in_stack == _NO_CARRYOVER_STATE:
+        in_stack = ("root",)
     tokendefs = lexer._tokens
     statestack = list(in_stack)
     statetokens = tokendefs[statestack[-1]]
