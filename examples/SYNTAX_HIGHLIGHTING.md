@@ -585,6 +585,17 @@ digraph G {
 }
 ```
 
+## Mermaid
+
+```mermaid
+flowchart LR
+    A[Start] --> B{Condition?}
+    B -->|yes| C[Path A]
+    B -->|no| D[Path B]
+    C --> E[End]
+    D --> E
+```
+
 ## Exotic languages — Pygments handles them anyway
 
 ```haskell

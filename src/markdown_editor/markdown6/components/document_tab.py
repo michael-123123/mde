@@ -244,6 +244,19 @@ class DocumentTab(QWidget):
         self._preview_zoom_factor = 1.0
         self._pending_render_generation = 0  # bumped on each render to discard stale results
 
+        # ── Diagram-injection queue ────────────────────────────────
+        # `setHtml` on QWebEngineView is async — the placeholder
+        # `<div id="diagram-pending-N">` nodes don't exist in the page
+        # DOM until `loadFinished` fires. Diagram render workers can
+        # complete BEFORE that (graphviz is fast), so we can't fire
+        # `runJavaScript` immediately on completion or `getElementById`
+        # returns null. Queue completed injections; drain one-at-a-time
+        # only after `loadFinished`. See `_try_advance_injection`.
+        from collections import deque
+        self._pending_injections: deque = deque()
+        self._page_ready: bool = False
+        self._drain_in_flight: bool = False
+
         self._init_ui()
         self._init_timer()
         # Baseline the document as unmodified before wiring the
@@ -390,6 +403,7 @@ class DocumentTab(QWidget):
             self._key_filter = _PreviewKeyFilter(self)
             self._preview_filters_installed = False
             self._custom_page.loadFinished.connect(self._install_preview_event_filters)
+            self._custom_page.loadFinished.connect(self._on_preview_load_finished)
             self._custom_page.loadFinished.connect(
                 lambda ok: logger.info(f"[DIAG] loadFinished ok={ok}")
             )
@@ -702,6 +716,11 @@ class DocumentTab(QWidget):
         else:
             # Full reload for QWebEngineView (initial load or theme/font change)
             logger.info(f"[DIAG] full-reload pending={len(pending)}")
+            # Re-arm the injection gate: setHtml is async and the placeholder
+            # DOM nodes won't exist until `loadFinished` fires. Mark the page
+            # not ready BEFORE calling setHtml so any in-flight future that
+            # completes before the load reaches its handler will queue.
+            self._page_ready = False
             self.preview.setHtml(full_html, base_url)
             self._preview_needs_full_reload = False
             # Re-apply zoom factor after setHtml
@@ -726,7 +745,15 @@ class DocumentTab(QWidget):
         self._poll_diagram_futures(futures, gen)
 
     def _poll_diagram_futures(self, futures: list, generation: int):
-        """Poll pending futures and inject completed diagrams into preview."""
+        """Poll pending futures and ENQUEUE completed diagram injections.
+
+        We never call `runJavaScript` directly here. The placeholder DOM
+        nodes only exist after the page's `loadFinished` fires, which can
+        be later than future completion (graphviz finishes fast). Each
+        completed future is appended to `_pending_injections`; the actual
+        JS dispatch is funnelled through `_try_advance_injection`, which
+        keeps exactly one runJavaScript outstanding at any moment.
+        """
         import json
         if generation != self._pending_render_generation:
             return
@@ -753,14 +780,65 @@ class DocumentTab(QWidget):
                 """
                 def _cb(result, _idx=idx, _len=len(svg_html)):
                     logger.info(f"[DIAG] inject idx={_idx} result={result!r} svg_len={_len}")
-                self.preview.page().runJavaScript(js, _cb)
-                self._apply_preview_zoom()
+                self._pending_injections.append((idx, js, _cb, generation))
+                self._try_advance_injection()
             else:
                 remaining.append((idx, future))
         if remaining:
             QTimer.singleShot(
                 100, lambda: self._poll_diagram_futures(remaining, generation)
             )
+
+    def _on_preview_load_finished(self, ok: bool):
+        """Slot for `loadFinished`. Releases the injection gate.
+
+        Connected on construction. On a successful load, opens the gate
+        and nudges the queue to drain. On failure, leaves the gate shut
+        and keeps the queue intact — entries will be reaped by the next
+        full reload's generation bump in `_try_advance_injection`.
+        """
+        if not ok:
+            return
+        self._page_ready = True
+        self._try_advance_injection()
+
+    def _try_advance_injection(self):
+        """Single consumer for `_pending_injections`.
+
+        Fires at most ONE `runJavaScript` at a time. The next pop happens
+        only after the previous JS callback returns (chained via
+        `wrapped`). Called by both producers (`_poll_diagram_futures` on
+        future completion, `_on_preview_load_finished` on page-ready) and
+        by itself (recursively, via the wrapped callback) — all three
+        paths are idempotent thanks to the `_drain_in_flight` and
+        `_page_ready` gates.
+
+        Entries from a superseded render generation are discarded
+        without firing.
+        """
+        if not self._page_ready or self._drain_in_flight:
+            return
+        # Drop any entries left over from a prior render generation.
+        cur_gen = self._pending_render_generation
+        while (self._pending_injections
+               and self._pending_injections[0][3] != cur_gen):
+            self._pending_injections.popleft()
+        if not self._pending_injections:
+            return
+
+        idx, js, cb, gen = self._pending_injections.popleft()
+        self._drain_in_flight = True
+
+        def wrapped(result, _cb=cb):
+            try:
+                _cb(result)
+            finally:
+                self._drain_in_flight = False
+                self._try_advance_injection()
+
+        self.preview.page().runJavaScript(js, wrapped)
+        # Keep zoom in sync as diagrams arrive.
+        self._apply_preview_zoom()
 
     def reload_file(self):
         """Reload the file from disk."""
