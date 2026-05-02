@@ -223,6 +223,82 @@ class TestThemeSwitchRehighlights:
         assert light_color != dark_color
 
 
+class TestFenceBackgroundIsRendered:
+    """The PIXEL-LEVEL regression. `QPlainTextEdit` paints per-character
+    `QTextCharFormat.background` only behind glyph extents — inter-character
+    gaps and trailing line area show through to the widget bg. So even
+    when `setFormat` correctly sets a bg per span, the rendered fenced
+    block does NOT show a uniform scheme background; it reads as
+    striped/muddy with the editor's bg leaking through.
+
+    Fix: paint a full-width `ExtraSelection` for each fence block from
+    `EnhancedEditor`, so the entire block area (including gaps + trailing
+    space) shows the scheme bg, as the HTML preview does via `<pre>` bg.
+
+    This test renders an `EnhancedEditor` to a `QImage` and verifies that
+    a horizontal slice through a fenced SQL line is dominated by the
+    scheme bg, not the widget bg.
+    """
+
+    def test_full_width_scheme_bg_in_fence(self, qtbot):
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QImage
+        from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
+        from markdown_editor.markdown6.fenced_code_highlighter import (
+            DEFAULT_SCHEME_DARK, scheme_defaults,
+        )
+        from markdown_editor.markdown6.app_context import (
+            get_app_context, init_app_context,
+        )
+
+        # Force dark theme so the test doesn't depend on user settings.
+        ctx = init_app_context(ephemeral=True)
+        ctx.set("view.theme", "dark")
+
+        editor = EnhancedEditor(ctx=ctx)
+        qtbot.addWidget(editor)
+        editor.setPlainText("```sql\nSELECT u.name FROM users\n```\n")
+        editor.resize(800, 200)
+        editor.show()
+        qtbot.waitExposed(editor)
+        qtbot.wait(100)  # let the layout settle
+
+        # Render the editor's viewport (the part that draws text+bg).
+        viewport = editor.viewport()
+        img = QImage(viewport.size(), QImage.Format.Format_ARGB32)
+        img.fill(Qt.GlobalColor.transparent)
+        viewport.render(img)
+
+        # Locate block 1 (the SQL line) in viewport coordinates.
+        block = editor.document().findBlockByNumber(1)
+        rect = editor.blockBoundingGeometry(block).translated(
+            editor.contentOffset()
+        ).toRect()
+
+        # Sweep the entire block area — counts pixels that match scheme bg
+        # vs widget bg.
+        scheme_bg = scheme_defaults(DEFAULT_SCHEME_DARK).bgcolor.lower()
+        # The widget bg comes from the dark theme stylesheet.
+        # We just need to confirm scheme bg dominates — without per-block
+        # bg, scheme bg appears only sparsely (behind glyphs).
+        scheme_bg_pixels = 0
+        total_pixels = 0
+        for y in range(rect.top(), rect.bottom()):
+            for x in range(rect.left() + 50, rect.right()):  # skip line-number gutter
+                if y >= img.height() or x >= img.width() or y < 0 or x < 0:
+                    continue
+                color_name = img.pixelColor(x, y).name().lower()
+                total_pixels += 1
+                if color_name == scheme_bg:
+                    scheme_bg_pixels += 1
+
+        ratio = scheme_bg_pixels / total_pixels if total_pixels else 0
+        assert ratio > 0.5, (
+            f"in-fence area should be dominated by scheme bg ({scheme_bg}); "
+            f"only {ratio:.1%} of pixels match (out of {total_pixels})"
+        )
+
+
 class TestFenceWithoutLanguage:
     """No language tag → fall back to scheme-default-text painting only."""
 
