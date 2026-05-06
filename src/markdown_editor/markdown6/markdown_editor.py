@@ -1485,6 +1485,35 @@ class MarkdownEditor(QMainWindow):
                 self.status_bar.showMessage(f"Opened: {file_path.name}")
                 return
 
+        # Logseq fallback: when the default resolution missed but we're
+        # in Logseq mode, ask the Logseq extension to look in
+        # `<root>/pages/` and `<root>/journals/` subdirectories.
+        # The path-layout knowledge stays inside the extension; this is
+        # just a delegate so the click handler can open the result.
+        if (
+            (file_path is None or not file_path.exists())
+            and self.ctx.get("view.logseq_mode", False)
+            and tab is not None and tab.file_path is not None
+        ):
+            from markdown_editor.markdown6.extensions.logseq import (
+                resolve_logseq_page,
+            )
+            # Recover the wiki-link target from the URL — e.g. `Foo.md`
+            # or `book/fiction.md`. Strip the trailing `.md`; the
+            # resolver re-adds it after trying namespace variants.
+            url_str = url.toString()
+            if "#" in url_str:
+                url_str = url_str.split("#")[0]
+            name = url_str
+            if name.endswith(".md"):
+                name = name[:-3]
+            if name:
+                fallback = resolve_logseq_page(name, tab.file_path)
+                if fallback is not None:
+                    self.open_file(str(fallback))
+                    self.status_bar.showMessage(f"Opened: {fallback.name}")
+                    return
+
         # For all other links, open with default application
         if url.scheme() in ('http', 'https', 'mailto', 'ftp'):
             QDesktopServices.openUrl(url)
