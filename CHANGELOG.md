@@ -5,6 +5,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-05-06
+
+### Added
+
+- **`#tag` works as a wiki link in Logseq mode.** Clicking `#foo` now opens the corresponding page (e.g. `pages/foo.md`), just like Logseq. Namespaced tags (`#book/fiction`) are supported. URLs with fragments (`https://x.com#anchor`), ATX headings (`# Title`), and tags inside fenced code blocks are deliberately not affected.
+- **Smarter wiki-link resolution in Logseq mode.** `[[Page Name]]` clicks now find pages stored under the Logseq-conventional `pages/` and `journals/` subdirectories, walking up from the current document to the graph root. Logseq's `___` namespace separator (`[[a/b]]` → `a___b.md`) is also tried.
+
+### Fixed
+
+- **Code fences inside Logseq outliner bullets now render as code blocks.** Logseq stores fenced blocks as bullet content (`<indent>- \`\`\``); the markdown parser previously saw a list item with literal backticks instead of a fence, so architecture diagrams and code samples in Logseq files rendered as wrapped paragraphs. Bullet-prefixed fences are now unwrapped to real fences with their `id::` block-property line stripped, and editor↔preview scroll-sync is preserved by synthesising the right source-line marker for the rendered `<pre>`.
+
 ## [0.1.15] - 2026-05-03
 
 ### Added
