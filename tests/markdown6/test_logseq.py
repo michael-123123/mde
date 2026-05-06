@@ -550,3 +550,182 @@ class TestBulletPrefixedFenceFullStack:
             f"python source body not in any <pre>; pres={pres}"
         )
 
+
+class TestTagsAsPageLinks:
+    """`#tag` should render as a wiki-style link to a page named `tag`,
+    so clicking opens `<root>/pages/tag.md` (via `_do_handle_link_click`'s
+    Logseq fallback).
+
+    Implementation: LogseqPreprocessor rewrites `#tag` to `[[tag|#tag]]`
+    in pass 1. The rendering and click-handling are then handled by the
+    existing WikiLinkExtension and the existing click handler — no new
+    HTML element type, no new click branch.
+    """
+
+    def test_simple_tag_rewritten(self):
+        result = _preprocess(["use #foo for filtering"], logseq_mode=True)
+        assert result == ["use [[foo|#foo]] for filtering"]
+
+    def test_namespaced_tag_rewritten(self):
+        result = _preprocess(["#book/fiction is a category"], logseq_mode=True)
+        assert result == ["[[book/fiction|#book/fiction]] is a category"]
+
+    def test_atx_heading_not_rewritten(self):
+        # Heading hashes have a space after them — the tag regex requires
+        # a word char after #, so headings are not matched.
+        for line in ["# Heading", "## Sub", "### Deeper", "######  many"]:
+            result = _preprocess([line], logseq_mode=True)
+            assert result == [line], f"heading altered: {line!r} -> {result!r}"
+
+    def test_url_fragment_not_rewritten(self):
+        # A `#` preceded by a word char (e.g. inside a URL) must not match.
+        for line in [
+            "see https://example.com#anchor for details",
+            "[link](https://docs.com#section-1)",
+            "an email#literal in source",
+        ]:
+            result = _preprocess([line], logseq_mode=True)
+            assert result == [line], f"non-tag altered: {line!r} -> {result!r}"
+
+    def test_double_hash_not_rewritten(self):
+        # `##heading` is two consecutive hashes; the second # has a #
+        # before it, so the lookbehind blocks it. The first # has nothing
+        # before it but is followed by another # (not a word char), so
+        # the capture group fails to match.
+        result = _preprocess(["##nested"], logseq_mode=True)
+        assert result == ["##nested"]
+
+    def test_tag_inside_fenced_code_block_not_rewritten(self):
+        result = _preprocess([
+            "before",
+            "```",
+            "code with #tag inside",
+            "```",
+            "after",
+        ], logseq_mode=True)
+        assert "code with #tag inside" in result
+        assert not any("[[tag|#tag]]" in line for line in result)
+
+    def test_tag_not_rewritten_when_logseq_disabled(self):
+        result = _preprocess(["#foo"], logseq_mode=False)
+        assert result == ["#foo"]
+
+    def test_full_pipeline_tag_renders_as_wiki_link(self):
+        html = _convert_full_stack("use #foo here", logseq_mode=True)
+        # The tag should become a wiki-link <a> with the tag name as href
+        # and #tag as the display text.
+        assert 'class="wiki-link"' in html
+        assert 'href="foo.md"' in html
+        assert ">#foo</a>" in html
+
+    def test_full_pipeline_no_tag_link_in_normal_mode(self):
+        html = _convert_full_stack("use #foo here", logseq_mode=False)
+        # Without logseq_mode, #foo should remain as plain text inside
+        # whatever block it's in (no wiki-link <a> for it).
+        assert 'class="wiki-link"' not in html
+        # The literal "#foo" should be present somewhere.
+        assert "#foo" in html
+
+
+class TestResolveLogseqPage:
+    """`resolve_logseq_page(name, current_file)` searches Logseq's
+    conventional `pages/` and `journals/` directories, walking up from
+    the current file's directory to find a graph root."""
+
+    def test_finds_sibling_page(self, tmp_path):
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        # Layout:
+        #   tmp/pages/Foo.md
+        #   tmp/pages/Bar.md  (current file)
+        pages = tmp_path / "pages"
+        pages.mkdir()
+        foo = pages / "Foo.md"
+        foo.write_text("foo")
+        bar = pages / "Bar.md"
+        bar.write_text("bar")
+        result = resolve_logseq_page("Foo", bar)
+        assert result == foo
+
+    def test_finds_page_when_current_at_graph_root(self, tmp_path):
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        # Layout:
+        #   tmp/index.md   (current file, at root)
+        #   tmp/pages/Foo.md
+        index = tmp_path / "index.md"
+        index.write_text("index")
+        pages = tmp_path / "pages"
+        pages.mkdir()
+        foo = pages / "Foo.md"
+        foo.write_text("foo")
+        assert resolve_logseq_page("Foo", index) == foo
+
+    def test_finds_namespaced_page_with_triple_underscore(self, tmp_path):
+        """Logseq stores `[[a/b]]` as `a___b.md`."""
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        pages = tmp_path / "pages"
+        pages.mkdir()
+        page = pages / "a___b.md"
+        page.write_text("nested")
+        current = tmp_path / "index.md"
+        current.write_text("")
+        assert resolve_logseq_page("a/b", current) == page
+
+    def test_finds_journal_page(self, tmp_path):
+        """If the file lives in `journals/`, find it there."""
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        journals = tmp_path / "journals"
+        journals.mkdir()
+        page = journals / "2026_04_26.md"
+        page.write_text("daily")
+        current = tmp_path / "pages" / "Foo.md"
+        current.parent.mkdir()
+        current.write_text("")
+        assert resolve_logseq_page("2026_04_26", current) == page
+
+    def test_returns_none_when_not_found(self, tmp_path):
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        pages = tmp_path / "pages"
+        pages.mkdir()
+        current = pages / "Bar.md"
+        current.write_text("")
+        assert resolve_logseq_page("NotARealPage", current) is None
+
+    def test_returns_none_when_current_file_is_none(self):
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        assert resolve_logseq_page("Foo", None) is None
+
+    def test_does_not_walk_past_graph_root_marker(self, tmp_path):
+        """Stop walking up once a directory with `logseq/` or `pages/`
+        is found — that's the Logseq graph root. Don't keep climbing
+        and accidentally match a Foo.md two levels up."""
+        from markdown_editor.markdown6.extensions.logseq import (
+            resolve_logseq_page,
+        )
+        # Layout:
+        #   tmp/Foo.md            ← should NOT be matched (above graph root)
+        #   tmp/graph/pages/Bar.md ← current file
+        #   tmp/graph/pages/...    ← Foo.md NOT here
+        #   tmp/graph/logseq/      ← marks graph root
+        outer = tmp_path / "Foo.md"
+        outer.write_text("OUTER")
+        graph = tmp_path / "graph"
+        graph.mkdir()
+        (graph / "logseq").mkdir()
+        pages = graph / "pages"
+        pages.mkdir()
+        bar = pages / "Bar.md"
+        bar.write_text("bar")
+        # Foo.md is NOT in pages/ — only outside the graph.
+        assert resolve_logseq_page("Foo", bar) is None

@@ -1,6 +1,9 @@
 """Logseq syntax preprocessing for clean preview rendering."""
 
+from __future__ import annotations
+
 import re
+from pathlib import Path
 
 from markdown import Extension
 from markdown.preprocessors import Preprocessor
@@ -26,6 +29,14 @@ class LogseqPreprocessor(Preprocessor):
     )
     DONE_MARKER_PATTERN = re.compile(r'^(\s*[-*] )?DONE\s+')
     FENCE_PATTERN = re.compile(r'^(`{3,}|~{3,})')
+    # Tag → wiki-link rewrite. The lookbehind prevents:
+    #   - URL fragments  https://x.com#anchor   (word char before #)
+    #   - Path fragments path/to/#tag           ('/' before #)
+    #   - ATX-heading hashes  ##nested          ('#' before #)
+    # The lookbehind alternatives must each be one char so we use a
+    # character class. The capture allows hyphens and slashes for
+    # Logseq's namespaced tags (e.g. `#book/fiction`).
+    TAG_PATTERN = re.compile(r'(?<![\w/#])#([\w\-/]+)')
 
     @staticmethod
     def _dedent(line, indent_unit):
@@ -70,6 +81,15 @@ class LogseqPreprocessor(Preprocessor):
 
             # Strip macros (embeds, queries, renderers, etc.)
             line = self.MACRO_PATTERN.sub('', line)
+
+            # Rewrite `#tag` → `[[tag|#tag]]` so the existing
+            # WikiLinkExtension renders it as a clickable wiki link
+            # (and the existing _do_handle_link_click + Logseq-fallback
+            # path resolution opens the corresponding page). Display
+            # text keeps the leading `#` so the user still sees `#tag`.
+            line = self.TAG_PATTERN.sub(
+                lambda m: f'[[{m.group(1)}|#{m.group(1)}]]', line,
+            )
 
             cleaned.append(line)
 
@@ -250,3 +270,77 @@ class LogseqExtension(Extension):
 
     def extendMarkdown(self, md):
         md.preprocessors.register(LogseqPreprocessor(md), 'logseq', 101)
+
+
+# ── Click-handler helper ────────────────────────────────────────────
+# This lives here (rather than in `markdown_editor.py`) so the
+# Logseq-specific path conventions are encapsulated in the Logseq
+# extension. The click handler in `MarkdownEditor._do_handle_link_click`
+# imports and calls this as a fallback when its default file resolution
+# fails AND `view.logseq_mode` is on.
+
+# Logseq's filename convention for namespaced pages: forward slashes in
+# the page name are replaced with three underscores when stored on disk
+# (`[[a/b/c]]` → `a___b___c.md`). Tracked here as a constant so test
+# code and the resolver agree.
+_LOGSEQ_NAMESPACE_SEPARATOR = "___"
+
+
+def resolve_logseq_page(name: str, current_file: Path | None) -> Path | None:
+    """Resolve a wiki-link target to its Logseq page file.
+
+    Logseq stores graph pages under `<root>/pages/<name>.md` and daily
+    journals under `<root>/journals/<dateformat>.md`. `<root>` is the
+    Logseq graph root, marked by a sibling `logseq/` or `pages/`
+    directory.
+
+    The function walks up from `current_file`'s directory looking for
+    each `name`-variant inside `pages/` or `journals/`, stopping at the
+    first directory that looks like a graph root.
+
+    Variants tried, in order:
+      1. `name` as-is
+      2. `name` with `/` replaced by Logseq's `___` namespace separator
+         (so `[[a/b]]` resolves to `a___b.md`)
+
+    Returns the resolved Path if found, else None. Returns None when
+    `current_file` is None or doesn't exist (we have no anchor to
+    walk up from).
+
+    NOTE: this is a fallback path resolver — the caller has already
+    tried the default "relative to current document directory"
+    resolution and come up empty. It should only be invoked in
+    Logseq mode.
+    """
+    if current_file is None:
+        return None
+
+    candidates: list[str] = [name]
+    if "/" in name:
+        candidates.append(name.replace("/", _LOGSEQ_NAMESPACE_SEPARATOR))
+
+    # Start from the current file's directory and walk up. Stop at any
+    # directory that looks like a Logseq graph root — its `pages/` or
+    # `logseq/` subdirectory makes it the natural search ceiling, even
+    # if a same-named file exists higher up.
+    walk_dirs: list[Path] = []
+    walk_dirs.append(current_file.parent)
+    walk_dirs.extend(current_file.parents)
+    seen: set[Path] = set()
+    for parent in walk_dirs:
+        if parent in seen:
+            continue
+        seen.add(parent)
+        for subdir in ("pages", "journals"):
+            subdir_path = parent / subdir
+            if not subdir_path.is_dir():
+                continue
+            for cand in candidates:
+                p = subdir_path / f"{cand}.md"
+                if p.is_file():
+                    return p
+        # If this directory is a graph root, stop walking up.
+        if (parent / "logseq").is_dir() or (parent / "pages").is_dir():
+            break
+
+    return None
