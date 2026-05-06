@@ -34,3 +34,46 @@ def test_tilde_strikethrough_renders_as_del():
     """`~~text~~` must produce a `<del>` element, not literal tildes."""
     html = build_markdown().convert("a ~~b~~ c")
     assert "<del>b</del>" in html, html
+
+
+def test_unmarked_fence_does_not_emit_error_tokens():
+    """An unmarked code fence (no language tag) must NOT trip Pygments'
+    `guess_lexer` — that classifies content as some random language and
+    flags non-language characters (e.g. unicode box-drawing) as
+    `Token.Error`, which the formatter wraps as `class="err"` with
+    visible red/magenta CSS.
+
+    Bug: ASCII-art diagrams in unmarked fences in `MESSAGE_FLOW.md`
+    rendered with hundreds of red-bordered character cells because
+    `guess_lexer` picked Transact-SQL for one block and Carbon for
+    another. We disable language guessing so unmarked fences fall back
+    to Pygments' `TextLexer`, which emits no errors.
+    """
+    src = (
+        "```\n"
+        "┌─────────┐  ┌──────────┐\n"
+        "│  hello  │  │  world   │\n"
+        "└─────────┘  └──────────┘\n"
+        "```\n"
+    )
+    html = build_markdown().convert(src)
+    assert 'class="err"' not in html, (
+        f"unmarked fence emitted error tokens: {html}"
+    )
+
+
+def test_explicitly_tagged_fences_still_highlight():
+    """Disabling `guess_lang` must NOT affect fences with an explicit
+    language — those still go through their language's lexer."""
+    src = (
+        "```python\n"
+        "def f(): return 1\n"
+        "```\n"
+    )
+    html = build_markdown().convert(src)
+    # Pygments' Python lexer styles `def` as a keyword (`class="k"`)
+    # and `f` as a function name (`class="nf"`). One of those should
+    # appear; otherwise the python fence isn't being highlighted.
+    assert 'class="k"' in html or 'class="nf"' in html, (
+        f"python fence not highlighted: {html}"
+    )

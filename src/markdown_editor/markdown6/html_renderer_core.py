@@ -147,7 +147,18 @@ def build_markdown(
         NormalizeListIndentExtension(),
         BreaklessListExtension(),
         FencedCodeExtension(),
-        CodeHiliteExtension(css_class="highlight", guess_lang=True),
+        # `guess_lang=False`: an unmarked fence (just ``` with no language)
+        # renders as plain monospace text. With `guess_lang=True`, Pygments'
+        # `guess_lexer(content)` was picking a different language for each
+        # block based on subtle content variation — adjacent ASCII-art
+        # diagrams in the same file would get classified inconsistently
+        # (one as Transact-SQL, the next as Text only) and the box-drawing
+        # characters in the diagrams that fell to non-text lexers became
+        # `Token.Error` (rendered as `class="err"` with magenta/red CSS).
+        # Disabling guess matches the editor's behaviour
+        # (`fenced_code_highlighter` only colours known languages) and
+        # keeps unmarked fences neutral.
+        CodeHiliteExtension(css_class="highlight", guess_lang=False),
         TableExtension(),
         TocExtension(),
         'admonition',
