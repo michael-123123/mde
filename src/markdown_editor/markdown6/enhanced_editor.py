@@ -335,6 +335,14 @@ class EnhancedEditor(QPlainTextEdit):
             font.setPointSize(value)
             self.setFont(font)
             self._update_line_number_area_width()
+        elif key == "editor.font_family":
+            # Preserve point size; substitute the family. The combined
+            # `editor.font_*` settings would otherwise need to be re-
+            # applied as a pair to keep them in sync.
+            font = QFont(value, self.font().pointSize())
+            font.setStyleHint(QFont.StyleHint.Monospace)
+            self.setFont(font)
+            self._update_line_number_area_width()
         # editor.auto_save is handled by MarkdownEditor._init_autosave()
         elif key == "editor.scroll_past_end":
             self.setCenterOnScroll(bool(value))
