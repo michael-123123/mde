@@ -8,6 +8,7 @@ and unsaved_changes.
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,6 +37,23 @@ if TYPE_CHECKING:
     from markdown_editor.markdown6.markdown_editor import MarkdownEditor
 
 logger = getLogger(__name__)
+
+# Reverse-sync (preview-scroll → editor) ignores any
+# ``scrollPositionChanged`` that lands within this many milliseconds of
+# the last editor-driven scroll. Rationale: ``_on_editor_scroll`` runs
+# ``scrollToSourceLine`` in the preview, which itself fires
+# ``scrollPositionChanged``. Without this guard, every editor scroll
+# would feedback-loop through the reverse handler. 250 ms is
+# conservative enough to cover the round-trip of an async runJavaScript
+# echo while still feeling instant when the user switches gestures.
+_REVERSE_SYNC_DEBOUNCE_MS = 250
+
+
+def _monotonic_ms() -> int:
+    """Wall-monotonic clock in integer milliseconds. Wrapped so tests
+    can monkeypatch a deterministic clock without touching ``time``."""
+    return int(time.monotonic() * 1000)
+
 
 try:
     from PySide6.QtWebEngineCore import QWebEnginePage
@@ -240,6 +258,11 @@ class DocumentTab(QWidget):
         self.file_path: Path | None = None
         self._sync_scrolling = True
         self._pending_scroll_line: int | None = None
+        # Wall-monotonic ms of the last editor-driven scroll. Used by
+        # the reverse-sync handler to debounce ``scrollPositionChanged``
+        # echoes of our own programmatic preview scroll. See
+        # ``_REVERSE_SYNC_DEBOUNCE_MS`` for the rationale.
+        self._last_editor_scroll_ms = 0
         self._preview_needs_full_reload = True
         self._preview_zoom_factor = 1.0
         self._pending_render_generation = 0  # bumped on each render to discard stale results
@@ -406,6 +429,15 @@ class DocumentTab(QWidget):
             self._custom_page.loadFinished.connect(self._on_preview_load_finished)
             self._custom_page.loadFinished.connect(
                 lambda ok: logger.info(f"[DIAG] loadFinished ok={ok}")
+            )
+            # Reverse direction: dragging the preview's internal scrollbar
+            # emits neither a Wheel nor a KeyPress event, so the two event
+            # filters above don't see it. The only Qt-level surface for
+            # that gesture is QWebEnginePage.scrollPositionChanged. The
+            # handler is gated by a debounce window (_REVERSE_SYNC_DEBOUNCE_MS)
+            # to ignore the echo of our own scrollToSourceLine calls.
+            self._custom_page.scrollPositionChanged.connect(
+                self._on_preview_scroll_position_changed
             )
         else:
             self.preview.viewport().installEventFilter(_PreviewWheelFilter(self))
@@ -628,6 +660,10 @@ class DocumentTab(QWidget):
         """Handle editor scroll for sync scrolling."""
         if not self._sync_scrolling:
             return
+        # Stamp BEFORE issuing the JS scroll so the immediate
+        # scrollPositionChanged echo from the preview sees a fresh
+        # timestamp and is debounced by the reverse-sync handler.
+        self._last_editor_scroll_ms = _monotonic_ms()
         if self._use_webengine:
             line = self.editor.get_first_visible_line()
             if self.preview.isVisible():
@@ -641,6 +677,48 @@ class DocumentTab(QWidget):
                 ratio = self.editor.get_scroll_ratio()
                 preview_scrollbar = self.preview.verticalScrollBar()
                 preview_scrollbar.setValue(int(ratio * preview_scrollbar.maximum()))
+
+    def _on_preview_scroll_position_changed(self, _point):
+        """Reverse-sync: preview scrollbar drag → editor.
+
+        ``scrollPositionChanged`` is the only Qt signal exposed for
+        Chromium-internal scrollbar interaction. It also fires when our
+        own ``scrollToSourceLine`` moves the page, which would loop. We
+        guard against the echo with a wall-clock debounce: if
+        ``_on_editor_scroll`` ran within the last
+        ``_REVERSE_SYNC_DEBOUNCE_MS`` milliseconds, treat any preview
+        scroll change as our echo and skip.
+        """
+        if not self._sync_scrolling:
+            return
+        if not self._use_webengine:
+            return
+        if not self.editor.isVisible():
+            return
+        if _monotonic_ms() - self._last_editor_scroll_ms < _REVERSE_SYNC_DEBOUNCE_MS:
+            return
+        # Genuine user gesture on the preview's scrollbar. Ask JS what
+        # source line is now at the top of the viewport, then move the
+        # editor there.
+        self.preview.page().runJavaScript(
+            "(typeof sourceLineFromScroll === 'function') ? sourceLineFromScroll() : null",
+            self._scroll_editor_to_line_from_preview,
+        )
+
+    def _scroll_editor_to_line_from_preview(self, line):
+        """JS callback: ``line`` is the top-most ``data-source-line`` in
+        the preview viewport, or ``None`` if anchors aren't available
+        yet (page mid-load). ``QPlainTextEdit``'s vertical scrollbar is
+        block-aligned, so ``setValue(line)`` places that block at the
+        top of the editor viewport.
+        """
+        if line is None:
+            return
+        try:
+            line_int = int(line)
+        except (TypeError, ValueError):
+            return
+        self.editor.verticalScrollBar().setValue(line_int)
 
     def render_markdown(self):
         """Convert markdown to HTML and display in preview pane.

@@ -382,6 +382,37 @@ PREVIEW_TEMPLATE_FULL = """
                 window.scrollTo(0, Math.max(0, targetY));
             }}
 
+            /* Inverse of scrollToSourceLine: given the preview's current
+               scroll position, return the source line number whose
+               anchor is closest to the top of the viewport. Used by the
+               Qt side to map preview-scrollbar drags back to an editor
+               line. Returns null if no anchors are present yet
+               (e.g. mid-load). */
+            function sourceLineFromScroll() {{
+                var anchors = document.querySelectorAll('[data-source-line]');
+                if (anchors.length === 0) return null;
+                var top = 0;  /* top of viewport */
+                var best = null;
+                for (var i = 0; i < anchors.length; i++) {{
+                    var rect = anchors[i].getBoundingClientRect();
+                    /* Anchor whose top edge is at-or-above the viewport
+                       top (rect.top <= 0 in viewport coords). Keep the
+                       last (i.e. lowest-positioned) such anchor; that's
+                       the source line currently scrolled to the top. */
+                    if (rect.top <= top) {{
+                        best = anchors[i];
+                    }} else {{
+                        break;
+                    }}
+                }}
+                if (!best) {{
+                    /* Scrolled above the first anchor - clamp to first line. */
+                    best = anchors[0];
+                }}
+                var line = parseInt(best.dataset.sourceLine, 10);
+                return isNaN(line) ? null : line;
+            }}
+
             /* Copy-to-clipboard button on every <pre> in the preview.
                Buttons are injected on initial load and re-injected after
                incremental innerHTML updates via a MutationObserver. */
