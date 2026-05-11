@@ -180,7 +180,11 @@ class SettingsDialog(QDialog):
         font_group = QGroupBox("Font")
         font_layout = QFormLayout(font_group)
 
-        self.font_family = QLineEdit()
+        # Font picker for the editor pane. Matches the preview-side
+        # font controls (body/heading/code) which all use QFontComboBox.
+        # Filter to monospaced fonts — editor text is typically code.
+        self.font_family = QFontComboBox()
+        self.font_family.setFontFilters(QFontComboBox.FontFilter.MonospacedFonts)
         font_layout.addRow("Font Family:", self.font_family)
 
         self.font_size = QSpinBox()
@@ -579,7 +583,13 @@ class SettingsDialog(QDialog):
     def _load_settings(self):
         """Load current settings into the UI."""
         # Editor settings
-        self.font_family.setText(self.ctx.get("editor.font_family", "Monospace"))
+        from PySide6.QtGui import QFont, QFontDatabase
+        editor_font_name = self.ctx.get("editor.font_family", "")
+        if not editor_font_name:
+            editor_font_name = QFontDatabase.systemFont(
+                QFontDatabase.SystemFont.FixedFont
+            ).family()
+        self.font_family.setCurrentFont(QFont(editor_font_name))
         self.font_size.setValue(self.ctx.get("editor.font_size", 11))
         self.tab_size.setValue(self.ctx.get("editor.tab_size", 4))
         self.use_spaces.setChecked(self.ctx.get("editor.use_spaces", True))
@@ -773,7 +783,9 @@ class SettingsDialog(QDialog):
     def _apply(self):
         """Apply the current settings."""
         # Editor settings
-        self.ctx.set("editor.font_family", self.font_family.text())
+        self.ctx.set(
+            "editor.font_family", self.font_family.currentFont().family(),
+        )
         self.ctx.set("editor.font_size", self.font_size.value())
         self.ctx.set("editor.tab_size", self.tab_size.value())
         self.ctx.set("editor.use_spaces", self.use_spaces.isChecked())
