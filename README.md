@@ -61,6 +61,40 @@ The bundled runtime includes everything the app needs (Qt, WebEngine, Python, al
 
 Slightly slower cold-start, but works on any Linux that can execute a static ELF binary.
 
+### Pre-built binaries (Windows, no Python required)
+
+Three artifacts are attached to every release on the [releases page](https://github.com/michael-123123/mde/releases). Pick whichever fits your needs — none of them require a system Python installation; the bundled runtime ships Qt, WebEngine, Python, and all dependencies.
+
+| File | What it is | When to pick it |
+|---|---|---|
+| `MarkdownEditor-<version>-x86_64-setup.exe` | NSIS installer | You want Start Menu entries, file associations for `.md`, and an entry in *Add or remove programs*. Installs under `%LOCALAPPDATA%\Programs\MarkdownEditor` by default (no admin rights needed) or `Program Files` with admin. |
+| `MarkdownEditor-<version>-x86_64.exe` | Single-file portable | You want one `.exe` you can drop anywhere (USB stick, network share, build VM). Slower cold-start than the installer because it self-extracts on each launch. |
+| `MarkdownEditor-<version>-x86_64-portable.zip` | Zipped standalone dist | You want a portable install but don't want the self-extract overhead — unzip once, run `mde.exe` from inside the folder. Faster startup than the single-file `.exe`. |
+
+**Install via the installer:**
+
+1. Download `MarkdownEditor-<version>-x86_64-setup.exe`.
+2. Double-click. Windows SmartScreen may show a "publisher unknown" warning the first time — click **More info → Run anyway**. (The installer is unsigned.)
+3. Pick install location (user-local default, no admin required).
+4. Launch from Start Menu → *Markdown Editor*, or right-click any `.md` file → *Open with → Markdown Editor*.
+
+**Run portable:**
+
+```cmd
+:: Single-file
+MarkdownEditor-<version>-x86_64.exe              :: GUI
+MarkdownEditor-<version>-x86_64.exe file.md      :: GUI with file
+MarkdownEditor-<version>-x86_64.exe stats file.md :: CLI subcommand
+
+:: Zipped dist
+:: 1. Right-click the .zip → Extract All
+:: 2. Run mde.exe from the extracted folder
+```
+
+CLI subcommands (`export`, `stats`, `graph`, `validate`, etc.) work from any of the three forms — just pass arguments after the executable.
+
+**Uninstall:** *Settings → Apps → Markdown Editor → Uninstall* (installer build), or just delete the `.exe` / extracted folder (portable builds; no registry entries written).
+
 ### From source (pip)
 
 ```bash
