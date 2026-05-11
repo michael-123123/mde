@@ -175,6 +175,7 @@ class MarkdownEditor(QMainWindow):
         self.new_tab()
         self._update_recent_files_menu()
         self._restore_last_project()
+        self._restore_sidebar_state()
         # Apply theme after all widgets are created
         self._apply_full_theme()
 
@@ -1926,7 +1927,13 @@ class MarkdownEditor(QMainWindow):
             if 0 <= active < self.tab_widget.count():
                 self.tab_widget.setCurrentIndex(active)
 
-        # Restore sidebar state
+    def _restore_sidebar_state(self):
+        """Restore the sidebar's collapsed state and active panel from
+        session state. Called unconditionally during construction so
+        the user's last toggle survives across launches regardless of
+        whether files are restored (`restore_open_files` is gated on
+        `project.open_files` being non-empty AND `cmd_gui` deciding to
+        invoke it, neither of which we can rely on here)."""
         active_panel = self.ctx.get("sidebar.active_panel", 0)
         if 0 <= active_panel < self.sidebar.stack.count():
             self.sidebar.setActivePanel(active_panel)
