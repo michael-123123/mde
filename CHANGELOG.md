@@ -5,6 +5,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-05-11
+
+### Changed
+
+- **Editor font picker.** Settings → Editor → Font Family is now a font dropdown filtered to monospaced fonts, matching the preview-side font controls. Previously you had to type the exact font name into a plain text field. Picking a new font and clicking Apply now updates the editor immediately (previously the setting was persisted but the editor pane kept the old font).
+
+### Fixed
+
+- **Side panel resizable again.** Dragging the splitter handle between the side panel and the editor now resizes the side panel, and the extra width flows into the active panel (Explorer/Outline/Search) instead of becoming a dead gap next to the activity-bar icons.
+- **Unmarked code fences render cleanly.** A fenced block with no language tag no longer gets a random language guessed for it. Adjacent ASCII-art diagrams could previously be classified as Transact-SQL one and "Text only" the next, with the first showing hundreds of red/magenta box-drawing characters from Pygments error tokens. Unmarked fences now render as plain monospace text; explicitly tagged fences (\`\`\`python, \`\`\`yaml, etc.) are unaffected.
+
 ## [0.1.16] - 2026-05-06
 
 ### Added
