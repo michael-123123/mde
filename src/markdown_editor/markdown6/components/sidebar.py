@@ -93,12 +93,21 @@ class Sidebar(QWidget):
 
         layout.addWidget(self.tool_window)
 
-        # Set initial width
-        self.tool_window.setFixedWidth(self._tool_width)
-
-        # Set initial sidebar size constraints
+        # Set initial sidebar size constraints. We pin the MINIMUM to
+        # the activity-bar width (so the user can collapse to bar-only)
+        # but leave the maximum unbounded — the parent QSplitter must
+        # be able to drag-resize the sidebar. `setFixedWidth` would
+        # lock QSplitter and disable drag.
         initial_width = 48 + self._tool_width
-        self.setFixedWidth(initial_width)
+        self.setMinimumWidth(48)
+        # `tool_window` has Expanding policy so when the sidebar grows
+        # (via splitter drag), the tool window absorbs the extra width
+        # rather than leaving a dead gap next to the activity bar.
+        # During animations we'll temporarily `setFixedWidth` for
+        # interpolation, but at rest (init + animation-end) the width
+        # is layout-driven so drag-resize works.
+        self._release_tool_window_fixed_width()
+        self.resize(initial_width, self.height())
 
     def addPanel(self, title: str, icon: str, widget: QWidget) -> int:
         """Add a panel to the sidebar.
@@ -197,10 +206,14 @@ class Sidebar(QWidget):
         self.activity_bar.setActiveTab(self._active_index)
 
         if animated:
-            self._animate_width(target_width)
+            self._animate_width(target_width, expand=True)
         else:
+            # Briefly set fixed-width so the layout uses `target_width`
+            # as the tool window's allocation, then release so the user
+            # can drag-resize via the splitter.
             self.tool_window.setFixedWidth(target_width)
             self._update_size_constraints()
+            self._release_tool_window_fixed_width()
 
         self.collapsed_changed.emit(False)
 
@@ -211,8 +224,15 @@ class Sidebar(QWidget):
         else:
             self.collapse()
 
-    def _animate_width(self, target_width: int, duration: int = 150):
-        """Animate the tool window width."""
+    def _animate_width(self, target_width: int, duration: int = 150, expand: bool = False):
+        """Animate the tool window width.
+
+        `expand=True` means we're animating to an expanded state; when
+        the animation finishes we release the tool window's fixed-width
+        constraint so the parent QSplitter can drag-resize the sidebar
+        (and the tool window grows/shrinks to absorb the difference,
+        not the gap between activity bar and tool window).
+        """
         if self._animation is not None:
             self._animation.stop()
 
@@ -228,20 +248,49 @@ class Sidebar(QWidget):
             self.tool_window.setFixedWidth(int(value))
             self._update_size_constraints()
 
+        def on_finished():
+            if expand:
+                self._release_tool_window_fixed_width()
+
         self._animation.valueChanged.connect(on_value_changed)
+        self._animation.finished.connect(on_finished)
         self._animation.start()
 
+    def _release_tool_window_fixed_width(self):
+        """Drop any `setFixedWidth` on `tool_window` so the horizontal
+        layout can distribute the sidebar's width between `activity_bar`
+        and `tool_window`. Without this, after an animation finishes the
+        tool window stays pinned to its end-of-animation width — and a
+        subsequent splitter-drag widens the sidebar but the extra space
+        becomes a dead gap next to the activity bar instead of going
+        into the tool window."""
+        self.tool_window.setMinimumWidth(0)
+        self.tool_window.setMaximumWidth(16777215)  # Qt's QWIDGETSIZE_MAX
+
     def _update_size_constraints(self):
-        """Update widget size constraints based on current state."""
+        """Update widget size constraints based on current state.
+
+        We do NOT call `setFixedWidth` on the sidebar — that would set
+        `minimumWidth == maximumWidth` and disable drag-to-resize via
+        the parent QSplitter. Instead we keep a minimum (so the user
+        can collapse to bar-only) and notify the parent so its
+        `QSplitter.setSizes` gives us the right starting size. The
+        user can then drag the splitter handle to resize freely.
+
+        `tool_window.setFixedWidth(...)` (called by the animation) is
+        still in effect here, which constrains the sidebar to a
+        specific width AT THIS INSTANT. But because we don't pin
+        ourselves with `setFixedWidth`, the splitter's drag works the
+        moment the animation finishes and the user reaches the handle.
+        """
         bar_width = self.activity_bar.width()
         tool_width = self.tool_window.width()
         total_width = bar_width + tool_width
 
-        # Set fixed width to force the splitter to respect our size
-        self.setFixedWidth(total_width)
+        self.setMinimumWidth(bar_width)
         self.updateGeometry()
 
-        # Notify parent to update splitter
+        # Notify parent so its QSplitter.setSizes reflects the new size.
         self.width_changed.emit(total_width)
 
     def _on_tab_clicked(self, index: int):
