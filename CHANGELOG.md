@@ -5,6 +5,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-05-11
+
+### Fixed
+
+- **Preview scrollbar drag now syncs the editor.** Dragging the preview pane's scrollbar previously moved the preview but left the editor stranded - mouse wheel and arrow keys worked, but the scrollbar gesture didn't. Dragging the preview scrollbar now scrolls the editor to the corresponding source line.
+- **Side panel collapsed state survives every launch.** Previously the collapsed/expanded state was only restored when the editor reopened with files from the last session; launching with `mde foo.md`, from a fresh folder, or with no files would reopen with the panel expanded regardless of how you left it.
+
+### Changed
+
+- **Windows install instructions in the README.** Added step-by-step setup notes for Windows users (Python 3.11+, pip install, optional Pandoc/Graphviz/Mermaid).
+
 ## [0.1.17] - 2026-05-11
 
 ### Changed
