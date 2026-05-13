@@ -295,10 +295,18 @@ class TestFencedCodeAutoComplete:
       - 2nd backtick: skip-close jumps over the existing close, cursor at end -> ``|
       - 3rd backtick: cursor is at end-of-buffer, skip-close fails -> auto-pair
         adds another `` pair -> ```|`  (BUG: stray trailing backtick)
+      - Enter at this point: just a normal newline; trailing ` ends up alone
+        on the next line.
 
-    Fix: suppress auto-pair on the 3rd backtick when the cursor is at end of
-    line and the line ends with ``.
+    Fixes:
+      - Suppress auto-pair on the 3rd backtick when the cursor is at end of
+        line and the line ends with ``.
+      - On Enter, if the current line matches ^```\\w*$, scaffold a fenced
+        block: insert \\n``` after the cursor so the user lands on an empty
+        middle line with a closing fence below.
     """
+
+    # ── Sub-fix 1: third backtick doesn't add an unwanted closing ──
 
     def test_two_backticks_state(self, editor):
         """Sanity: after 2 backticks, buffer is `` with cursor at end."""
@@ -314,4 +322,79 @@ class TestFencedCodeAutoComplete:
         assert editor.toPlainText() == "```"
         assert editor.textCursor().position() == 3
 
+    # ── Sub-fix 2: Enter scaffolds a fenced block ──
 
+    def test_enter_after_triple_backtick_scaffolds_fence(self, editor):
+        """Enter on a line that is exactly ``` should scaffold the fence."""
+        _type(editor, "```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # Expected: opening ```, newline, empty cursor line, newline, closing ```.
+        assert editor.toPlainText() == "```\n\n```"
+        # Cursor lands on the empty middle line.
+        cursor = editor.textCursor()
+        line_text = cursor.block().text()
+        assert line_text == ""
+
+    def test_enter_after_triple_backtick_with_language_scaffolds_fence(self, editor):
+        """Same as above but with a language tag after the opener."""
+        _type(editor, "```python")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        assert editor.toPlainText() == "```python\n\n```"
+        line_text = editor.textCursor().block().text()
+        assert line_text == ""
+
+    def test_enter_outside_fence_opener_does_not_scaffold(self, editor):
+        """Enter on a regular line should NOT scaffold a fence."""
+        editor.setPlainText("just some text")
+        # Move cursor to end of the line.
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # Plain newline, no closing fence inserted.
+        assert "```" not in editor.toPlainText()
+
+    def test_enter_on_closing_fence_does_not_scaffold(self, editor):
+        """Regression: a line that is bare ``` could be an opener OR a closer.
+        After typing ``` and pressing Enter, the scaffold creates:
+
+            ```
+            |
+            ```
+
+        If the user then moves the cursor to the closing ``` line and hits
+        Enter, my fix used to scaffold ANOTHER fence below it, producing:
+
+            ```
+            (empty)
+            ```
+            (empty)
+            ```
+
+        Track fence-marker parity: walk up from the current line, count
+        ``` lines. Even count -> current line is an opener (scaffold).
+        Odd count -> current line is a closer (don't scaffold).
+        """
+        editor.setPlainText("```\n\n```")
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # No third fence: count of ``` substrings stays at 2.
+        assert editor.toPlainText().count("```") == 2
+
+    def test_enter_after_backticks_with_space_does_not_scaffold(self, editor):
+        """``` followed by SPACE and more text isn't a valid fence opener.
+
+        A valid fence opener is ``` or ```LANG (no space between the
+        backticks and the language tag, no other content). Anything else
+        should NOT scaffold.
+        """
+        editor.setPlainText("``` some prose with backticks")
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # No closing fence scaffolded - that ``` was inline, not an opener.
+        assert "```" in editor.toPlainText()
+        assert editor.toPlainText().count("```") == 1
