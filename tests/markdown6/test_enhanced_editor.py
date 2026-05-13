@@ -486,6 +486,37 @@ class TestAutoPairsSuppressedInVerbatim:
         ("intro $a|+b$ done", "inline math"),
     ]
 
+    def test_fence_scaffold_not_inside_existing_fence(self, editor):
+        """Regression: a line that happens to look like a fence opener but
+        lives INSIDE an existing fence (e.g. the user typed ``` as content
+        on a body line) must not scaffold a new fence."""
+        # Outer fence with a stray ``` typed on the body line.
+        editor.setPlainText("```\n```\n\n```")
+        # Place cursor at the end of line 2 (the inner ``` body line).
+        cursor = editor.textCursor()
+        cursor.setPosition(7)   # end of line 2 (3 chars + \n + 3 chars)
+        editor.setTextCursor(cursor)
+        # Sanity check: detector agrees we're inside a verbatim region.
+        assert editor._cursor_in_verbatim_region() is True
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # No scaffold fired: count of ``` substrings still 3 (the original).
+        assert editor.toPlainText().count("```") == 3
+
+    def test_fence_scaffold_not_inside_existing_tilde_fence(self, editor):
+        """Regression: typing ``` inside an existing ~~~ fence must not
+        scaffold. The earlier local parity check only counted ``` markers
+        and would miss this; the verbatim-region detector counts both
+        delimiter kinds, so it catches it.
+        """
+        editor.setPlainText("~~~\n```\n\n~~~")
+        cursor = editor.textCursor()
+        cursor.setPosition(7)   # end of the inner ``` line
+        editor.setTextCursor(cursor)
+        assert editor._cursor_in_verbatim_region() is True
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # No ``` scaffold added.
+        assert editor.toPlainText().count("```") == 1
+
     @pytest.mark.parametrize("ch", AUTO_PAIR_CHARS)
     @pytest.mark.parametrize("fixture,label", FIXTURES)
     def test_auto_pair_suppressed(self, editor, ch, fixture, label):

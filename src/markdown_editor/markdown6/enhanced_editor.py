@@ -1183,33 +1183,30 @@ class EnhancedEditor(QPlainTextEdit):
                     return
 
         # Scaffold a fenced code block when Enter is pressed on a line that
-        # is exactly ``` (with optional language tag) AND that line is a
-        # fence opener (not a closer). Insert \n``` after the cursor so the
-        # user lands on an empty middle line with a closing fence below.
+        # is exactly ``` (with optional language tag) AND we are NOT
+        # already inside an existing verbatim region. Insert \n``` after
+        # the cursor so the user lands on an empty middle line with a
+        # closing fence below.
         #
-        # Opener vs closer disambiguation: walk up from the current line
-        # and count fence-marker lines. Even count -> we're outside any
-        # fence, this line opens a new one -> scaffold. Odd count -> we're
-        # inside a fence, this line closes it -> don't scaffold (otherwise
-        # pressing Enter on a closing ``` would add another fence below).
+        # The verbatim-region check replaces the previous local fence-
+        # parity walk: it covers both ``` and ~~~ fences, plus the
+        # closed-fence case via find_verbatim_spans (more accurate than
+        # the local parity heuristic).
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             cursor = self.textCursor()
             block = cursor.block()
             block_text = block.text()
             col = cursor.positionInBlock()
-            if col == len(block_text) and _FENCE_OPENER_RE.match(block_text):
-                fences_above = 0
-                prev = block.previous()
-                while prev.isValid():
-                    if _FENCE_OPENER_RE.match(prev.text()):
-                        fences_above += 1
-                    prev = prev.previous()
-                if fences_above % 2 == 0:
-                    cursor.insertText("\n\n```")
-                    cursor.movePosition(QTextCursor.MoveOperation.Up)
-                    cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
-                    self.setTextCursor(cursor)
-                    return
+            if (
+                col == len(block_text)
+                and _FENCE_OPENER_RE.match(block_text)
+                and not self._cursor_in_verbatim_region()
+            ):
+                cursor.insertText("\n\n```")
+                cursor.movePosition(QTextCursor.MoveOperation.Up)
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
+                self.setTextCursor(cursor)
+                return
 
         # Auto-indent on Enter
         if event.key() == Qt.Key.Key_Return and self.ctx.get("editor.auto_indent", True):
