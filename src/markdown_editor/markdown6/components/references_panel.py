@@ -76,6 +76,13 @@ class ReferencesPanel(QWidget):
         self.tree.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.tree)
 
+        # Tooltip on hover, but only when truncated.
+        from markdown_editor.markdown6.components.tooltip_helpers import (
+            TruncationToolTipFilter,
+        )
+        self._tooltip_filter = TruncationToolTipFilter(self.tree)
+        self.tree.viewport().installEventFilter(self._tooltip_filter)
+
     def set_project_path(self, path: Path | None):
         """Set the project root path for scanning."""
         self.project_path = path

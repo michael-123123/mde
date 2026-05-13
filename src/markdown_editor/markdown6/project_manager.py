@@ -47,6 +47,37 @@ class ProjectConfig:
     modified: str = ""
 
 
+class _ProjectFileSystemModel(QFileSystemModel):
+    """QFileSystemModel that returns the *project-relative* path as the
+    tooltip for every index, instead of Qt's default (the absolute path
+    on some platforms, nothing on others).
+
+    Showing the relative path on hover gives the user folder context
+    without having to expand the tree - useful for disambiguating
+    same-named files in different folders, and for files whose basename
+    is truncated in the panel's narrow column.
+    """
+
+    def __init__(self, project_path_getter):
+        super().__init__()
+        self._project_path_getter = project_path_getter
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.ToolTipRole and index.isValid():
+            file_path = Path(self.filePath(index))
+            project_path = self._project_path_getter()
+            if project_path is not None:
+                try:
+                    return str(file_path.relative_to(project_path))
+                except ValueError:
+                    # File is outside the project root - fall back to
+                    # the absolute path so the tooltip still says
+                    # something useful.
+                    pass
+            return str(file_path)
+        return super().data(index, role)
+
+
 class ProjectPanel(QWidget):
     """A panel for managing project files.
 
@@ -85,7 +116,7 @@ class ProjectPanel(QWidget):
         layout.addWidget(self.filter_input)
 
         # File tree
-        self.file_model = QFileSystemModel()
+        self.file_model = _ProjectFileSystemModel(lambda: self.project_path)
         self.file_model.setNameFilters(["*.md", "*.markdown", "*.txt"])
         self.file_model.setNameFilterDisables(False)
         self._apply_hidden_filter()
