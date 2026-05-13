@@ -84,6 +84,7 @@ DEFAULT_SHORTCUTS = {
     # View operations
     "view.refresh_preview": "F5",
     "view.toggle_preview": "Ctrl+Shift+V",
+    "view.toggle_editor": "Ctrl+Shift+E",
     "view.toggle_line_numbers": "Ctrl+Shift+L",
     "view.toggle_word_wrap": "Alt+Z",
     "view.toggle_whitespace": "Ctrl+Alt+W",
@@ -94,7 +95,7 @@ DEFAULT_SHORTCUTS = {
     "view.zoom_reset": "Ctrl+0",
     "view.command_palette": "Ctrl+Shift+P",
     "view.toggle_outline": "Ctrl+Alt+O",
-    "view.toggle_project": "Ctrl+Shift+E",
+    "view.toggle_project": "Ctrl+Alt+E",
     "view.toggle_references": "Ctrl+Shift+R",
     "view.toggle_search": "Ctrl+Shift+F",
     "view.toggle_sidebar": "Ctrl+Shift+B",

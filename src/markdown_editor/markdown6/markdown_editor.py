@@ -899,6 +899,20 @@ class MarkdownEditor(QMainWindow):
         self.preview_toggle_btn.setChecked(value)
         self._update_editor_preview_visibility()
 
+    def _toggle_editor(self):
+        """Toggle editor visibility via menu - syncs with toggle button.
+
+        Mirrors ``_toggle_preview``. The two panes can't both be hidden
+        at the same time; if hiding the editor would leave nothing
+        visible (preview also off), re-check the action and bail.
+        """
+        value = self.toggle_editor_action.isChecked()
+        if not value and not self.preview_toggle_btn.isChecked():
+            self.toggle_editor_action.setChecked(True)
+            return
+        self.editor_toggle_btn.setChecked(value)
+        self._update_editor_preview_visibility()
+
     def _toggle_line_numbers(self):
         value = self.toggle_line_numbers_action.isChecked()
         self.ctx.set("editor.show_line_numbers", value)
