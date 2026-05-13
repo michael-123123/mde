@@ -24,11 +24,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.plugins.plugin import (
     Plugin,
     PluginSource,
     PluginStatus,
 )
+
+logger = getLogger(__name__)
 
 _STATUS_DISPLAY = {
     PluginStatus.ENABLED: "Enabled",
@@ -55,6 +58,9 @@ class PluginInfoDialog(QDialog):
                 self._readme_text = plugin.readme_path.read_text(encoding="utf-8")
                 self._has_readme = True
             except OSError:
+                logger.exception(
+                    "Failed to read plugin README: %s", plugin.readme_path,
+                )
                 self._readme_text = ""
 
         self._init_ui()
