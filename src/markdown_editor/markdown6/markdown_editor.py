@@ -2102,10 +2102,14 @@ class MarkdownEditor(QMainWindow):
 
 def main():
     """Run the Markdown editor application."""
-    import logging
-
-    from markdown_editor.markdown6.logger import setup as setup_logging
-    setup_logging(level=logging.INFO)
+    from markdown_editor.markdown6.logger import (
+        resolve_level,
+        setup as setup_logging,
+    )
+    # This entry point has no CLI args of its own - level comes from
+    # MDE_LOG_LEVEL or the default. The real CLI passes the parsed
+    # --log-level via the cli main() in markdown_editor_cli.py.
+    setup_logging(level=resolve_level())
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")

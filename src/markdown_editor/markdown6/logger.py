@@ -73,6 +73,32 @@ def _log_file_path() -> Path | None:
     return Path(base) / "markdown-editor" / "logs" / "mde.log"
 
 
+_LEVEL_NAMES = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "warn": logging.WARNING,
+    "error": logging.ERROR,
+}
+
+
+def resolve_level(cli_value: str | None = None, default: int = logging.INFO) -> int:
+    """Pick a log level from (CLI flag → ``MDE_LOG_LEVEL`` env var → default).
+
+    ``cli_value`` and the env var accept case-insensitive names
+    (``debug`` / ``info`` / ``warning`` / ``error``). Anything
+    unrecognised falls back to ``default`` - bad input never crashes
+    the launch path.
+    """
+    for candidate in (cli_value, os.environ.get("MDE_LOG_LEVEL")):
+        if not candidate:
+            continue
+        lv = _LEVEL_NAMES.get(candidate.strip().lower())
+        if lv is not None:
+            return lv
+    return default
+
+
 def setup(level: int = logging.DEBUG) -> None:
     """Install the pretty handler on the ``mde`` root logger.
 
