@@ -130,8 +130,12 @@ def capture_external_stderr() -> None:
         os.dup2(write_fd, 2)
         os.close(write_fd)
     except OSError:
-        # If the OS refuses (sandbox, etc.), silently keep the noisy
-        # stderr — better than crashing the launcher.
+        # If the OS refuses (sandbox, etc.), keep the noisy stderr —
+        # better than crashing the launcher. Emits via Python's
+        # lastResort handler since setup() hasn't run yet.
+        logging.getLogger(ROOT).exception(
+            "Could not redirect native stderr to logger",
+        )
         return
 
     # Point Python's sys.stderr at the saved fd so the logger's
@@ -212,5 +216,6 @@ def setup(level: int = logging.DEBUG) -> None:
             file_handler.setFormatter(logging.Formatter(_FORMAT, datefmt=_DATE_FORMAT))
             root.addHandler(file_handler)
         except OSError:
-            # Read-only home, locked-down sandbox, etc. Console handler still works.
-            pass
+            # Read-only home, locked-down sandbox, etc. Console handler
+            # still works; we just lose persistent log file rotation.
+            root.exception("Could not attach log file handler at %s", log_path)
