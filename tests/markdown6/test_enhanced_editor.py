@@ -234,6 +234,58 @@ class TestWikiLinkCompleter:
         assert blocker.args == ["Document1"]
 
 
+class TestWikiLinkInsertion:
+    """Regression: picking a completion from the wiki popup used to
+    leave a trailing `]]`, because the user just typed `[[` which the
+    auto-pair inserted as `[[]]`, then typed a prefix, then picked from
+    the popup. _insert_wiki_link replaces `[[<prefix>` with `[[<name>]]`
+    but the auto-paired `]]` after the cursor is left in place, giving
+    `[[<name>]]]]`.
+    """
+
+    def _set(self, editor, text, marker="|"):
+        pos = text.index(marker)
+        editor.setPlainText(text[:pos] + text[pos + len(marker):])
+        cursor = editor.textCursor()
+        cursor.setPosition(pos)
+        editor.setTextCursor(cursor)
+
+    def test_insert_consumes_trailing_auto_paired_close(self, editor):
+        """Cursor is between `[[` and `]]` (auto-paired state) and user
+        picks a completion. Result must be just `[[NoteTwo]]`, not
+        `[[NoteTwo]]]]`.
+        """
+        # Simulate the exact auto-paired state the user lands in after
+        # typing `[[`: buffer `[[]]`, cursor between the two `]`s.
+        editor.setPlainText("[[]]")
+        cursor = editor.textCursor()
+        cursor.setPosition(2)
+        editor.setTextCursor(cursor)
+
+        editor._insert_wiki_link("NoteTwo")
+        assert editor.toPlainText() == "[[NoteTwo]]"
+
+    def test_insert_after_typing_prefix_consumes_trailing_close(self, editor):
+        """Same shape but user typed a prefix inside the brackets first.
+        Auto-paired `]]` after the cursor must still be consumed.
+        """
+        self._set(editor, "[[No|]]")   # cursor between 'No' and ']]'
+        editor._insert_wiki_link("NoteTwo")
+        assert editor.toPlainText() == "[[NoteTwo]]"
+
+    def test_insert_without_trailing_close_still_works(self, editor):
+        """When auto-pair is disabled (no `]]` after cursor), the
+        original behavior must still work: replace `[[<prefix>` with
+        `[[<name>]]`.
+        """
+        editor.setPlainText("[[Note")
+        cursor = editor.textCursor()
+        cursor.setPosition(6)
+        editor.setTextCursor(cursor)
+        editor._insert_wiki_link("NoteTwo")
+        assert editor.toPlainText() == "[[NoteTwo]]"
+
+
 class TestEnhancedEditorFile:
     """Tests for file operations."""
 

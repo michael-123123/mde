@@ -1624,10 +1624,17 @@ class EnhancedEditor(QPlainTextEdit):
         bracket_pos = text_before.rfind('[[')
 
         if bracket_pos >= 0:
-            # Select from [[ to cursor
+            # If auto-pair already inserted `]]` right after the cursor
+            # (the typical state when the user types `[[`), include it
+            # in the selection so we don't leave a stray `]]` behind.
+            end_col = col
+            if block_text[col:col + 2] == "]]":
+                end_col = col + 2
+
+            # Select from [[ to cursor (or past trailing ]]).
             cursor.setPosition(cursor.block().position() + bracket_pos)
             cursor.setPosition(
-                cursor.block().position() + col,
+                cursor.block().position() + end_col,
                 QTextCursor.MoveMode.KeepAnchor
             )
             cursor.insertText(f"[[{link}]]")
