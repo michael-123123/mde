@@ -1232,11 +1232,19 @@ class EnhancedEditor(QPlainTextEdit):
         # the cursor so the user lands on an empty middle line with a
         # closing fence below.
         #
+        # Gated by `editor.auto_pairs`: this is in the same family of
+        # editor-magic-on-typing behaviors as the auto-pair insertions,
+        # and users who disable that setting expect to type raw text
+        # with no automatic completions.
+        #
         # The verbatim-region check replaces the previous local fence-
         # parity walk: it covers both ``` and ~~~ fences, plus the
         # closed-fence case via find_verbatim_spans (more accurate than
         # the local parity heuristic).
-        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+        if (
+            event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+            and self.ctx.get("editor.auto_pairs", True)
+        ):
             cursor = self.textCursor()
             block = cursor.block()
             block_text = block.text()
@@ -1610,6 +1618,15 @@ class EnhancedEditor(QPlainTextEdit):
 
     def _check_wiki_link_trigger(self):
         """Check if we should show wiki link autocomplete."""
+        # Gated by `editor.auto_pairs`: the page-name dropdown is the
+        # same family of editor-magic-on-typing as auto-pair insertions
+        # - users who disable that setting expect to type raw text
+        # without surprise popups.
+        if not self.ctx.get("editor.auto_pairs", True):
+            if self.wiki_link_completer:
+                self.wiki_link_completer.hide()
+            return False
+
         # Don't pop the wiki completer when the cursor sits inside a
         # verbatim region - `[[` there is literal text, not a link.
         if self._cursor_in_verbatim_region():

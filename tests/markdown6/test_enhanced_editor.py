@@ -285,6 +285,32 @@ class TestWikiLinkInsertion:
         editor._insert_wiki_link("NoteTwo")
         assert editor.toPlainText() == "[[NoteTwo]]"
 
+    def test_wiki_completer_respects_auto_pairs_setting(self, editor):
+        """``editor.auto_pairs`` gates the wiki-link completer popup
+        too: with the setting off, typing `[[` should NOT pop the
+        page-name dropdown.
+        """
+        editor.set_available_links(["NoteOne", "NoteTwo"])
+        editor.ctx.set("editor.auto_pairs", False)
+        editor.setPlainText("[[N")
+        cursor = editor.textCursor()
+        cursor.setPosition(3)
+        editor.setTextCursor(cursor)
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_fires_by_default(self, editor):
+        """Sanity: with auto_pairs at its default (True), the
+        completer still pops in prose."""
+        editor.set_available_links(["NoteOne", "NoteTwo"])
+        editor.setPlainText("[[N")
+        cursor = editor.textCursor()
+        cursor.setPosition(3)
+        editor.setTextCursor(cursor)
+        result = editor._check_wiki_link_trigger()
+        assert result is True
+
 
 class TestEnhancedEditorFile:
     """Tests for file operations."""
@@ -424,6 +450,28 @@ class TestFencedCodeAutoComplete:
         _type(editor, "$")
         assert editor.toPlainText() == "$"
         assert editor.textCursor().position() == 1
+
+    def test_fence_scaffold_respects_auto_pairs_setting(self, editor):
+        """``editor.auto_pairs`` gates the fence scaffold too: with the
+        setting off, pressing Enter on a ``` line should be a plain
+        newline, not a fence template insertion.
+        """
+        editor.ctx.set("editor.auto_pairs", False)
+        # Without auto-pairs the 3rd backtick wouldn't auto-pair anyway,
+        # so we can type ``` cleanly.
+        _type(editor, "```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # Plain Enter only - no scaffold.
+        assert editor.toPlainText().count("```") == 1, (
+            f"expected ``` once (no scaffold); got {editor.toPlainText()!r}"
+        )
+
+    def test_fence_scaffold_fires_by_default(self, editor):
+        """Sanity: with auto_pairs at its default (True), the scaffold
+        still fires."""
+        _type(editor, "```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        assert editor.toPlainText() == "```\n\n```"
 
     # ── Sub-fix 2: Enter scaffolds a fenced block ──
 
