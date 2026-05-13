@@ -41,12 +41,12 @@ from markdown_editor.markdown6.fenced_code_highlighter import (
     DEFAULT_SCHEME_LIGHT,
     scheme_defaults,
 )
+from markdown_editor.markdown6.link_detection import find_verbatim_spans
 from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.syntax_highlighter import (
     FenceState,
     MarkdownHighlighter,
 )
-from markdown_editor.markdown6.link_detection import find_verbatim_spans
 from markdown_editor.markdown6.theme import StyleSheets, get_theme
 
 # A line that is exactly ``` (optionally followed by a language tag) and
