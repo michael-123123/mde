@@ -169,8 +169,16 @@ class ProjectPanel(QWidget):
         self.file_model.setNameFilterDisables(False)
         self._apply_hidden_filter()
 
+        # Sort proxy sits between the file-system model and the tree view.
+        # It enforces "dirs always first" plus user-chosen sort key/order.
+        # Every code path that crosses this boundary must use
+        # ``mapFromSource`` / ``mapToSource``.
+        self.proxy = _FileBrowserSortProxy(self)
+        self.proxy.setSourceModel(self.file_model)
+        self.proxy.sort(0, Qt.SortOrder.AscendingOrder)
+
         self.tree_view = QTreeView()
-        self.tree_view.setModel(self.file_model)
+        self.tree_view.setModel(self.proxy)
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setAnimated(True)
 
@@ -254,7 +262,7 @@ class ProjectPanel(QWidget):
         except (ValueError, RuntimeError):
             self._lazy = True
         self.file_model.setRootPath(str(path))
-        self.tree_view.setRootIndex(self.file_model.index(str(path)))
+        self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
         # Remember last project
         self.ctx.set("project.last_path", str(path))
         # Clear filter
@@ -272,11 +280,17 @@ class ProjectPanel(QWidget):
         self.ctx.set("project.expanded_dirs", expanded)
 
     def _collect_expanded(self, parent_index, result: list[str]):
-        """Recursively collect expanded directory paths."""
-        for row in range(self.file_model.rowCount(parent_index)):
-            child = self.file_model.index(row, 0, parent_index)
+        """Recursively collect expanded directory paths.
+
+        ``parent_index`` is a proxy index (``tree_view.rootIndex()`` and
+        proxy children); we walk the proxy and ask ``file_model`` for
+        the underlying path via ``mapToSource``.
+        """
+        for row in range(self.proxy.rowCount(parent_index)):
+            child = self.proxy.index(row, 0, parent_index)
             if self.tree_view.isExpanded(child):
-                result.append(self.file_model.filePath(child))
+                src = self.proxy.mapToSource(child)
+                result.append(self.file_model.filePath(src))
                 self._collect_expanded(child, result)
 
     def restore_tree_state(self):
@@ -316,9 +330,9 @@ class ProjectPanel(QWidget):
         for dir_path in list(self._pending_expand):
             # Expand if this dir is inside (or equal to) the just-loaded dir
             if dir_path == loaded_path or str(Path(dir_path).parent) == loaded_path:
-                index = self.file_model.index(dir_path)
-                if index.isValid():
-                    self.tree_view.expand(index)
+                src = self.file_model.index(dir_path)
+                if src.isValid():
+                    self.tree_view.expand(self.proxy.mapFromSource(src))
                     newly_expanded.append(dir_path)
         self._pending_expand -= set(newly_expanded)
         if not self._pending_expand:
@@ -345,15 +359,24 @@ class ProjectPanel(QWidget):
         if not self._lazy:
             self.tree_view.expandAll()
 
+    def _proxy_to_path(self, index) -> str:
+        """Resolve a tree-view index (which may be a proxy or, in tests,
+        a source index) into a filesystem path. Tolerating both keeps
+        existing tests that pass ``file_model.index(...)`` directly
+        working without rewriting every call site."""
+        if index.model() is self.proxy:
+            index = self.proxy.mapToSource(index)
+        return self.file_model.filePath(index)
+
     def _on_item_clicked(self, index):
         """Handle item click."""
-        path = self.file_model.filePath(index)
+        path = self._proxy_to_path(index)
         if Path(path).is_file():
             self.file_selected.emit(path)
 
     def _on_item_double_clicked(self, index):
         """Handle item double click."""
-        path = self.file_model.filePath(index)
+        path = self._proxy_to_path(index)
         if Path(path).is_file():
             self.file_double_clicked.emit(path)
 
@@ -363,7 +386,7 @@ class ProjectPanel(QWidget):
         if not index.isValid():
             return
 
-        path = Path(self.file_model.filePath(index))
+        path = Path(self._proxy_to_path(index))
         menu = QMenu(self)
 
         if path.is_file():

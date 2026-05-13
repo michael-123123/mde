@@ -463,8 +463,8 @@ class TestTreeStatePersistence:
         loaded = set()
         panel.file_model.directoryLoaded.connect(loaded.add)
         try:
-            idx = panel.file_model.index(dir_str)
-            panel.tree_view.expand(idx)
+            src = panel.file_model.index(dir_str)
+            panel.tree_view.expand(panel.proxy.mapFromSource(src))
             qtbot.waitUntil(lambda: dir_str in loaded, timeout=5000)
         finally:
             panel.file_model.directoryLoaded.disconnect(loaded.add)
@@ -473,7 +473,9 @@ class TestTreeStatePersistence:
         """Wait until a directory is expanded in the tree view."""
         dir_str = str(dir_path)
         qtbot.waitUntil(
-            lambda: panel.tree_view.isExpanded(panel.file_model.index(dir_str)),
+            lambda: panel.tree_view.isExpanded(
+                panel.proxy.mapFromSource(panel.file_model.index(dir_str))
+            ),
             timeout=5000,
         )
 
@@ -510,9 +512,15 @@ class TestTreeStatePersistence:
         self._expand_and_wait(qtbot, panel1, dir_b)
 
         # Verify they are expanded
-        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_a)))
-        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_c)))
-        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_b)))
+        assert panel1.tree_view.isExpanded(
+            panel1.proxy.mapFromSource(panel1.file_model.index(str(dir_a)))
+        )
+        assert panel1.tree_view.isExpanded(
+            panel1.proxy.mapFromSource(panel1.file_model.index(str(dir_c)))
+        )
+        assert panel1.tree_view.isExpanded(
+            panel1.proxy.mapFromSource(panel1.file_model.index(str(dir_b)))
+        )
 
         # Save state
         panel1.save_tree_state()
@@ -557,7 +565,9 @@ class TestTreeStatePersistence:
         QApplication.processEvents()
 
         # Should NOT be expanded
-        assert not panel.tree_view.isExpanded(panel.file_model.index(str(dir_a)))
+        assert not panel.tree_view.isExpanded(
+            panel.proxy.mapFromSource(panel.file_model.index(str(dir_a)))
+        )
 
     def test_restore_ignores_dirs_from_different_project(self, qtbot, tmp_path):
         """Saved dirs from a different project root are ignored."""
