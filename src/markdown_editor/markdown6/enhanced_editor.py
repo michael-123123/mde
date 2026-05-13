@@ -656,6 +656,7 @@ class EnhancedEditor(QPlainTextEdit):
                 self._file_watcher = QFileSystemWatcher()
                 self._file_watcher.fileChanged.connect(self._on_file_changed)
             self._file_watcher.addPath(str(path))
+            logger.debug("File watcher attached: %s", path)
 
     def _on_file_changed(self, path: str):
         """Handle external file changes."""

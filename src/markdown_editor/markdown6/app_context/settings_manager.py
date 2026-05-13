@@ -17,6 +17,14 @@ from markdown_editor.markdown6.logger import getLogger
 logger = getLogger(__name__)
 
 
+def _short(value: Any, limit: int = 80) -> str:
+    """Compact ``repr`` for the settings-change log line. Long lists or
+    strings are truncated so a single setting change doesn't dump
+    multiple lines into the terminal."""
+    s = repr(value)
+    return s if len(s) <= limit else s[:limit - 3] + "..."
+
+
 DEFAULT_SETTINGS = {
     # Editor settings
     "editor.font_family": "Monospace",
@@ -156,6 +164,7 @@ class SettingsManager(QObject):
         if save:
             self.save()
         if old_value != value:
+            logger.info("Setting: %s: %s → %s", key, _short(old_value), _short(value))
             self.settings_changed.emit(key, value)
             if key == "view.theme":
                 self.theme_changed.emit(value)

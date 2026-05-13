@@ -652,6 +652,7 @@ class DocumentTab(QWidget):
         """Handle external file modification with non-modal notification."""
         name = self.file_path.name if self.file_path else "File"
         self.external_change_bar.show_change(name)
+        logger.info("External change detected: %s", self.file_path or name)
 
     def _on_editor_scroll(self):
         """Handle editor scroll for sync scrolling."""
@@ -725,6 +726,7 @@ class DocumentTab(QWidget):
         by _render_pending_diagrams(), keeping the preview responsive.
         """
         import json
+        import time
 
         # Cancel any pending debounced render - we're rendering now.
         self.render_timer.stop()
@@ -741,8 +743,14 @@ class DocumentTab(QWidget):
         self.main_window.md.mermaid_dark_mode = dark_mode
         self.main_window.md.logseq_mode = self.ctx.get("view.logseq_mode", False)
 
+        t0 = time.perf_counter()
         html_content = self.main_window.md.convert(text)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
         pending = self.main_window.md._pending_diagrams
+        logger.debug(
+            "Render: %d chars → %d chars HTML (%.0f ms, %d diagrams pending)",
+            len(text), len(html_content), elapsed_ms, len(pending),
+        )
 
         # For QWebEngineView: use incremental JS update to preserve scroll position
         if self._use_webengine and not self._preview_needs_full_reload:
@@ -917,6 +925,7 @@ class DocumentTab(QWidget):
             # modificationChanged(False) will propagate to unsaved_changes.
             self.editor.document().setModified(False)
             self.main_window.update_tab_title(self)
+            logger.info("Reloaded: %s (%d chars)", self.file_path, len(content))
 
     def get_tab_title(self) -> str:
         """Return the title for this tab."""

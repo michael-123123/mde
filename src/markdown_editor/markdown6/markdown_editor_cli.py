@@ -132,6 +132,13 @@ Examples:
         help="Verbose output",
     )
     parser.add_argument(
+        "--log-level",
+        choices=["debug", "info", "warning", "error"],
+        metavar="LEVEL",
+        help="Log verbosity (debug/info/warning/error). Also reads "
+             "MDE_LOG_LEVEL env var. Default: info.",
+    )
+    parser.add_argument(
         "-q", "--quiet",
         action="store_true",
         help="Suppress non-essential output",
@@ -1383,15 +1390,33 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Main entry point."""
-    import logging
-
+    from markdown_editor.markdown6.logger import (
+        capture_external_stderr,
+        resolve_level,
+    )
     from markdown_editor.markdown6.logger import setup as setup_logging
-    setup_logging(level=logging.INFO)
+
+    # Redirect native stderr (Chromium / NSS / Qt) through our logger
+    # BEFORE setup_logging so our StreamHandler inherits the saved
+    # stderr fd instead of the capture pipe.
+    capture_external_stderr()
 
     if argv is None:
         argv = sys.argv[1:]
 
     parser = create_parser()
+
+    # Best-effort early parse to pick up --log-level before we set up
+    # logging. parse_known_args won't fail on positional file paths or
+    # unknown flags. If parsing fails entirely (unlikely), fall back to
+    # env-var-or-default via resolve_level(None).
+    cli_log_level = None
+    try:
+        early_args, _ = parser.parse_known_args(argv)
+        cli_log_level = getattr(early_args, "log_level", None)
+    except SystemExit:
+        pass
+    setup_logging(level=resolve_level(cli_log_level))
 
     # Enable argcomplete — this is a no-op unless the shell has activated it
     try:

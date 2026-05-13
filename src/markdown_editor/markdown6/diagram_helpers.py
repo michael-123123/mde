@@ -15,6 +15,10 @@ local/html-export-unify.md).
 
 from __future__ import annotations
 
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
+
 
 def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
     """Render a single diagram. Returns (svg_html, css_class).
@@ -35,6 +39,10 @@ def _render_diagram(kind: str, source: str, dark_mode: bool) -> tuple[str, str]:
             return svg, 'graphviz-diagram'
     except Exception as e:
         import html
+
+        # The user sees the error inline in the preview; the stack
+        # trace goes to the log so the actual cause is recoverable.
+        logger.exception("Diagram render failed (kind=%s)", kind)
         return (
             f'<div class="diagram-loading">Error: {html.escape(str(e))}</div>',
             'mermaid-diagram',

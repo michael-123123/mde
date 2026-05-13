@@ -1,6 +1,7 @@
 """Project-wide search panel for the Markdown editor."""
 
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,7 +19,10 @@ from PySide6.QtWidgets import (
 )
 
 from markdown_editor.markdown6.app_context import get_project_markdown_files
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.theme import StyleSheets, get_theme_from_ctx
+
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -163,7 +167,14 @@ class SearchPanel(QWidget):
             return
 
         # Search files
+        t0 = time.perf_counter()
         self._matches = self._search_files(regex)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        files_with_hits = len({m.file_path for m in self._matches})
+        logger.info(
+            "Search %r → %d matches in %d files (%.0f ms)",
+            query, len(self._matches), files_with_hits, elapsed_ms,
+        )
 
         # Update UI
         self._populate_results()

@@ -103,6 +103,7 @@ def apply_application_theme(dark_mode: bool):
     if not app:
         return
 
+    logger.debug("Applying application theme: %s", "dark" if dark_mode else "light")
     theme = get_theme(dark_mode)
 
     if dark_mode:
@@ -1003,6 +1004,7 @@ class MarkdownEditor(QMainWindow):
             self._update_recent_files_menu()
 
             self.status_bar.showMessage(f"Opened: {path}")
+            logger.info("Opened: %s (%d chars)", path, len(content))
             self._dispatch_plugin_signal(SignalKind.FILE_OPENED, tab)
         except Exception as e:
             logger.exception(f"Could not open file: {path}")
@@ -1025,6 +1027,7 @@ class MarkdownEditor(QMainWindow):
             self.update_tab_title(tab)
             self.update_window_title()
             self.status_bar.showMessage(f"Saved: {tab.file_path}")
+            logger.info("Saved: %s", tab.file_path)
             self._dispatch_plugin_signal(SignalKind.SAVE, tab)
             return True
         except Exception as e:
@@ -1081,6 +1084,7 @@ class MarkdownEditor(QMainWindow):
                 source_path=tab.file_path,
             )
             self.status_bar.showMessage(f"Exported to: {file_path}")
+            logger.info("Exported HTML: %s", file_path)
         except Exception as e:
             logger.exception(f"Could not export HTML to {file_path}")
             QMessageBox.critical(self, "Error", f"Could not export file: {e}")
@@ -2104,8 +2108,22 @@ def main():
     """Run the Markdown editor application."""
     import logging
 
+    from markdown_editor.markdown6.logger import (
+        capture_external_stderr,
+        resolve_level,
+    )
     from markdown_editor.markdown6.logger import setup as setup_logging
-    setup_logging(level=logging.INFO)
+
+    # Redirect native stderr (Chromium / NSS / Qt) through our logger
+    # BEFORE setup_logging so our StreamHandler inherits the saved
+    # stderr fd instead of the capture pipe.
+    capture_external_stderr()
+    # This entry point has no CLI args of its own - level comes from
+    # MDE_LOG_LEVEL or the default. The real CLI passes the parsed
+    # --log-level via the cli main() in markdown_editor_cli.py.
+    level = resolve_level()
+    setup_logging(level=level)
+    logger.info("mde starting (log level=%s)", logging.getLevelName(level))
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")
@@ -2117,6 +2135,7 @@ def main():
 
     editor = MarkdownEditor()
     editor.show()
+    logger.info("Main window shown")
 
     if sys.argv[1:]:
         for arg in sys.argv[1:]:

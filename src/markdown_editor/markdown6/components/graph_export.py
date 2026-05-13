@@ -49,11 +49,14 @@ from markdown_editor.markdown6.graph_exporter import (
     GraphExporterConfig,
     OutputFormat,
 )
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.theme import (
     StyleSheets,
     get_theme,
     get_theme_from_ctx,
 )
+
+logger = getLogger(__name__)
 
 
 class _GuiGraphExporterConfig(GraphExporterConfig):
@@ -644,6 +647,7 @@ class GraphExportDialog(QDialog):
 
             self.preview_status.setText(f"✓ {len(files)} files")
         except Exception as e:
+            logger.exception("Graph preview failed")
             self._show_preview_message(f"Error: {e}")
             self.preview_status.setText("✗ Error")
 
@@ -818,6 +822,7 @@ svg {{
             self.accept()
 
         except Exception as e:
+            logger.exception("Graph export failed")
             QMessageBox.critical(self, "Export Error", f"Failed to generate graph:\n{e}")
 
     def _show_preview(self, dot_source: str):
@@ -829,6 +834,7 @@ svg {{
             dialog.file_clicked.connect(self._on_preview_file_clicked)
             dialog.exec()
         except Exception as e:
+            logger.exception("Graph preview render failed")
             QMessageBox.warning(self, "Preview Error", f"Could not render preview:\n{e}")
 
     def _on_preview_node_clicked(self, file_path: str):
