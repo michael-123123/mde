@@ -27,6 +27,9 @@ from markdown_editor.markdown6.extensions.logseq import (  # noqa: F401
     LogseqExtension,
     LogseqPreprocessor,
 )
+from markdown_editor.markdown6.extensions.mark import (  # noqa: F401
+    MarkExtension,
+)
 from markdown_editor.markdown6.extensions.math import (  # noqa: F401
     MathExtension,
     MathPostprocessor,
