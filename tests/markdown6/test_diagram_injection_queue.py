@@ -64,19 +64,13 @@ class Harness:
 
 
 def _enqueue(harness, idx, gen=None):
-    """Push a fake injection. The recorded callback receives a string
-    that captures whether the JS ran ('ok') or queued (None). The cb
-    appends the result to harness.fired."""
+    """Push a fake injection. The ``idx`` is embedded in the ``js``
+    string so tests can read it back off ``_page.in_flight`` to verify
+    firing order."""
     if gen is None:
         gen = harness._pending_render_generation
-    if not hasattr(harness, "fired"):
-        harness.fired = []
     js = f"/* idx {idx} */ return 'ok';"
-
-    def cb(result, _i=idx):
-        harness.fired.append((_i, result))
-
-    harness._pending_injections.append((idx, js, cb, gen))
+    harness._pending_injections.append((idx, js, gen))
 
 
 # ── 1. Push without page-ready: nothing fires ─────────────────────────
@@ -147,8 +141,10 @@ def test_push_during_drain_is_picked_up_in_fifo_order():
     assert len(h._page.in_flight) == 1
     js_C, wrapped_C = h._page.pop_pending()
     wrapped_C("ok")
-    # Order observed by the original cbs is FIFO.
-    assert h.fired == [("A", "ok"), ("B", "ok"), ("C", "ok")]
+    # FIFO verified via the embedded /* idx X */ marker in each payload.
+    assert "/* idx A */" in js_A
+    assert "/* idx B */" in js_B
+    assert "/* idx C */" in js_C
 
 
 # ── 4. Stale-generation entries are skipped, not fired ────────────────
@@ -166,17 +162,17 @@ def test_stale_generation_entries_are_dropped():
     h._try_advance_injection()   # should drain only new0 and new1
 
     assert len(h._page.in_flight) == 1
-    js, wrapped = h._page.pop_pending()
+    js_1, wrapped = h._page.pop_pending()
     wrapped("ok")
     assert len(h._page.in_flight) == 1
-    js, wrapped = h._page.pop_pending()
+    js_2, wrapped = h._page.pop_pending()
     wrapped("ok")
     # No further entries.
     assert h._page.in_flight == []
     assert h._drain_in_flight is False
-    # Only the new ones' callbacks fired.
-    fired_idx = [i for i, _ in h.fired]
-    assert fired_idx == ["new0", "new1"]
+    # Only the new-generation entries fired; their embedded markers prove it.
+    assert "/* idx new0 */" in js_1
+    assert "/* idx new1 */" in js_2
 
 
 # ── 5. loadFinished(ok=False): nothing fires ──────────────────────────
