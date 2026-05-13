@@ -103,6 +103,7 @@ def apply_application_theme(dark_mode: bool):
     if not app:
         return
 
+    logger.debug("Applying application theme: %s", "dark" if dark_mode else "light")
     theme = get_theme(dark_mode)
 
     if dark_mode:

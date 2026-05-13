@@ -433,6 +433,7 @@ class ProjectPanel(QWidget):
 
     def _on_directory_loaded(self, loaded_path: str):
         """When a directory is loaded, expand any pending children of it."""
+        logger.debug("Directory loaded: %s", loaded_path)
         if not self._pending_expand:
             self._disconnect_directory_loaded()
             return

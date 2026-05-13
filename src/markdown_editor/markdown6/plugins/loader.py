@@ -95,7 +95,9 @@ def discover_plugins(
 
     for root, source in roots:
         if not root.is_dir():
+            logger.debug("Plugin root skipped (not a directory): %s", root)
             continue
+        logger.debug("Scanning plugin root: %s (%s)", root, source.value)
         for entry in sorted(root.iterdir()):
             if not entry.is_dir():
                 continue
