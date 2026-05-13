@@ -234,6 +234,84 @@ class TestWikiLinkCompleter:
         assert blocker.args == ["Document1"]
 
 
+class TestWikiLinkInsertion:
+    """Regression: picking a completion from the wiki popup used to
+    leave a trailing `]]`, because the user just typed `[[` which the
+    auto-pair inserted as `[[]]`, then typed a prefix, then picked from
+    the popup. _insert_wiki_link replaces `[[<prefix>` with `[[<name>]]`
+    but the auto-paired `]]` after the cursor is left in place, giving
+    `[[<name>]]]]`.
+    """
+
+    def _set(self, editor, text, marker="|"):
+        pos = text.index(marker)
+        editor.setPlainText(text[:pos] + text[pos + len(marker):])
+        cursor = editor.textCursor()
+        cursor.setPosition(pos)
+        editor.setTextCursor(cursor)
+
+    def test_insert_consumes_trailing_auto_paired_close(self, editor):
+        """Cursor is between `[[` and `]]` (auto-paired state) and user
+        picks a completion. Result must be just `[[NoteTwo]]`, not
+        `[[NoteTwo]]]]`.
+        """
+        # Simulate the exact auto-paired state the user lands in after
+        # typing `[[`: buffer `[[]]`, cursor between the two `]`s.
+        editor.setPlainText("[[]]")
+        cursor = editor.textCursor()
+        cursor.setPosition(2)
+        editor.setTextCursor(cursor)
+
+        editor._insert_wiki_link("NoteTwo")
+        assert editor.toPlainText() == "[[NoteTwo]]"
+
+    def test_insert_after_typing_prefix_consumes_trailing_close(self, editor):
+        """Same shape but user typed a prefix inside the brackets first.
+        Auto-paired `]]` after the cursor must still be consumed.
+        """
+        self._set(editor, "[[No|]]")   # cursor between 'No' and ']]'
+        editor._insert_wiki_link("NoteTwo")
+        assert editor.toPlainText() == "[[NoteTwo]]"
+
+    def test_insert_without_trailing_close_still_works(self, editor):
+        """When auto-pair is disabled (no `]]` after cursor), the
+        original behavior must still work: replace `[[<prefix>` with
+        `[[<name>]]`.
+        """
+        editor.setPlainText("[[Note")
+        cursor = editor.textCursor()
+        cursor.setPosition(6)
+        editor.setTextCursor(cursor)
+        editor._insert_wiki_link("NoteTwo")
+        assert editor.toPlainText() == "[[NoteTwo]]"
+
+    def test_wiki_completer_respects_auto_pairs_setting(self, editor):
+        """``editor.auto_pairs`` gates the wiki-link completer popup
+        too: with the setting off, typing `[[` should NOT pop the
+        page-name dropdown.
+        """
+        editor.set_available_links(["NoteOne", "NoteTwo"])
+        editor.ctx.set("editor.auto_pairs", False)
+        editor.setPlainText("[[N")
+        cursor = editor.textCursor()
+        cursor.setPosition(3)
+        editor.setTextCursor(cursor)
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_fires_by_default(self, editor):
+        """Sanity: with auto_pairs at its default (True), the
+        completer still pops in prose."""
+        editor.set_available_links(["NoteOne", "NoteTwo"])
+        editor.setPlainText("[[N")
+        cursor = editor.textCursor()
+        cursor.setPosition(3)
+        editor.setTextCursor(cursor)
+        result = editor._check_wiki_link_trigger()
+        assert result is True
+
+
 class TestEnhancedEditorFile:
     """Tests for file operations."""
 
@@ -321,6 +399,118 @@ class TestFencedCodeAutoComplete:
         _type(editor, "```")
         assert editor.toPlainText() == "```"
         assert editor.textCursor().position() == 3
+
+    def test_double_asterisk_opens_bold_pair(self, editor):
+        """Typing ** should produce '**|**' (cursor between two pairs)
+        - the markdown bold opener. The default skip-close would just
+        jump past the auto-paired close after the 1st *, giving '**|'
+        with no second pair, which loses the user's intent.
+        """
+        _type(editor, "**")
+        assert editor.toPlainText() == "****"
+        assert editor.textCursor().position() == 2
+
+    def test_double_underscore_opens_bold_pair(self, editor):
+        """Same as **|** but with the __underscore__ bold flavour."""
+        _type(editor, "__")
+        assert editor.toPlainText() == "____"
+        assert editor.textCursor().position() == 2
+
+    def test_double_tilde_opens_strikethrough_pair(self, editor):
+        """Typing ~~ should produce '~~|~~' (strikethrough opener).
+
+        `~` isn't in AUTO_PAIRS - single `~` has no markdown meaning so
+        we don't auto-pair it. But typing it twice opens the doubled
+        pair (State B path).
+        """
+        _type(editor, "~~")
+        assert editor.toPlainText() == "~~~~"
+        assert editor.textCursor().position() == 2
+
+    def test_single_tilde_is_just_one_char(self, editor):
+        """Sanity: typing a single ~ doesn't auto-pair (only the
+        doubled form does)."""
+        _type(editor, "~")
+        assert editor.toPlainText() == "~"
+        assert editor.textCursor().position() == 1
+
+    def test_double_dollar_opens_display_math_pair(self, editor):
+        """Typing $$ should produce '$$|$$' (display math opener).
+
+        `$` isn't in AUTO_PAIRS - single `$` is inline math and we'd
+        break common "I have $5" prose if we auto-paired it. But the
+        doubled form opens a pair (State B path)."""
+        _type(editor, "$$")
+        assert editor.toPlainText() == "$$$$"
+        assert editor.textCursor().position() == 2
+
+    def test_single_dollar_is_just_one_char(self, editor):
+        """Sanity: typing a single $ doesn't auto-pair - prose like
+        'I have $5' must not become 'I have $5$'."""
+        _type(editor, "$")
+        assert editor.toPlainText() == "$"
+        assert editor.textCursor().position() == 1
+
+    def test_triple_asterisk_opens_italic_bold(self, editor):
+        """Typing *** opens markdown's italic-bold emphasis. Cap is 3
+        for *, so this is allowed."""
+        _type(editor, "***")
+        assert editor.toPlainText() == "******"
+        assert editor.textCursor().position() == 3
+
+    def test_four_asterisks_does_not_stack_past_cap(self, editor):
+        """Typing **** should NOT keep opening pairs - markdown
+        emphasis caps at 3 (`***italic-bold***`). The 4th char inserts
+        literally so the user sees they've gone past the cap.
+        """
+        _type(editor, "****")
+        # 4th char is a literal insert; no new pair opens.
+        # Stars before cursor: 4 (the typed stars), stars after: 3 (the
+        # close pairs from the first three keypresses).
+        assert editor.toPlainText() == "****" + "***", (
+            f"got {editor.toPlainText()!r}"
+        )
+        assert editor.textCursor().position() == 4
+
+    def test_five_asterisks_still_capped(self, editor):
+        _type(editor, "*****")
+        assert editor.toPlainText() == "*****" + "***"
+        assert editor.textCursor().position() == 5
+
+    def test_triple_tilde_capped_at_two(self, editor):
+        """`~` caps at 2 (`~~strikethrough~~` is the only valid form)."""
+        _type(editor, "~~~")
+        # 3rd ~ inserts literally; close pair from 2nd keypress is `~~`.
+        assert editor.toPlainText() == "~~~" + "~~"
+        assert editor.textCursor().position() == 3
+
+    def test_triple_dollar_capped_at_two(self, editor):
+        """`$` caps at 2 (`$$display$$` is the deepest)."""
+        _type(editor, "$$$")
+        assert editor.toPlainText() == "$$$" + "$$"
+        assert editor.textCursor().position() == 3
+
+    def test_fence_scaffold_respects_auto_pairs_setting(self, editor):
+        """``editor.auto_pairs`` gates the fence scaffold too: with the
+        setting off, pressing Enter on a ``` line should be a plain
+        newline, not a fence template insertion.
+        """
+        editor.ctx.set("editor.auto_pairs", False)
+        # Without auto-pairs the 3rd backtick wouldn't auto-pair anyway,
+        # so we can type ``` cleanly.
+        _type(editor, "```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # Plain Enter only - no scaffold.
+        assert editor.toPlainText().count("```") == 1, (
+            f"expected ``` once (no scaffold); got {editor.toPlainText()!r}"
+        )
+
+    def test_fence_scaffold_fires_by_default(self, editor):
+        """Sanity: with auto_pairs at its default (True), the scaffold
+        still fires."""
+        _type(editor, "```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        assert editor.toPlainText() == "```\n\n```"
 
     # ── Sub-fix 2: Enter scaffolds a fenced block ──
 
@@ -705,3 +895,79 @@ class TestImagePasteSuppressedInVerbatim:
 
         editor.insertFromMimeData(mime)
         assert len(paste_called) == 1
+
+
+class TestImagePasteSettings:
+    """The image-paste-as-markdown feature is gated by a setting
+    (``editor.paste_image_to_disk``) and the save location is
+    configurable (``editor.paste_image_dir``)."""
+
+    def _mime_with_image(self):
+        from PySide6.QtCore import QMimeData
+        from PySide6.QtGui import QImage
+        m = QMimeData()
+        img = QImage(1, 1, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFF)
+        m.setImageData(img)
+        return m
+
+    def test_paste_image_disabled_is_noop(self, editor, monkeypatch):
+        """``paste_image_to_disk=False``: _paste_image not called."""
+        editor.ctx.set("editor.paste_image_to_disk", False)
+        editor.setPlainText("")
+        paste_called: list = []
+        monkeypatch.setattr(
+            editor, "_paste_image", lambda src: paste_called.append(src),
+        )
+        editor.insertFromMimeData(self._mime_with_image())
+        assert paste_called == []
+
+    def test_paste_image_default_dir_uses_doc_relative_images(
+        self, editor, tmp_path,
+    ):
+        """Default (paste_image_dir='') + saved doc: image lands in
+        ``<doc_dir>/images/``."""
+        doc = tmp_path / "doc.md"
+        doc.write_text("")
+        editor.file_path = doc
+        editor.setPlainText("")
+        editor.insertFromMimeData(self._mime_with_image())
+        images = list((tmp_path / "images").glob("image_*.png"))
+        assert len(images) == 1
+        # Markdown link inserted with the relative path.
+        assert "![image](" in editor.toPlainText()
+        assert "images/" in editor.toPlainText()
+
+    def test_paste_image_absolute_dir_saves_there(
+        self, editor, tmp_path,
+    ):
+        """Absolute ``paste_image_dir``: image saved at that path
+        regardless of doc location."""
+        custom = tmp_path / "custom"
+        editor.ctx.set("editor.paste_image_dir", str(custom))
+        # Doc is somewhere else.
+        doc = tmp_path / "elsewhere" / "doc.md"
+        doc.parent.mkdir()
+        doc.write_text("")
+        editor.file_path = doc
+        editor.setPlainText("")
+        editor.insertFromMimeData(self._mime_with_image())
+        images = list(custom.glob("image_*.png"))
+        assert len(images) == 1, (
+            f"expected image in {custom}; got {list(custom.iterdir()) if custom.exists() else 'no dir'}"
+        )
+
+    def test_paste_image_relative_dir_resolved_against_doc(
+        self, editor, tmp_path,
+    ):
+        """Relative ``paste_image_dir`` like ``assets/img`` is resolved
+        against the doc's parent directory."""
+        editor.ctx.set("editor.paste_image_dir", "assets/img")
+        doc = tmp_path / "doc.md"
+        doc.write_text("")
+        editor.file_path = doc
+        editor.setPlainText("")
+        editor.insertFromMimeData(self._mime_with_image())
+        expected_dir = tmp_path / "assets" / "img"
+        images = list(expected_dir.glob("image_*.png"))
+        assert len(images) == 1

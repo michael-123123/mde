@@ -1,5 +1,7 @@
 """Settings dialog for the Markdown editor."""
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
@@ -245,6 +247,45 @@ class SettingsDialog(QDialog):
         autosave_layout.addRow("Interval:", self.auto_save_interval)
 
         layout.addWidget(autosave_group)
+
+        # Image paste group
+        image_paste_group = QGroupBox("Image paste")
+        image_paste_layout = QFormLayout(image_paste_group)
+
+        self.paste_image_to_disk = QCheckBox(
+            "Save pasted images to disk and insert markdown link",
+        )
+        image_paste_layout.addRow("", self.paste_image_to_disk)
+
+        # Folder row: line edit + Browse button.
+        folder_row = QWidget()
+        folder_h = QHBoxLayout(folder_row)
+        folder_h.setContentsMargins(0, 0, 0, 0)
+        self.paste_image_dir = QLineEdit()
+        self.paste_image_dir.setPlaceholderText(
+            "default: <doc>/images/   (relative paths resolved against doc)",
+        )
+        folder_h.addWidget(self.paste_image_dir)
+        self.paste_image_dir_browse = QPushButton("Browse…")
+        self.paste_image_dir_browse.clicked.connect(
+            self._on_paste_image_dir_browse,
+        )
+        folder_h.addWidget(self.paste_image_dir_browse)
+        image_paste_layout.addRow("Image folder:", folder_row)
+
+        # Grey out the folder row when the toggle is off.
+        def _sync_paste_dir_enabled():
+            on = self.paste_image_to_disk.isChecked()
+            self.paste_image_dir.setEnabled(on)
+            self.paste_image_dir_browse.setEnabled(on)
+        self.paste_image_to_disk.toggled.connect(
+            lambda _checked: _sync_paste_dir_enabled(),
+        )
+        # Store the sync callable so _load_settings can trigger it after
+        # programmatic state changes.
+        self._sync_paste_image_dir_enabled = _sync_paste_dir_enabled
+
+        layout.addWidget(image_paste_group)
 
         layout.addStretch()
         scroll.setWidget(page)
@@ -610,6 +651,13 @@ class SettingsDialog(QDialog):
         self.show_whitespace.setChecked(self.ctx.get("editor.show_whitespace", False))
         self.auto_save.setChecked(self.ctx.get("editor.auto_save", False))
         self.auto_save_interval.setValue(self.ctx.get("editor.auto_save_interval", 60))
+        self.paste_image_to_disk.setChecked(
+            self.ctx.get("editor.paste_image_to_disk", True)
+        )
+        self.paste_image_dir.setText(
+            self.ctx.get("editor.paste_image_dir", "")
+        )
+        self._sync_paste_image_dir_enabled()
 
         # View settings
         theme = self.ctx.get("view.theme", "light")
@@ -788,6 +836,15 @@ class SettingsDialog(QDialog):
                 "All settings have been restored to defaults."
             )
 
+    def _on_paste_image_dir_browse(self):
+        """Open a directory picker for the paste-image folder."""
+        current = self.paste_image_dir.text().strip() or str(Path.home())
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Image Paste Folder", current,
+        )
+        if folder:
+            self.paste_image_dir.setText(folder)
+
     def _apply(self):
         """Apply the current settings."""
         # Editor settings
@@ -808,6 +865,14 @@ class SettingsDialog(QDialog):
         self.ctx.set("editor.show_whitespace", self.show_whitespace.isChecked())
         self.ctx.set("editor.auto_save", self.auto_save.isChecked())
         self.ctx.set("editor.auto_save_interval", self.auto_save_interval.value())
+        self.ctx.set(
+            "editor.paste_image_to_disk",
+            self.paste_image_to_disk.isChecked(),
+        )
+        self.ctx.set(
+            "editor.paste_image_dir",
+            self.paste_image_dir.text().strip(),
+        )
 
         # View settings
         self.ctx.set("view.theme", "light" if self.theme.currentIndex() == 0 else "dark")

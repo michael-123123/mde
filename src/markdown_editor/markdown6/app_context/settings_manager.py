@@ -30,6 +30,8 @@ DEFAULT_SETTINGS = {
     "editor.auto_pairs": True,
     "editor.auto_indent": True,
     "editor.auto_indent_in_verbatim": True,
+    "editor.paste_image_to_disk": True,
+    "editor.paste_image_dir": "",
     "editor.auto_save": False,
     "editor.auto_save_interval": 60,  # seconds
     "editor.scroll_past_end": True,

@@ -1143,6 +1143,74 @@ class EnhancedEditor(QPlainTextEdit):
                     cursor.insertText("`")
                     return
 
+            # Doubled-emphasis markers: typing the same emphasis char twice
+            # opens a doubled pair (the markdown bold / strikethrough /
+            # display-math typing pattern). Two reachable starting states
+            # because some markers auto-pair singly and others don't:
+            #
+            #   State A — `char|char` (typing 2nd char inside an
+            #     auto-paired single). Reached for `*` and `_` because
+            #     they're in AUTO_PAIRS. Insert `char*2` on top and move
+            #     left 1 -> final `**|**` / `__|__`.
+            #
+            #   State B — `char|` (typed once, no auto-pair, end-of-line or
+            #     next char differs). Reached for `~` and `$` because
+            #     neither is in AUTO_PAIRS - single `~` has no markdown
+            #     meaning and single `$` is inline math which we don't
+            #     auto-pair (would break common "I have $5" text). Insert
+            #     `char*3` (the typed char + the close pair) and move left
+            #     2 -> final `~~|~~` / `$$|$$`.
+            #
+            # Cap: markdown emphasis bottoms out at a fixed depth - 3 for
+            # `*`/`_` (italic, bold, italic-bold) and 2 for `~`/`$`. If
+            # the user has already typed enough matching chars to reach
+            # the cap, stop opening new pairs and just insert the typed
+            # char literally. Without this the logic would stack pairs
+            # forever and produce buffers like `*****|*****`.
+            cap_for = {'*': 3, '_': 3, '~': 2, '$': 2}
+            if char in cap_for and not skip_pair:
+                cursor = self.textCursor()
+                col = cursor.positionInBlock()
+                line_text = cursor.block().text()
+
+                # Consecutive matching chars immediately before cursor.
+                consec_before = 0
+                i = col - 1
+                while i >= 0 and line_text[i] == char:
+                    consec_before += 1
+                    i -= 1
+
+                if consec_before >= cap_for[char]:
+                    # At the markdown emphasis cap. Insert the char
+                    # literally - don't open another pair and don't fall
+                    # through to skip-close (which would yank the cursor
+                    # past an existing close, confusing the user).
+                    cursor.insertText(char)
+                    return
+
+                # State A: prev char and next char both match.
+                if (
+                    col >= 1
+                    and col < len(line_text)
+                    and line_text[col - 1] == char
+                    and line_text[col] == char
+                ):
+                    cursor.insertText(char + char)
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    self.setTextCursor(cursor)
+                    return
+                # State B: prev char matches, no matching next char.
+                if (
+                    col >= 1
+                    and line_text[col - 1] == char
+                    and (col >= len(line_text) or line_text[col] != char)
+                ):
+                    cursor.insertText(char + char + char)
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    self.setTextCursor(cursor)
+                    return
+
             # Handle closing character - skip over if next char is the same
             if char and char in self.AUTO_PAIRS.values() and not skip_pair:
                 cursor = self.textCursor()
@@ -1188,11 +1256,19 @@ class EnhancedEditor(QPlainTextEdit):
         # the cursor so the user lands on an empty middle line with a
         # closing fence below.
         #
+        # Gated by `editor.auto_pairs`: this is in the same family of
+        # editor-magic-on-typing behaviors as the auto-pair insertions,
+        # and users who disable that setting expect to type raw text
+        # with no automatic completions.
+        #
         # The verbatim-region check replaces the previous local fence-
         # parity walk: it covers both ``` and ~~~ fences, plus the
         # closed-fence case via find_verbatim_spans (more accurate than
         # the local parity heuristic).
-        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+        if (
+            event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+            and self.ctx.get("editor.auto_pairs", True)
+        ):
             cursor = self.textCursor()
             block = cursor.block()
             block_text = block.text()
@@ -1448,12 +1524,18 @@ class EnhancedEditor(QPlainTextEdit):
 
     def insertFromMimeData(self, source: QMimeData):
         """Handle paste from mime data, including images."""
-        # Don't run the image-save-and-insert-markdown-link path when the
-        # cursor is inside a verbatim region. Pasting an image into code/
-        # math is almost certainly a mistake; fall through to the default
-        # paste (which has no useful representation for image data and
-        # will be a no-op for our purposes - the right answer).
-        if source.hasImage() and not self._cursor_in_verbatim_region():
+        # Gates on the image-save-and-insert-markdown-link path:
+        # - `editor.paste_image_to_disk`: user can disable the whole
+        #   feature; with it off, pasted images fall through to Qt's
+        #   default (a no-op for image data, which is the right answer
+        #   if the user wants to ignore image clipboards).
+        # - Verbatim region: pasting an image into code/math is almost
+        #   certainly a mistake.
+        if (
+            source.hasImage()
+            and self.ctx.get("editor.paste_image_to_disk", True)
+            and not self._cursor_in_verbatim_region()
+        ):
             self._paste_image(source)
         else:
             super().insertFromMimeData(source)
@@ -1464,21 +1546,12 @@ class EnhancedEditor(QPlainTextEdit):
         if image.isNull():
             return
 
-        # Determine save location
-        if self.file_path:
-            # Save relative to current file
-            images_dir = self.file_path.parent / "images"
-        else:
-            # Ask user where to save
-            folder = QFileDialog.getExistingDirectory(
-                self, "Select Images Folder", str(Path.home())
-            )
-            if not folder:
-                return
-            images_dir = Path(folder)
+        images_dir = self._resolve_paste_image_dir()
+        if images_dir is None:
+            return
 
-        # Create images directory if needed
-        images_dir.mkdir(exist_ok=True)
+        # Create the target directory (mkdir -p semantics).
+        images_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1487,16 +1560,58 @@ class EnhancedEditor(QPlainTextEdit):
 
         # Save the image
         if image.save(str(image_path)):
-            # Insert markdown image link
+            # Insert markdown image link. If the doc has a path, use a
+            # relative path to keep the markdown portable; otherwise
+            # absolute.
             if self.file_path:
-                # Use relative path
-                rel_path = image_path.relative_to(self.file_path.parent)
-                markdown = f"![image]({rel_path})"
+                try:
+                    rel_path = image_path.relative_to(self.file_path.parent)
+                    markdown = f"![image]({rel_path})"
+                except ValueError:
+                    # image_path isn't under the doc - use absolute.
+                    markdown = f"![image]({image_path})"
             else:
                 markdown = f"![image]({image_path})"
 
             cursor = self.textCursor()
             cursor.insertText(markdown)
+
+    def _resolve_paste_image_dir(self) -> Path | None:
+        """Decide where the next pasted image should be saved.
+
+        Resolution rules:
+          - If ``editor.paste_image_dir`` is set:
+              * Absolute path -> use as-is.
+              * Relative path -> resolved against the doc's directory if
+                the doc has been saved; otherwise prompt the user (no
+                anchor to resolve against).
+          - Else (setting empty - the historical default):
+              * If the doc has been saved -> ``<doc_dir>/images/``.
+              * Otherwise prompt the user for a folder.
+
+        Returns ``None`` to signal "give up and don't paste" (e.g. the
+        user cancelled the folder prompt).
+        """
+        configured = (self.ctx.get("editor.paste_image_dir", "") or "").strip()
+        if configured:
+            candidate = Path(configured).expanduser()
+            if candidate.is_absolute():
+                return candidate
+            if self.file_path:
+                return (self.file_path.parent / candidate).resolve()
+            # Relative path but no doc to anchor against - prompt.
+            folder = QFileDialog.getExistingDirectory(
+                self, "Select Images Folder", str(Path.home())
+            )
+            return Path(folder) if folder else None
+
+        # Setting empty - historical defaults.
+        if self.file_path:
+            return self.file_path.parent / "images"
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Images Folder", str(Path.home())
+        )
+        return Path(folder) if folder else None
 
     # ==================== WIKI LINKS ====================
 
@@ -1566,6 +1681,15 @@ class EnhancedEditor(QPlainTextEdit):
 
     def _check_wiki_link_trigger(self):
         """Check if we should show wiki link autocomplete."""
+        # Gated by `editor.auto_pairs`: the page-name dropdown is the
+        # same family of editor-magic-on-typing as auto-pair insertions
+        # - users who disable that setting expect to type raw text
+        # without surprise popups.
+        if not self.ctx.get("editor.auto_pairs", True):
+            if self.wiki_link_completer:
+                self.wiki_link_completer.hide()
+            return False
+
         # Don't pop the wiki completer when the cursor sits inside a
         # verbatim region - `[[` there is literal text, not a link.
         if self._cursor_in_verbatim_region():
@@ -1624,10 +1748,17 @@ class EnhancedEditor(QPlainTextEdit):
         bracket_pos = text_before.rfind('[[')
 
         if bracket_pos >= 0:
-            # Select from [[ to cursor
+            # If auto-pair already inserted `]]` right after the cursor
+            # (the typical state when the user types `[[`), include it
+            # in the selection so we don't leave a stray `]]` behind.
+            end_col = col
+            if block_text[col:col + 2] == "]]":
+                end_col = col + 2
+
+            # Select from [[ to cursor (or past trailing ]]).
             cursor.setPosition(cursor.block().position() + bracket_pos)
             cursor.setPosition(
-                cursor.block().position() + col,
+                cursor.block().position() + end_col,
                 QTextCursor.MoveMode.KeepAnchor
             )
             cursor.insertText(f"[[{link}]]")
