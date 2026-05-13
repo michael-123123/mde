@@ -1308,6 +1308,31 @@ class EnhancedEditor(QPlainTextEdit):
                         QTimer.singleShot(0, self._check_wiki_link_trigger)
                     return
 
+        # HTML tag completion: when the user types ``>`` and the text
+        # to the left of the cursor is an open tag (e.g. ``<div``), insert
+        # ``></tag>`` and place the cursor between. Gated by its own
+        # setting and suppressed inside verbatim regions (markdown code
+        # blocks should stay literal). The helper
+        # ``_compute_html_tag_completion`` owns the rules; this block
+        # just translates a non-None result into an editor mutation.
+        if (
+            event.text() == ">"
+            and self.ctx.get("editor.html_tag_completion", True)
+            and not self._cursor_in_verbatim_region()
+        ):
+            cursor = self.textCursor()
+            if not cursor.hasSelection():
+                tag = _compute_html_tag_completion(
+                    self.toPlainText(), cursor.position()
+                )
+                if tag:
+                    closer = f"</{tag}>"
+                    cursor.insertText(">" + closer)
+                    for _ in range(len(closer)):
+                        cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    self.setTextCursor(cursor)
+                    return
+
         # Scaffold a fenced code block when Enter is pressed on a line that
         # is exactly ``` (with optional language tag) AND we are NOT
         # already inside an existing verbatim region. Insert \n``` after
