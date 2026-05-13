@@ -529,6 +529,22 @@ class TestFencedCodeAutoComplete:
         assert editor.toPlainText() == "|||" + "||"
         assert editor.textCursor().position() == 3
 
+    def test_double_equals_respects_auto_pairs_setting(self, editor):
+        """The same `editor.auto_pairs` toggle that controls `(`/`[`/`{`
+        also gates the new `==` doubled-marker pair. With the setting
+        off, typing == leaves only `==` in the buffer."""
+        editor.ctx.set("editor.auto_pairs", False)
+        _type(editor, "==")
+        assert editor.toPlainText() == "=="
+        assert editor.textCursor().position() == 2
+
+    def test_double_pipe_respects_auto_pairs_setting(self, editor):
+        """Same for `||`."""
+        editor.ctx.set("editor.auto_pairs", False)
+        _type(editor, "||")
+        assert editor.toPlainText() == "||"
+        assert editor.textCursor().position() == 2
+
     def test_fence_scaffold_respects_auto_pairs_setting(self, editor):
         """``editor.auto_pairs`` gates the fence scaffold too: with the
         setting off, pressing Enter on a ``` line should be a plain
