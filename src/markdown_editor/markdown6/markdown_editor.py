@@ -2046,6 +2046,12 @@ class MarkdownEditor(QMainWindow):
         if not tab:
             return
 
+        # Don't open the snippet picker when the cursor is inside a verbatim
+        # region: snippets are markdown templates and would be silently
+        # rewriting literal code/math/HTML content.
+        if tab.editor._cursor_in_verbatim_region():
+            return
+
         manager = get_snippet_manager()
         snippets = manager.get_all_snippets()
 

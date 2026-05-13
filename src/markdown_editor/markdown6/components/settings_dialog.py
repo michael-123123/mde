@@ -207,6 +207,11 @@ class SettingsDialog(QDialog):
         self.auto_indent = QCheckBox("Auto-indent new lines")
         tabs_layout.addRow("", self.auto_indent)
 
+        self.auto_indent_in_verbatim = QCheckBox(
+            "Auto-indent inside code blocks and math",
+        )
+        tabs_layout.addRow("", self.auto_indent_in_verbatim)
+
         layout.addWidget(tabs_group)
 
         # Editor behavior group
@@ -594,6 +599,9 @@ class SettingsDialog(QDialog):
         self.tab_size.setValue(self.ctx.get("editor.tab_size", 4))
         self.use_spaces.setChecked(self.ctx.get("editor.use_spaces", True))
         self.auto_indent.setChecked(self.ctx.get("editor.auto_indent", True))
+        self.auto_indent_in_verbatim.setChecked(
+            self.ctx.get("editor.auto_indent_in_verbatim", True)
+        )
         self.word_wrap.setChecked(self.ctx.get("editor.word_wrap", True))
         self.auto_pairs.setChecked(self.ctx.get("editor.auto_pairs", True))
         self.highlight_current_line.setChecked(
@@ -790,6 +798,10 @@ class SettingsDialog(QDialog):
         self.ctx.set("editor.tab_size", self.tab_size.value())
         self.ctx.set("editor.use_spaces", self.use_spaces.isChecked())
         self.ctx.set("editor.auto_indent", self.auto_indent.isChecked())
+        self.ctx.set(
+            "editor.auto_indent_in_verbatim",
+            self.auto_indent_in_verbatim.isChecked(),
+        )
         self.ctx.set("editor.word_wrap", self.word_wrap.isChecked())
         self.ctx.set("editor.auto_pairs", self.auto_pairs.isChecked())
         self.ctx.set("editor.highlight_current_line", self.highlight_current_line.isChecked())

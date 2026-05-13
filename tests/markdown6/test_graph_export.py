@@ -6,6 +6,7 @@ from markdown_editor.markdown6.components.graph_export import VerticalTab
 from markdown_editor.markdown6.link_detection import (
     MD_LINK_PATTERN,
     WIKI_LINK_PATTERN,
+    find_verbatim_spans,
     mask_verbatim_regions,
 )
 
@@ -293,6 +294,97 @@ class TestVerbatimRegionMasking:
         )
         masked = mask_verbatim_regions(text)
         assert WIKI_LINK_PATTERN.findall(masked) == []
+
+
+class TestFindVerbatimSpans:
+    """Tests for ``find_verbatim_spans``.
+
+    Companion to ``mask_verbatim_regions`` for callers that need to know
+    *where* the verbatim regions are (e.g. "is the cursor inside one?")
+    rather than just having them replaced with whitespace. The mask alone
+    can't answer the cursor-inside question because mask preserves
+    whitespace (newlines, spaces) - a cursor-on-newline-inside-a-fence
+    looks identical to cursor-on-newline-in-prose.
+    """
+
+    def test_no_verbatim_returns_empty(self):
+        assert find_verbatim_spans("Hello world") == []
+
+    def test_inline_code_span(self):
+        text = "before `code` after"
+        spans = find_verbatim_spans(text)
+        assert spans == [(7, 13)]   # `code` is positions 7..12 inclusive
+        # Sanity: the slice is exactly the verbatim region (delimiters in).
+        assert text[7:13] == "`code`"
+
+    def test_fenced_code_block(self):
+        text = "```\nbody\n```"
+        spans = find_verbatim_spans(text)
+        assert len(spans) == 1
+        s, e = spans[0]
+        assert text[s:e] == "```\nbody\n```"
+
+    def test_inline_math(self):
+        text = "x = $a + b$ done"
+        spans = find_verbatim_spans(text)
+        assert len(spans) == 1
+        s, e = spans[0]
+        assert text[s:e] == "$a + b$"
+
+    def test_display_math(self):
+        text = "intro\n$$\nA + B\n$$\noutro"
+        spans = find_verbatim_spans(text)
+        assert any(text[s:e] == "$$\nA + B\n$$" for s, e in spans)
+
+    def test_html_comment(self):
+        text = "intro <!-- hidden --> outro"
+        spans = find_verbatim_spans(text)
+        assert len(spans) == 1
+        s, e = spans[0]
+        assert text[s:e] == "<!-- hidden -->"
+
+    def test_html_pre(self):
+        text = "<pre>code</pre>"
+        spans = find_verbatim_spans(text)
+        assert len(spans) == 1
+        s, e = spans[0]
+        assert text[s:e] == "<pre>code</pre>"
+
+    def test_indented_code_block(self):
+        text = "para\n\n    indented\n    line2\n\nback to prose"
+        spans = find_verbatim_spans(text)
+        # Each indented line gets its own span.
+        assert len(spans) == 2
+        for s, e in spans:
+            assert text[s:e].startswith("    ")
+
+    def test_cursor_on_whitespace_inside_span(self):
+        # The motivating case: cursor on a newline INSIDE display math.
+        # Spans must include the newline so a cursor-pos check sees it.
+        text = "$$\n\n$$"
+        spans = find_verbatim_spans(text)
+        assert len(spans) == 1
+        s, e = spans[0]
+        # Cursor at position 3 (the second \n) should be inside [s, e).
+        assert s <= 3 < e
+
+    def test_spans_returned_sorted(self):
+        text = "`a` and `b` and `c`"
+        spans = find_verbatim_spans(text)
+        assert spans == sorted(spans)
+
+    def test_overlapping_inner_pass_match_is_merged(self):
+        """Regression: later masker passes match against the whitespace
+        left by earlier passes (e.g. the indented-code pass picks up
+        4-space-indented lines that the fence pass already blanked out).
+        Without merging, that produces a phantom inner span. The result
+        should be one outer span only.
+        """
+        text = "```\nbody\n```"
+        spans = find_verbatim_spans(text)
+        assert len(spans) == 1
+        s, e = spans[0]
+        assert text[s:e] == "```\nbody\n```"
 
 
 # `_resolve_link` moved out of the dialog into

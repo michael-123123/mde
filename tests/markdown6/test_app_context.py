@@ -53,6 +53,12 @@ class TestAppContextGetSet:
         """Test getting an existing setting."""
         assert ctx.get("editor.font_size") == 11
 
+    def test_default_auto_indent_in_verbatim_is_true(self, ctx):
+        """editor.auto_indent_in_verbatim defaults to True so that
+        typing indented code inside a fenced block preserves indent.
+        """
+        assert ctx.get("editor.auto_indent_in_verbatim") is True
+
     def test_get_nonexistent_setting_returns_none(self, ctx):
         """Test getting a nonexistent setting returns None."""
         assert ctx.get("nonexistent.key") is None

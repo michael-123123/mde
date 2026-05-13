@@ -398,3 +398,310 @@ class TestFencedCodeAutoComplete:
         # No closing fence scaffolded - that ``` was inline, not an opener.
         assert "```" in editor.toPlainText()
         assert editor.toPlainText().count("```") == 1
+
+
+def _set_buffer_and_place_cursor(editor: EnhancedEditor, text: str, marker: str = "|"):
+    """Set the editor buffer to *text* with the cursor at the offset of
+    *marker*. The marker itself is stripped from the buffer.
+
+    Lets each test specify a fixture string like ``\"```\\n|\\n```\"``
+    and have the cursor placed precisely.
+    """
+    pos = text.index(marker)
+    cleaned = text[:pos] + text[pos + len(marker):]
+    editor.setPlainText(cleaned)
+    cursor = editor.textCursor()
+    cursor.setPosition(pos)
+    editor.setTextCursor(cursor)
+
+
+class TestVerbatimRegionDetector:
+    """``EnhancedEditor._cursor_in_verbatim_region()`` recognises every
+    V1–V10 verbatim region (inline code, fenced code block, indented
+    code block, inline math, display math, HTML pre/script/style, HTML
+    comment), plus an unclosed fence via the parity hybrid.
+    """
+
+    def test_outside_returns_false_empty_buffer(self, editor):
+        assert editor._cursor_in_verbatim_region() is False
+
+    def test_outside_returns_false_paragraph(self, editor):
+        _set_buffer_and_place_cursor(editor, "Hello | world")
+        assert editor._cursor_in_verbatim_region() is False
+
+    def test_inside_inline_code_span(self, editor):
+        _set_buffer_and_place_cursor(editor, "text `co|de` here")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_fenced_block(self, editor):
+        _set_buffer_and_place_cursor(editor, "```\n|\n```")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_tilde_fence(self, editor):
+        _set_buffer_and_place_cursor(editor, "~~~\n|\n~~~")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_unclosed_fence_hybrid(self, editor):
+        # No closing fence yet - the masker won't see this as verbatim, but
+        # the parity hybrid should still flag it.
+        _set_buffer_and_place_cursor(editor, "```python\n|")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_indented_code_block(self, editor):
+        _set_buffer_and_place_cursor(editor, "para\n\n    cod|e here")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_inline_math(self, editor):
+        _set_buffer_and_place_cursor(editor, "before $x| + 1$ after")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_display_math(self, editor):
+        _set_buffer_and_place_cursor(editor, "$$\n|\n$$")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_html_pre(self, editor):
+        _set_buffer_and_place_cursor(editor, "<pre>|</pre>")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_html_comment(self, editor):
+        _set_buffer_and_place_cursor(editor, "<!--|-->")
+        assert editor._cursor_in_verbatim_region() is True
+
+
+class TestAutoPairsSuppressedInVerbatim:
+    """Behaviors #1-#5 from the autocomplete inventory: every entry in
+    AUTO_PAIRS should be suppressed when the cursor is inside a verbatim
+    region. Parameterised across a fenced block, inline code span, and
+    unclosed fence (the three most common contexts).
+    """
+
+    # All entries in EnhancedEditor.AUTO_PAIRS.
+    AUTO_PAIR_CHARS = ['(', '[', '{', '"', "'", '`', '*', '_']
+
+    FIXTURES = [
+        ("```\n|\n```", "fenced backtick"),
+        ("~~~\n|\n~~~", "fenced tilde"),
+        ("```python\n|", "unclosed fence"),
+        ("text `co|de` more", "inline code span"),
+        ("intro $a|+b$ done", "inline math"),
+    ]
+
+    def test_fence_scaffold_not_inside_existing_fence(self, editor):
+        """Regression: a line that happens to look like a fence opener but
+        lives INSIDE an existing fence (e.g. the user typed ``` as content
+        on a body line) must not scaffold a new fence."""
+        # Outer fence with a stray ``` typed on the body line.
+        editor.setPlainText("```\n```\n\n```")
+        # Place cursor at the end of line 2 (the inner ``` body line).
+        cursor = editor.textCursor()
+        cursor.setPosition(7)   # end of line 2 (3 chars + \n + 3 chars)
+        editor.setTextCursor(cursor)
+        # Sanity check: detector agrees we're inside a verbatim region.
+        assert editor._cursor_in_verbatim_region() is True
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # No scaffold fired: count of ``` substrings still 3 (the original).
+        assert editor.toPlainText().count("```") == 3
+
+    def test_fence_scaffold_not_inside_existing_tilde_fence(self, editor):
+        """Regression: typing ``` inside an existing ~~~ fence must not
+        scaffold. The earlier local parity check only counted ``` markers
+        and would miss this; the verbatim-region detector counts both
+        delimiter kinds, so it catches it.
+        """
+        editor.setPlainText("~~~\n```\n\n~~~")
+        cursor = editor.textCursor()
+        cursor.setPosition(7)   # end of the inner ``` line
+        editor.setTextCursor(cursor)
+        assert editor._cursor_in_verbatim_region() is True
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # No ``` scaffold added.
+        assert editor.toPlainText().count("```") == 1
+
+    @pytest.mark.parametrize("ch", AUTO_PAIR_CHARS)
+    @pytest.mark.parametrize("fixture,label", FIXTURES)
+    def test_auto_pair_suppressed(self, editor, ch, fixture, label):
+        """Type ``ch`` inside a verbatim region. Only the single char
+        should land in the buffer - no paired close, no skip-over jump,
+        no wiki completer popup."""
+        _set_buffer_and_place_cursor(editor, fixture)
+        before = editor.toPlainText()
+        before_pos = editor.textCursor().position()
+        _press(editor, ch)
+        after = editor.toPlainText()
+        # Exactly one new char appears, at the cursor position.
+        assert after == before[:before_pos] + ch + before[before_pos:], (
+            f"{label}: expected only {ch!r} inserted; got buffer change "
+            f"{before!r} -> {after!r}"
+        )
+        # Cursor moved by exactly 1.
+        assert editor.textCursor().position() == before_pos + 1
+
+
+class TestEnterIndentListSuppressedInVerbatim:
+    """Behaviours #7-#9. List continuation and empty-list-marker strip
+    are ALWAYS suppressed inside verbatim. Auto-indent (which preserves
+    leading whitespace) is KEPT by default - typing indented code inside
+    a fence should keep its indent on Enter. A setting
+    (``editor.auto_indent_in_verbatim``) can disable that too.
+    """
+
+    def test_list_continuation_suppressed_in_fence(self, editor):
+        """``- item`` inside a fenced block should NOT auto-add ``- ``
+        on the new line - it's code, not a list."""
+        _set_buffer_and_place_cursor(editor, "```\n- item|\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # The next line is empty (not '- '). The buffer becomes
+        # "```\n- item\n|\n```" with no marker continuation.
+        assert "- item\n- " not in editor.toPlainText()
+        # Cursor is on a line that's empty (or contains only leading
+        # whitespace from auto-indent, which is fine).
+        cursor_line = editor.textCursor().block().text()
+        assert cursor_line.lstrip(" \t") == ""
+
+    def test_empty_list_strip_suppressed_in_fence(self, editor):
+        """An empty list marker ``- |`` inside a fence: Enter should NOT
+        invoke the "strip the empty marker" logic - it should treat the
+        line as plain text."""
+        _set_buffer_and_place_cursor(editor, "```\n- |\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # The '- ' on the original line must still be there.
+        assert "- " in editor.toPlainText()
+
+    def test_auto_indent_preserved_in_fence_by_default(self, editor):
+        """With default settings, indent IS preserved inside a fence."""
+        _set_buffer_and_place_cursor(editor, "```\n    code|\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # New line starts with 4 spaces.
+        cursor = editor.textCursor()
+        new_line = cursor.block().text()
+        assert new_line.startswith("    "), (
+            f"expected 4-space indent on new line; got {new_line!r}"
+        )
+
+    def test_auto_indent_suppressed_when_setting_off(self, editor):
+        """With ``editor.auto_indent_in_verbatim=False``, indent is NOT
+        preserved inside a fence - new line starts at column 0."""
+        editor.ctx.set("editor.auto_indent_in_verbatim", False)
+        _set_buffer_and_place_cursor(editor, "```\n    code|\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        new_line = editor.textCursor().block().text()
+        assert new_line == "", (
+            f"expected empty new line (no indent) with setting off; got {new_line!r}"
+        )
+
+
+class TestWikiCompleterSuppressedInVerbatim:
+    """Behaviours #10/#11: typing ``[[`` inside a verbatim region must
+    NOT pop the wiki-link completer."""
+
+    @pytest.fixture(autouse=True)
+    def _stock_available_links(self, editor):
+        """Give the editor a non-empty link list so the popup CAN show
+        absent any suppression."""
+        editor.set_available_links(["NoteOne", "NoteTwo", "Plan"])
+        yield
+
+    def test_wiki_completer_does_not_show_in_fence(self, editor):
+        _set_buffer_and_place_cursor(editor, "```\n[[N|\n```")
+        # _check_wiki_link_trigger should return False when in verbatim.
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_does_not_show_in_inline_code(self, editor):
+        _set_buffer_and_place_cursor(editor, "before `[[N|` after")
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_does_not_show_in_inline_math(self, editor):
+        _set_buffer_and_place_cursor(editor, "before $[[N|$ after")
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_still_shows_in_prose(self, editor):
+        """Sanity: outside verbatim, the completer still pops."""
+        _set_buffer_and_place_cursor(editor, "see [[N|")
+        result = editor._check_wiki_link_trigger()
+        assert result is True
+
+
+class TestSnippetExpansionSuppressedInVerbatim:
+    """Behaviour #12: typing ``/h1`` then Tab inside a fenced block
+    should NOT expand to ``# Heading``. Snippet triggers are markdown
+    templates; inside code they are literal characters."""
+
+    def test_snippet_does_not_expand_in_fence(self, editor):
+        _set_buffer_and_place_cursor(editor, "```\n/h1|\n```")
+        before = editor.toPlainText()
+        result = editor.try_expand_snippet()
+        assert result is False
+        # Buffer unchanged.
+        assert editor.toPlainText() == before
+
+    def test_snippet_does_not_expand_in_inline_code(self, editor):
+        _set_buffer_and_place_cursor(editor, "before `/h1|` after")
+        before = editor.toPlainText()
+        result = editor.try_expand_snippet()
+        assert result is False
+        assert editor.toPlainText() == before
+
+    def test_snippet_still_expands_in_prose(self, editor):
+        """Sanity: outside verbatim, /h1 still expands to a heading."""
+        _set_buffer_and_place_cursor(editor, "/h1|")
+        result = editor.try_expand_snippet()
+        assert result is True
+        # Snippet replaced the trigger.
+        assert "/h1" not in editor.toPlainText()
+
+
+class TestImagePasteSuppressedInVerbatim:
+    """Behaviour #14: pasting an image inside a verbatim region (code
+    span, fenced block, math) should NOT invoke the image-save-and-
+    insert-markdown-link path. Pasting an image into code is almost
+    certainly a mistake; we fall through to the default paste
+    (QPlainTextEdit will do nothing with image data, which is the right
+    answer)."""
+
+    def test_image_paste_skipped_in_fence(self, editor, monkeypatch):
+        from PySide6.QtCore import QMimeData
+        from PySide6.QtGui import QImage
+
+        _set_buffer_and_place_cursor(editor, "```\n|\n```")
+
+        paste_called: list = []
+        monkeypatch.setattr(
+            editor, "_paste_image", lambda src: paste_called.append(src),
+        )
+
+        # Build a QMimeData with an image (tiny 1x1 white PNG would do).
+        mime = QMimeData()
+        img = QImage(1, 1, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFF)
+        mime.setImageData(img)
+
+        editor.insertFromMimeData(mime)
+        assert paste_called == [], (
+            "_paste_image should not be called inside a fenced block"
+        )
+
+    def test_image_paste_still_works_in_prose(self, editor, monkeypatch):
+        """Sanity: outside verbatim, image paste still runs the
+        save-and-link path."""
+        from PySide6.QtCore import QMimeData
+        from PySide6.QtGui import QImage
+
+        editor.setPlainText("")
+        paste_called: list = []
+        monkeypatch.setattr(
+            editor, "_paste_image", lambda src: paste_called.append(src),
+        )
+
+        mime = QMimeData()
+        img = QImage(1, 1, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFF)
+        mime.setImageData(img)
+
+        editor.insertFromMimeData(mime)
+        assert len(paste_called) == 1
