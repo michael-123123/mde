@@ -654,3 +654,54 @@ class TestSnippetExpansionSuppressedInVerbatim:
         assert result is True
         # Snippet replaced the trigger.
         assert "/h1" not in editor.toPlainText()
+
+
+class TestImagePasteSuppressedInVerbatim:
+    """Behaviour #14: pasting an image inside a verbatim region (code
+    span, fenced block, math) should NOT invoke the image-save-and-
+    insert-markdown-link path. Pasting an image into code is almost
+    certainly a mistake; we fall through to the default paste
+    (QPlainTextEdit will do nothing with image data, which is the right
+    answer)."""
+
+    def test_image_paste_skipped_in_fence(self, editor, monkeypatch):
+        from PySide6.QtCore import QMimeData
+        from PySide6.QtGui import QImage
+
+        _set_buffer_and_place_cursor(editor, "```\n|\n```")
+
+        paste_called: list = []
+        monkeypatch.setattr(
+            editor, "_paste_image", lambda src: paste_called.append(src),
+        )
+
+        # Build a QMimeData with an image (tiny 1x1 white PNG would do).
+        mime = QMimeData()
+        img = QImage(1, 1, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFF)
+        mime.setImageData(img)
+
+        editor.insertFromMimeData(mime)
+        assert paste_called == [], (
+            "_paste_image should not be called inside a fenced block"
+        )
+
+    def test_image_paste_still_works_in_prose(self, editor, monkeypatch):
+        """Sanity: outside verbatim, image paste still runs the
+        save-and-link path."""
+        from PySide6.QtCore import QMimeData
+        from PySide6.QtGui import QImage
+
+        editor.setPlainText("")
+        paste_called: list = []
+        monkeypatch.setattr(
+            editor, "_paste_image", lambda src: paste_called.append(src),
+        )
+
+        mime = QMimeData()
+        img = QImage(1, 1, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFF)
+        mime.setImageData(img)
+
+        editor.insertFromMimeData(mime)
+        assert len(paste_called) == 1

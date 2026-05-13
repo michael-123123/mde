@@ -1448,7 +1448,12 @@ class EnhancedEditor(QPlainTextEdit):
 
     def insertFromMimeData(self, source: QMimeData):
         """Handle paste from mime data, including images."""
-        if source.hasImage():
+        # Don't run the image-save-and-insert-markdown-link path when the
+        # cursor is inside a verbatim region. Pasting an image into code/
+        # math is almost certainly a mistake; fall through to the default
+        # paste (which has no useful representation for image data and
+        # will be a no-op for our purposes - the right answer).
+        if source.hasImage() and not self._cursor_in_verbatim_region():
             self._paste_image(source)
         else:
             super().insertFromMimeData(source)
