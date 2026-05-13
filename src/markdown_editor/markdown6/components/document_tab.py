@@ -427,9 +427,6 @@ class DocumentTab(QWidget):
             self._preview_filters_installed = False
             self._custom_page.loadFinished.connect(self._install_preview_event_filters)
             self._custom_page.loadFinished.connect(self._on_preview_load_finished)
-            self._custom_page.loadFinished.connect(
-                lambda ok: logger.info(f"[DIAG] loadFinished ok={ok}")
-            )
             # Reverse direction: dragging the preview's internal scrollbar
             # emits neither a Wheel nor a KeyPress event, so the two event
             # filters above don't see it. The only Qt-level surface for
@@ -749,7 +746,6 @@ class DocumentTab(QWidget):
 
         # For QWebEngineView: use incremental JS update to preserve scroll position
         if self._use_webengine and not self._preview_needs_full_reload:
-            logger.info(f"[DIAG] incremental pending={len(pending)}")
             escaped = json.dumps(html_content)
             js = f"document.getElementById('md-content').innerHTML = {escaped};"
             js += f"document.body.dataset.totalLines = '{total_lines}';"
@@ -793,7 +789,6 @@ class DocumentTab(QWidget):
             scrollbar.setValue(scroll_pos)
         else:
             # Full reload for QWebEngineView (initial load or theme/font change)
-            logger.info(f"[DIAG] full-reload pending={len(pending)}")
             # Re-arm the injection gate: setHtml is async and the placeholder
             # DOM nodes won't exist until `loadFinished` fires. Mark the page
             # not ready BEFORE calling setHtml so any in-flight future that
@@ -856,9 +851,7 @@ class DocumentTab(QWidget):
                     return 'ok';
                 }})();
                 """
-                def _cb(result, _idx=idx, _len=len(svg_html)):
-                    logger.info(f"[DIAG] inject idx={_idx} result={result!r} svg_len={_len}")
-                self._pending_injections.append((idx, js, _cb, generation))
+                self._pending_injections.append((idx, js, generation))
                 self._try_advance_injection()
             else:
                 remaining.append((idx, future))
@@ -899,20 +892,17 @@ class DocumentTab(QWidget):
         # Drop any entries left over from a prior render generation.
         cur_gen = self._pending_render_generation
         while (self._pending_injections
-               and self._pending_injections[0][3] != cur_gen):
+               and self._pending_injections[0][2] != cur_gen):
             self._pending_injections.popleft()
         if not self._pending_injections:
             return
 
-        idx, js, cb, gen = self._pending_injections.popleft()
+        idx, js, gen = self._pending_injections.popleft()
         self._drain_in_flight = True
 
-        def wrapped(result, _cb=cb):
-            try:
-                _cb(result)
-            finally:
-                self._drain_in_flight = False
-                self._try_advance_injection()
+        def wrapped(_result):
+            self._drain_in_flight = False
+            self._try_advance_injection()
 
         self.preview.page().runJavaScript(js, wrapped)
         # Keep zoom in sync as diagrams arrive.
