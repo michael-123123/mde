@@ -5,6 +5,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-05-13
+
+### Added
+
+- **Highlight and spoiler markdown extensions.** `==text==` renders as `<mark>` (yellow highlight). `||text||` renders as a click-to-reveal spoiler with a blur effect, keyboard-accessible via Enter/Space. The editor auto-pairs `==` and `||` like the other doubled-marker emphasis pairs. (#30)
+- **Sort options for the project file browser.** A new `⇅` button in the file tree opens a menu with "Sort by Name / Modified" and "Ascending / Descending". Directories always appear above files regardless of sort order. The choice persists across sessions. (#31)
+- **HTML tag auto-completion.** Typing `>` after an open tag (e.g. `<div`) inserts the matching `</tag>` and parks the cursor between them. Skips self-closing tags (`<br/>`, `<img />`), comments, processing instructions, and already-closed pairs. Suppressed inside code fences. Toggle in Settings → Editor → Behavior. (#32)
+- **Doubled-emphasis auto-pairing.** Typing `**`, `__`, `~~`, or `$$` auto-completes the closing pair and parks the cursor between, matching how bold, italic-bold, strikethrough, and display-math nest in markdown. The depth is capped per marker so `***|***` doesn't stack into `*****|*****`. (#29)
+- **Image-paste-as-markdown toggle and configurable folder.** Settings → Editor exposes a checkbox to disable image-paste-to-disk and a folder setting. The folder can be relative (resolved against the document's parent directory) or absolute. (#29)
+- **Fenced code block scaffold on Enter.** Pressing Enter on a line that is exactly ` ``` ` (with optional language tag like ` ```python `) drops you onto an empty line between the opener and a freshly inserted closer. Typing the third backtick no longer leaves a stray fourth from over-eager pair completion. (#27)
+- **`editor.auto_indent_in_verbatim` setting.** Settings → Editor toggle for whether auto-indent fires inside verbatim regions. On by default; users who want indent-nothing-inside-code can opt out. (#28)
+- **Hover tooltips on sidebar items.** Project / Outline / Search / References tabs now show tooltips with their name and shortcut when hovered. (#23)
+
+### Changed
+
+- **Editor magic suppressed inside verbatim regions.** Inside fenced code blocks, indented code blocks, inline code, math (`$..$` and `$$..$$`), HTML `<pre>` / `<script>` / `<style>` blocks, and HTML comments, the editor now treats text as literal: no auto-pairs, no wiki-link completer, no Ctrl+J snippet picker, no Tab snippet expansion, no image-paste-as-markdown, no fence scaffold, no list continuation. Markdown source inside code blocks finally stays the way you typed it. (#28)
+- **`editor.auto_pairs` setting now also gates the fence scaffold and the wiki-link completer.** Disabling auto-pairs turns off all "magic on typing" in one place. (#29)
+- **Wiki-link picker no longer leaves `]]]]`.** Selecting a target with the auto-paired `]]` already present consumes the trailing pair instead of duplicating it. (#29)
+- **Graph export shares logic with the CLI.** The app's "Export Document Graph" and the `mde graph` CLI command now go through a single Qt-free `GraphExporter`, so behavior matches across surfaces. (#25)
+
+### Fixed
+
+- **Graph export no longer crashes on documents with brackets in code spans.** A buffer like `` `[foo]` `` previously fed the bracketed text into the filename resolver, producing `[Errno 36] File name too long`. Code spans, fenced blocks, math, HTML pre/script/style, and HTML comments are now masked before link extraction. (#24)
+- **PHP fenced-block highlighting.** ` ```php ` blocks now highlight correctly without requiring a `<?php` prefix on every block. (#26)
+
 ## [0.1.18] - 2026-05-11
 
 ### Fixed
