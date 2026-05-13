@@ -2,10 +2,14 @@
 
 from pathlib import Path
 
+import pytest
+
 from markdown_editor.markdown6.components.graph_export import (
     MD_LINK_PATTERN,
     WIKI_LINK_PATTERN,
+    GraphExportDialog,
     VerticalTab,
+    mask_verbatim_regions,
 )
 
 
@@ -96,6 +100,247 @@ class TestLinkPatterns:
         assert len(matches) == 1
         assert matches[0][0] == ""
         assert matches[0][1] == "doc.md"
+
+    def test_wiki_link_does_not_match_inside_code_spans(self):
+        """Regression: wiki/MD link detection must skip verbatim regions.
+
+        Real-world repro (from local/research-upgrades/05-gap-analysis-and-roadmap.md):
+        the file contained an inline `` `[[` `` (literal brackets in a code span)
+        and a `` `![[my.base]]` `` 92 lines later, both intentionally verbatim.
+        The link regex ignored the code-span context and stitched them into one
+        4600-char wiki target, which then exploded as ENAMETOOLONG on
+        Path(...).exists() in graph_export._resolve_link.
+
+        Verbatim regions (per CommonMark) must be masked before link detection.
+        """
+        text = (
+            "Editor autocomplete: when user types `[[`, after picking a note,\n"
+            "allow `#` to filter headings, then `^` to filter blocks.\n"
+            "many paragraphs of free-form prose with no closing brackets\n"
+            "embedding views in notes (`![[my.base]]`) - extends the module.\n"
+        )
+        masked = mask_verbatim_regions(text)
+        # No wiki link should be detected: every `[[` / `]]` lives inside a
+        # backtick code span.
+        assert WIKI_LINK_PATTERN.findall(masked) == []
+
+    def test_md_link_target_does_not_span_newlines(self):
+        """Regression: link target must not greedily consume across newlines.
+
+        A stray `](` followed many lines later by any line ending with `.md)`
+        used to be captured as one giant multi-line target. Passing that to
+        ``Path.resolve()`` / ``.exists()`` then raised ``ENAMETOOLONG`` (errno
+        36), which surfaced in the graph-export preview as
+        ``Error: [Errno 36] File name too long: ...``.
+        """
+        text = (
+            "intro line\n"
+            "Look [x](local/research-upgrades/`, "
+            "after picking a note,\n"
+            "allow `#` to filter headings,\n"
+            "...many lines later...\n"
+            "see also wikilinks.md)\n"
+            "more text\n"
+        )
+        for _text, target in MD_LINK_PATTERN.findall(text):
+            assert "\n" not in target, (
+                f"link target spans newlines (would explode on Path.resolve): {target!r}"
+            )
+
+
+class TestVerbatimRegionMasking:
+    """Tests for mask_verbatim_regions and its effect on link detection.
+
+    These mirror the cases in examples/LINKS.md.
+    """
+
+    def _has_link(self, line: str) -> bool:
+        """True iff at least one wiki or markdown link is detected in `line`."""
+        masked = mask_verbatim_regions(line)
+        return bool(WIKI_LINK_PATTERN.findall(masked) or MD_LINK_PATTERN.findall(masked))
+
+    # -- inline code spans ------------------------------------------------
+
+    def test_brackets_in_backtick_span_not_a_link(self):
+        assert not self._has_link("- not link: `[[` hello")
+        assert not self._has_link("- not link: `[[CHANGELOG.md]]`")
+        assert not self._has_link("- not link: `[[CHANGELOG]]`")
+
+    def test_md_link_in_backtick_span_not_a_link(self):
+        assert not self._has_link("- not link: `[text](broken.md)`")
+
+    def test_real_wiki_link_with_inline_code_target(self):
+        # [[`CHANGELOG`]] - brackets are real, target is monospace-displayed.
+        line = "- link: [[`CHANGELOG`]]"
+        masked = mask_verbatim_regions(line)
+        # After masking, the backtick content is whitespace, but the [[ ]] are
+        # still present so the wiki regex matches.
+        matches = WIKI_LINK_PATTERN.findall(masked)
+        assert len(matches) == 1
+
+    def test_multibacktick_span_masked(self):
+        assert not self._has_link("- not link: ``[[has`backtick`inside]]``")
+
+    # -- fenced code blocks -----------------------------------------------
+
+    def test_brackets_in_fenced_code_block_not_a_link(self):
+        text = (
+            "prose\n"
+            "\n"
+            "```\n"
+            "[[NotALinkInFence]]\n"
+            "[text](not-a-link.md)\n"
+            "```\n"
+            "\n"
+            "more prose\n"
+        )
+        masked = mask_verbatim_regions(text)
+        assert WIKI_LINK_PATTERN.findall(masked) == []
+        assert MD_LINK_PATTERN.findall(masked) == []
+
+    def test_brackets_in_tilde_fenced_block_not_a_link(self):
+        text = (
+            "~~~\n"
+            "[[NotALinkInTildeFence]]\n"
+            "[text](not-a-link.md)\n"
+            "~~~\n"
+        )
+        masked = mask_verbatim_regions(text)
+        assert WIKI_LINK_PATTERN.findall(masked) == []
+        assert MD_LINK_PATTERN.findall(masked) == []
+
+    # -- indented code blocks ---------------------------------------------
+
+    def test_brackets_in_indented_code_block_not_a_link(self):
+        text = (
+            "paragraph above\n"
+            "\n"
+            "    [[NotALinkInIndented]]\n"
+            "    [text](not-a-link.md)\n"
+            "\n"
+            "paragraph below\n"
+        )
+        masked = mask_verbatim_regions(text)
+        assert WIKI_LINK_PATTERN.findall(masked) == []
+        assert MD_LINK_PATTERN.findall(masked) == []
+
+    def test_indented_continuation_is_not_code(self):
+        # An indented line that continues a paragraph (no blank line before)
+        # is NOT a code block; link inside should still be detected.
+        text = (
+            "this paragraph keeps going\n"
+            "    [[StillALink]]\n"
+        )
+        masked = mask_verbatim_regions(text)
+        assert WIKI_LINK_PATTERN.findall(masked) == ["StillALink"]
+
+    # -- math --------------------------------------------------------------
+
+    def test_brackets_in_inline_math_not_a_link(self):
+        assert not self._has_link("- not link: $[[x_{ij}]]$")
+        assert not self._has_link("- not link: $[a](b.md)$")
+
+    def test_brackets_in_display_math_not_a_link(self):
+        text = (
+            "$$\n"
+            "[[A_{ij}]] = \\begin{bmatrix} 1 & 2 \\\\ 3 & 4 \\end{bmatrix}\n"
+            "$$\n"
+        )
+        masked = mask_verbatim_regions(text)
+        assert WIKI_LINK_PATTERN.findall(masked) == []
+
+    # -- HTML --------------------------------------------------------------
+
+    def test_brackets_in_html_pre_not_a_link(self):
+        assert not self._has_link("- not link: <pre>[[NotALink]]</pre>")
+
+    def test_brackets_in_html_script_not_a_link(self):
+        assert not self._has_link("- not link: <script>[[NotALink]]</script>")
+
+    def test_brackets_in_html_style_not_a_link(self):
+        assert not self._has_link("- not link: <style>[[NotALink]]</style>")
+
+    def test_brackets_in_html_comment_not_a_link(self):
+        assert not self._has_link("- not link: <!-- [[NotALink]] -->")
+        assert not self._has_link("- not link: <!-- [text](not-a-link.md) -->")
+
+    # -- sanity: real links still detected --------------------------------
+
+    def test_real_wiki_link_still_detected(self):
+        line = "- link: [[RealWikiLink]]"
+        masked = mask_verbatim_regions(line)
+        assert WIKI_LINK_PATTERN.findall(masked) == ["RealWikiLink"]
+
+    def test_real_wiki_link_with_display_still_detected(self):
+        line = "- link: [[RealWikiLink|With Display]]"
+        masked = mask_verbatim_regions(line)
+        assert WIKI_LINK_PATTERN.findall(masked) == ["RealWikiLink"]
+
+    def test_real_md_link_still_detected(self):
+        line = "- link: [text](real-link.md)"
+        masked = mask_verbatim_regions(line)
+        matches = MD_LINK_PATTERN.findall(masked)
+        assert len(matches) == 1
+        assert matches[0][1] == "real-link.md"
+
+    # -- the real-world bug repro ----------------------------------------
+
+    def test_real_world_repro_from_gap_analysis(self):
+        """Mirror of the 05-gap-analysis-and-roadmap.md case: a `[[` inline
+        code span 92 lines before a `![[my.base]]` inline code span got
+        stitched into one giant wiki target, exploding as ENAMETOOLONG."""
+        text = (
+            "Editor autocomplete: when user types `[[`, after picking a note,\n"
+            + "filler line with no brackets\n" * 90
+            + "embedding views in notes (`![[my.base]]`) - extends the module.\n"
+        )
+        masked = mask_verbatim_regions(text)
+        assert WIKI_LINK_PATTERN.findall(masked) == []
+
+
+class TestResolveLinkErrorHandling:
+    """Tests for _resolve_link's defensive ENAMETOOLONG handling."""
+
+    def test_resolve_link_with_oversized_target_returns_none(self, tmp_path, caplog):
+        """Regression: a pathologically long target must NOT crash the export.
+
+        If `mask_verbatim_regions` fails to strip a malformed `[[...]]` (e.g.
+        bare-prose multi-line wiki link with no surrounding backticks), the
+        captured target can be hundreds-of-chars long. Path.exists() on that
+        raises OSError(ENAMETOOLONG); _resolve_link must swallow that one
+        specific errno, log a warning (with file:line for diagnostics), and
+        return None so the rest of the export proceeds.
+        """
+        source_file = tmp_path / "src.md"
+        source_file.write_text("dummy")
+        oversize_target = "x" * 4000  # well past NAME_MAX on every filesystem
+
+        with caplog.at_level("WARNING", logger="mde.markdown_editor.markdown6.components.graph_export"):
+            # `self` is unused inside _resolve_link, so passing None is safe.
+            result = GraphExportDialog._resolve_link(
+                None, oversize_target, source_file, file_index={}, line_number=42,
+            )
+
+        assert result is None
+        msgs = [rec.getMessage() for rec in caplog.records]
+        assert any("target too long" in m for m in msgs)
+        assert any(f"{source_file}:42" in m for m in msgs)
+
+    def test_resolve_link_other_oserror_still_propagates(self, tmp_path, monkeypatch):
+        """Only ENAMETOOLONG is swallowed; other OSErrors must surface so we
+        don't silently lose unexpected failures."""
+        source_file = tmp_path / "src.md"
+        source_file.write_text("dummy")
+
+        # Monkey-patch Path.exists to raise a non-ENAMETOOLONG OSError.
+        def boom(self):
+            raise OSError(13, "Permission denied")
+        monkeypatch.setattr(Path, "exists", boom)
+
+        with pytest.raises(OSError):
+            GraphExportDialog._resolve_link(
+                None, "some-target", source_file, file_index={},
+            )
 
 
 class TestVerticalTab:

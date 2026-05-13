@@ -1499,6 +1499,7 @@ class MarkdownEditor(QMainWindow):
             from markdown_editor.markdown6.extensions.logseq import (
                 resolve_logseq_page,
             )
+
             # Recover the wiki-link target from the URL — e.g. `Foo.md`
             # or `book/fiction.md`. Strip the trailing `.md`; the
             # resolver re-adds it after trying namespace variants.

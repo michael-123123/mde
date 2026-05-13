@@ -20,7 +20,6 @@ from markdown_editor.markdown6.fenced_code_highlighter import (
     scheme_defaults,
 )
 
-
 # Fence regexes — python-markdown-compatible.
 _FENCE_OPEN_RE = re.compile(r'^(?P<fence>`{3,}|~{3,})\s*(?P<lang>[\w+#-]*)')
 

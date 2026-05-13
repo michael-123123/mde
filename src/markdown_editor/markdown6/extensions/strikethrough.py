@@ -11,7 +11,6 @@ but bounded by the closing ``~~``.
 from markdown import Extension
 from markdown.inlinepatterns import SimpleTagInlineProcessor
 
-
 # Priority 70 matches stock inline patterns like emphasis/strong (~60-110);
 # keeps strikethrough higher than link/ref so nested styling stays sane.
 _STRIKE_PATTERN = r'(~~)(.+?)~~'

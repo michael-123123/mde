@@ -11,7 +11,7 @@ break `mde export`. See local/html-export-unify.md §4 decision A.
 
 import copy as _copy
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QObject, QStandardPaths
 
@@ -24,6 +24,15 @@ from markdown_editor.markdown6.app_context.shortcut_manager import (
     DEFAULT_SHORTCUTS,
     ShortcutManager,
 )
+
+if TYPE_CHECKING:
+    # Imported at runtime inside plugin_settings() to avoid a circular import
+    # between app_context and the plugins subpackage; this guard makes the name
+    # visible to static analysers (ruff F821, mypy) for the return-type
+    # annotation.
+    from markdown_editor.markdown6.plugins.scoped_settings import (
+        PluginSettings,
+    )
 
 # Re-export subsystem classes so callers can import from app_context directly
 __all__ = [

@@ -15,9 +15,8 @@ can drag-resize.
 
 from __future__ import annotations
 
-import pytest
-from PySide6.QtWidgets import QSplitter, QWidget
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QSplitter, QWidget
 
 from markdown_editor.markdown6.app_context import init_app_context
 from markdown_editor.markdown6.components.sidebar import Sidebar

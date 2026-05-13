@@ -15,7 +15,6 @@ from PySide6.QtWidgets import QPlainTextEdit
 
 from markdown_editor.markdown6.fenced_code_highlighter import (
     DEFAULT_SCHEME_DARK,
-    DEFAULT_SCHEME_LIGHT,
     highlight_line,
     initial_state,
     scheme_defaults,
@@ -243,12 +242,12 @@ class TestFenceBackgroundIsRendered:
     def test_full_width_scheme_bg_in_fence(self, qtbot):
         from PySide6.QtCore import Qt
         from PySide6.QtGui import QImage
+
+        from markdown_editor.markdown6.app_context import init_app_context
         from markdown_editor.markdown6.enhanced_editor import EnhancedEditor
         from markdown_editor.markdown6.fenced_code_highlighter import (
-            DEFAULT_SCHEME_DARK, scheme_defaults,
-        )
-        from markdown_editor.markdown6.app_context import (
-            get_app_context, init_app_context,
+            DEFAULT_SCHEME_DARK,
+            scheme_defaults,
         )
 
         # Force dark theme so the test doesn't depend on user settings.

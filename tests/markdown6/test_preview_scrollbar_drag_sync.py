@@ -28,8 +28,8 @@ from PySide6.QtCore import QObject, QPointF
 from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
 from markdown_editor.markdown6.components.document_tab import (
-    DocumentTab,
     _REVERSE_SYNC_DEBOUNCE_MS,
+    DocumentTab,
 )
 
 

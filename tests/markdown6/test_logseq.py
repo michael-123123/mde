@@ -636,6 +636,7 @@ class TestResolveLogseqPage:
         from markdown_editor.markdown6.extensions.logseq import (
             resolve_logseq_page,
         )
+
         # Layout:
         #   tmp/pages/Foo.md
         #   tmp/pages/Bar.md  (current file)
@@ -652,6 +653,7 @@ class TestResolveLogseqPage:
         from markdown_editor.markdown6.extensions.logseq import (
             resolve_logseq_page,
         )
+
         # Layout:
         #   tmp/index.md   (current file, at root)
         #   tmp/pages/Foo.md
@@ -713,6 +715,7 @@ class TestResolveLogseqPage:
         from markdown_editor.markdown6.extensions.logseq import (
             resolve_logseq_page,
         )
+
         # Layout:
         #   tmp/Foo.md            ← should NOT be matched (above graph root)
         #   tmp/graph/pages/Bar.md ← current file

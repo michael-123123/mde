@@ -13,8 +13,8 @@ import pytest
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QFontComboBox
 
-from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
 from markdown_editor.markdown6.app_context import init_app_context
+from markdown_editor.markdown6.components.settings_dialog import SettingsDialog
 
 
 @pytest.fixture

@@ -21,23 +21,15 @@ three panels share one implementation.
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
-
 import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
 from PySide6.QtGui import QHelpEvent
-from PySide6.QtWidgets import (
-    QApplication,
-    QTreeWidget,
-    QTreeWidgetItem,
-)
+from PySide6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem
 
 from markdown_editor.markdown6.components.tooltip_helpers import (
     TruncationToolTipFilter,
     _is_index_truncated,
 )
-
 
 # ───────────────────────── ProjectPanel: rel-path tooltip ─────────────────────────
 
@@ -47,8 +39,8 @@ def test_project_panel_tooltip_is_relative_path(qtbot, tmp_path):
     """Tooltip on a file in the project is its path relative to the
     project root - regardless of whether the basename is truncated.
     """
-    from markdown_editor.markdown6.project_manager import ProjectPanel
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.project_manager import ProjectPanel
 
     docs = tmp_path / "docs"
     docs.mkdir()
@@ -71,8 +63,8 @@ def test_project_panel_tooltip_is_relative_path(qtbot, tmp_path):
 def test_project_panel_tooltip_for_root_file(qtbot, tmp_path):
     """A file directly under the project root has just its basename as
     relative path (no leading folder)."""
-    from markdown_editor.markdown6.project_manager import ProjectPanel
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.project_manager import ProjectPanel
 
     target = tmp_path / "README.md"
     target.write_text("# x")
@@ -93,8 +85,8 @@ def test_project_panel_tooltip_outside_project_falls_back(qtbot, tmp_path):
     (shouldn't happen via UI but a hardened model returns an absolute
     path rather than blowing up).
     """
-    from markdown_editor.markdown6.project_manager import ProjectPanel
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.project_manager import ProjectPanel
 
     outside = tmp_path / "outside.md"
     outside.write_text("# x")
@@ -245,8 +237,8 @@ def test_filter_ignores_empty_viewport_hover(filter_with_tree):
 
 @pytest.mark.timeout(15, method="thread")
 def test_outline_panel_installs_truncation_filter(qtbot):
-    from markdown_editor.markdown6.components.outline_panel import OutlinePanel
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.components.outline_panel import OutlinePanel
 
     panel = OutlinePanel(get_app_context())
     qtbot.addWidget(panel)
@@ -258,10 +250,10 @@ def test_outline_panel_installs_truncation_filter(qtbot):
 
 @pytest.mark.timeout(15, method="thread")
 def test_references_panel_installs_truncation_filter(qtbot):
+    from markdown_editor.markdown6.app_context import get_app_context
     from markdown_editor.markdown6.components.references_panel import (
         ReferencesPanel,
     )
-    from markdown_editor.markdown6.app_context import get_app_context
 
     panel = ReferencesPanel(get_app_context())
     qtbot.addWidget(panel)
@@ -271,8 +263,8 @@ def test_references_panel_installs_truncation_filter(qtbot):
 
 @pytest.mark.timeout(15, method="thread")
 def test_search_panel_installs_truncation_filter(qtbot):
-    from markdown_editor.markdown6.components.search_panel import SearchPanel
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.components.search_panel import SearchPanel
 
     panel = SearchPanel(get_app_context())
     qtbot.addWidget(panel)

@@ -3,7 +3,7 @@
 Generates a Graphviz graph from document links in a project.
 """
 
-import re
+import errno
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -42,16 +42,22 @@ from markdown_editor.markdown6.app_context import (
     get_project_markdown_files,
 )
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
+
+# Re-exported for backward compatibility with existing test imports; the
+# canonical home is link_detection.py.
+from markdown_editor.markdown6.link_detection import (
+    MD_LINK_PATTERN,
+    WIKI_LINK_PATTERN,
+    mask_verbatim_regions,
+)
+from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.theme import (
     StyleSheets,
     get_theme,
     get_theme_from_ctx,
 )
 
-# Link detection patterns
-WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
-MD_LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+\.md(?:own)?)\)', re.IGNORECASE)
-
+logger = getLogger(__name__)
 
 class VerticalTab(QWidget):
     """A vertical tab widget with rotated text that can be clicked to expand/collapse panels."""
@@ -161,7 +167,7 @@ class GraphExportDialog(QDialog):
 
     file_clicked = Signal(Path)
 
-    def __init__(self, project_path: Path, current_file: Path = None, ctx=None, parent=None):
+    def __init__(self, project_path: Path, current_file: Path | None = None, ctx=None, parent=None):
         super().__init__(parent)
         self.project_path = project_path
         if ctx is None:
@@ -786,10 +792,19 @@ svg {{
             except Exception:
                 continue
 
+            # Mask out verbatim regions (code spans/blocks, math, HTML <pre>/
+            # <script>/<style>, HTML comments) so the regexes below don't
+            # treat `[[`, `]]`, `](`, `.md)` characters inside those regions
+            # as link delimiters.
+            content = mask_verbatim_regions(content)
+
             # Find wiki links
             for match in WIKI_LINK_PATTERN.finditer(content):
                 target = match.group(1).strip().lower()
-                target_path = self._resolve_link(target, source_file, file_index)
+                line_no = content[:match.start()].count('\n') + 1
+                target_path = self._resolve_link(
+                    target, source_file, file_index, line_number=line_no,
+                )
                 exists = target_path is not None and target_path.exists()
                 links.append((source_file, target_path or target, exists))
                 all_targets.add(target_path or target)
@@ -942,8 +957,18 @@ svg {{
 
         return '\n'.join(lines)
 
-    def _resolve_link(self, target: str, source_file: Path, file_index: dict) -> Path | None:
-        """Resolve a wiki link target to a file path."""
+    def _resolve_link(
+        self,
+        target: str,
+        source_file: Path,
+        file_index: dict,
+        line_number: int | None = None,
+    ) -> Path | None:
+        """Resolve a wiki link target to a file path.
+
+        ``line_number`` (1-indexed, from the original file content) is used
+        only for diagnostics on the ENAMETOOLONG warning path.
+        """
         # Try direct match
         if target in file_index:
             return file_index[target]
@@ -953,10 +978,24 @@ svg {{
         if target_md.lower() in file_index:
             return file_index[target_md.lower()]
 
-        # Try relative to source
+        # Try relative to source. A pathologically long `target` (e.g. from a
+        # bare-prose multi-line `[[ ... ]]` that the masker can't strip) makes
+        # rel_path.exists() raise OSError(ENAMETOOLONG). Treat that as
+        # "unresolvable" and keep going - one malformed link shouldn't crash
+        # the whole export.
         rel_path = source_file.parent / (target + ".md")
-        if rel_path.exists():
-            return rel_path.resolve()
+        try:
+            if rel_path.exists():
+                return rel_path.resolve()
+        except OSError as e:
+            if e.errno == errno.ENAMETOOLONG:
+                loc = f"{source_file}:{line_number}" if line_number else str(source_file)
+                logger.warning(
+                    "Skipping wiki link at %s: target too long (%d chars)",
+                    loc, len(target),
+                )
+                return None
+            raise
 
         return None
 

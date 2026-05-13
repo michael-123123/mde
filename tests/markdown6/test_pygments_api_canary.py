@@ -11,7 +11,6 @@ and `local/plans/fenced-code-highlighting-pygments.md`.
 """
 
 import inspect
-import re
 
 import pytest
 from pygments.lexer import RegexLexer
