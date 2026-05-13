@@ -130,6 +130,17 @@ class ReferencesPanel(QWidget):
         # Patterns to match:
         # 1. Wiki links: [[filename]] or [[filename|display]]
         # 2. Markdown links: [text](filename.md) or [text](./path/filename.md)
+        #
+        # NOTE / TECH DEBT: md_link_pattern uses `[^)]+` for the destination,
+        # which would happily match across newlines and produce a multi-line
+        # "URL" (the same bug that surfaced as ENAMETOOLONG in graph export,
+        # see components/graph_export.py:MD_LINK_PATTERN). It is *safe by
+        # accident* here only because we apply the regex per single line below
+        # (`content.split('\n')` then `for line in lines`), so the input it
+        # sees never contains a newline. If anyone ever refactors this to run
+        # against full document content, change the destination class to
+        # `[^)\s]+` and the link-text class to `[^\]\n]*` to match the
+        # CommonMark-compliant pattern used in graph_export.py.
         wiki_pattern = re.compile(
             r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]'
         )

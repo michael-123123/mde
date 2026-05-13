@@ -750,10 +750,11 @@ class TestMathRendering:
         tab.editor.setPlainText("$E=mc^2$")
         tab.render_markdown()
 
-        # Wait for CDN script to load
-        def katex_loaded():
+        # Wait for CDN script to load. Bind `tab` via default arg so the
+        # closure isn't sensitive to the later `del tab` in this function.
+        def katex_loaded(_tab=tab):
             result = [None]
-            tab.preview.page().runJavaScript(
+            _tab.preview.page().runJavaScript(
                 "typeof katex !== 'undefined'",
                 lambda r: result.__setitem__(0, r),
             )

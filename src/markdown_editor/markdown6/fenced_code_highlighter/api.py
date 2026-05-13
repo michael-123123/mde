@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # Default colour schemes per UI theme. Consumers (editor & preview)
 # read these so both panes colour source code consistently. Values are
 # backend-neutral strings passed back to `highlight_line(..., scheme=)`

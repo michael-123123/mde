@@ -17,7 +17,6 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, QModelIndex, QObject, Qt
 from PySide6.QtWidgets import QAbstractItemView, QToolTip
 
-
 # How much horizontal space an item icon typically consumes, in pixels.
 # Used as a flat deduction when the index has a DecorationRole. Slightly
 # generous so we err on showing tooltips when the text is *almost*

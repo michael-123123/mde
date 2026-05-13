@@ -15,8 +15,6 @@ These tests stub the WebEngine `runJavaScript` and assert:
 from collections import deque
 from unittest.mock import MagicMock
 
-import pytest
-
 # We don't need a full DocumentTab — we test the queue logic in isolation
 # by instantiating a small "harness" that mirrors the relevant attributes
 # and methods. This keeps the tests fast and free of WebEngine startup.
@@ -59,7 +57,9 @@ class Harness:
     # changes, this needs to track — see test below that asserts they
     # don't drift.)
     def _try_advance_injection(self):
-        from markdown_editor.markdown6.components.document_tab import DocumentTab
+        from markdown_editor.markdown6.components.document_tab import (
+            DocumentTab,
+        )
         DocumentTab._try_advance_injection(self)
 
 
@@ -72,7 +72,10 @@ def _enqueue(harness, idx, gen=None):
     if not hasattr(harness, "fired"):
         harness.fired = []
     js = f"/* idx {idx} */ return 'ok';"
-    cb = lambda result, _i=idx: harness.fired.append((_i, result))
+
+    def cb(result, _i=idx):
+        harness.fired.append((_i, result))
+
     harness._pending_injections.append((idx, js, cb, gen))
 
 
@@ -163,9 +166,11 @@ def test_stale_generation_entries_are_dropped():
     h._try_advance_injection()   # should drain only new0 and new1
 
     assert len(h._page.in_flight) == 1
-    js, wrapped = h._page.pop_pending(); wrapped("ok")
+    js, wrapped = h._page.pop_pending()
+    wrapped("ok")
     assert len(h._page.in_flight) == 1
-    js, wrapped = h._page.pop_pending(); wrapped("ok")
+    js, wrapped = h._page.pop_pending()
+    wrapped("ok")
     # No further entries.
     assert h._page.in_flight == []
     assert h._drain_in_flight is False

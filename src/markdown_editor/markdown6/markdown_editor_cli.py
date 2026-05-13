@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import errno
 import json
 import os
 import re
@@ -18,6 +19,16 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
+
+from markdown_editor.markdown6.link_detection import (
+    MD_LINK_PATTERN,
+    WIKI_LINK_PATTERN,
+    mask_verbatim_regions,
+)
+from markdown_editor.markdown6.logger import getLogger
+
+logger = getLogger(__name__)
 
 
 def _bundled_binary_path() -> Path | None:
@@ -447,8 +458,6 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 def cmd_graph(args: argparse.Namespace) -> int:
     """Handle graph subcommand."""
-    import re
-
     if not args.project.is_dir():
         print(f"Error: Project path is not a directory: {args.project}", file=sys.stderr)
         return 1
@@ -458,17 +467,16 @@ def cmd_graph(args: argparse.Namespace) -> int:
         print(f"Error: No markdown files found in {args.project}", file=sys.stderr)
         return 1
 
-    # Patterns for link detection
-    WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
-    MD_LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+\.(?:md|mdown))\)', re.IGNORECASE)
-
     # Build file index (stem -> path)
     file_index = {f.stem.lower(): f for f in files}
 
     # Parse links
     nodes = {}  # path -> set of linked paths
     for f in files:
-        content = f.read_text(encoding="utf-8")
+        # Mask code spans / fences / math / HTML so the link regexes don't
+        # treat `[[`, `]]`, `](`, `.md)` characters inside verbatim regions as
+        # link delimiters (matches what the markdown renderer would display).
+        content = mask_verbatim_regions(f.read_text(encoding="utf-8"))
         links = set()
 
         # Wiki links
@@ -478,10 +486,24 @@ def cmd_graph(args: argparse.Namespace) -> int:
                 links.add(file_index[target])
 
         # Markdown links
-        for _, target in MD_LINK_PATTERN.findall(content):
-            target_path = (f.parent / target).resolve()
-            if target_path.exists():
-                links.add(target_path)
+        for match in MD_LINK_PATTERN.finditer(content):
+            target = match.group(2)
+            # A pathologically long target (e.g. a bare-prose multi-line link
+            # the masker can't strip) can make resolve()/exists() raise
+            # OSError(ENAMETOOLONG). Skip those rather than crash the export.
+            try:
+                target_path = (f.parent / target).resolve()
+                if target_path.exists():
+                    links.add(target_path)
+            except OSError as e:
+                if e.errno == errno.ENAMETOOLONG:
+                    line_no = content[:match.start()].count('\n') + 1
+                    logger.warning(
+                        "Skipping markdown link at %s:%d: target too long (%d chars)",
+                        f, line_no, len(target),
+                    )
+                    continue
+                raise
 
         nodes[f] = links
 
@@ -574,14 +596,17 @@ def cmd_graph(args: argparse.Namespace) -> int:
 
 def cmd_stats(args: argparse.Namespace) -> int:
     """Handle stats subcommand."""
-    import re
-
-    WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
-    MD_LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
+    # WIKI_LINK_PATTERN comes from the shared module. cmd_stats uses its own
+    # broader markdown-link pattern (no `.md` extension restriction) because
+    # it's counting *all* inline links, not just inter-document ones.
+    STATS_MD_LINK_PATTERN = re.compile(r'\[([^\]\n]*)\]\(([^)\s]+)\)')
     HEADING_PATTERN = re.compile(r'^(#{1,6})\s+(.+?)(?:\s*#*\s*)?$', re.MULTILINE)
 
     def analyze_content(content: str, filename: str = "stdin") -> dict:
         """Analyze markdown content and return stats."""
+        # `lines`, `words`, `chars` reflect the raw input; mask only for the
+        # link-detection step so verbatim `[[..]]` / `[..](..)` don't get
+        # counted as links.
         lines = content.split('\n')
         words = len(content.split())
         chars = len(content)
@@ -593,8 +618,9 @@ def cmd_stats(args: argparse.Namespace) -> int:
             text = match.group(2).strip()
             headings.append({"level": level, "text": text})
 
-        wiki_links = WIKI_LINK_PATTERN.findall(content)
-        md_links = [(text, url) for text, url in MD_LINK_PATTERN.findall(content)]
+        masked = mask_verbatim_regions(content)
+        wiki_links = WIKI_LINK_PATTERN.findall(masked)
+        md_links = [(text, url) for text, url in STATS_MD_LINK_PATTERN.findall(masked)]
 
         return {
             "file": filename,
@@ -692,11 +718,6 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Handle validate subcommand."""
-    import re
-
-    WIKI_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
-    MD_LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+\.(?:md|mdown))\)', re.IGNORECASE)
-
     # Get files to validate
     if args.project:
         if not args.project.is_dir():
@@ -724,10 +745,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
     file_index = {f.stem.lower(): f for f in files}
 
     # Validate links
-    issues = []
+    issues: list[dict[str, Any]] = []
     for f in files:
-        content = f.read_text(encoding="utf-8")
-        file_issues = []
+        # Mask code spans / fences / math / HTML so verbatim `[[..]]` / `[..](..)`
+        # aren't flagged as broken links.
+        content = mask_verbatim_regions(f.read_text(encoding="utf-8"))
+        file_issues: list[dict[str, Any]] = []
 
         # Check wiki links
         for match in WIKI_LINK_PATTERN.finditer(content):
@@ -745,9 +768,22 @@ def cmd_validate(args: argparse.Namespace) -> int:
         # Check markdown links
         for match in MD_LINK_PATTERN.finditer(content):
             target = match.group(2)
-            target_path = (f.parent / target).resolve()
-            if not target_path.exists():
-                line_num = content[:match.start()].count('\n') + 1
+            line_num = content[:match.start()].count('\n') + 1
+            # A pathologically long target (e.g. a bare-prose multi-line link
+            # the masker can't strip) can make resolve()/exists() raise
+            # OSError(ENAMETOOLONG). Skip rather than crash the whole run.
+            try:
+                target_path = (f.parent / target).resolve()
+                exists = target_path.exists()
+            except OSError as e:
+                if e.errno == errno.ENAMETOOLONG:
+                    logger.warning(
+                        "Skipping markdown link at %s:%d: target too long (%d chars)",
+                        f, line_num, len(target),
+                    )
+                    continue
+                raise
+            if not exists:
                 file_issues.append({
                     "line": line_num,
                     "type": "markdown_link",
@@ -776,9 +812,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
             print(f"✓ All {len(files)} files validated, no broken links found.")
             return 0
 
-        for file_issues in issues:
-            print(f"\n{file_issues['file']}:")
-            for issue in file_issues["issues"]:
+        for file_entry in issues:
+            print(f"\n{file_entry['file']}:")
+            for issue in file_entry["issues"]:
                 print(f"  Line {issue['line']}: {issue['message']}")
 
         total = sum(len(f["issues"]) for f in issues)

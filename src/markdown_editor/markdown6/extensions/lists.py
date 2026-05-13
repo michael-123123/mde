@@ -6,7 +6,6 @@ from markdown import Extension
 from markdown.postprocessors import Postprocessor
 from markdown.preprocessors import Preprocessor
 
-
 # Shared pattern: unordered (-, *, +) or ordered (N.) list item start.
 # Captures leading whitespace in group 1.
 _LIST_ITEM_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+\S')

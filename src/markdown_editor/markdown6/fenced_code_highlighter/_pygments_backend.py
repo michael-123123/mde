@@ -103,7 +103,6 @@ from markdown_editor.markdown6.fenced_code_highlighter.api import (
     State,
 )
 
-
 _INITIAL_OPAQUE = ("root",)
 _INITIAL_STATE = State(opaque=_INITIAL_OPAQUE)
 
