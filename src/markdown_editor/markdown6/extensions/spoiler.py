@@ -11,9 +11,10 @@ processor's regex matches ``||...||`` only when both delimiters are
 inside table cells (where a stray ``|`` would close the cell anyway).
 """
 
+from xml.etree import ElementTree as etree
+
 from markdown import Extension
 from markdown.inlinepatterns import InlineProcessor
-from xml.etree import ElementTree as etree
 
 
 class _SpoilerProcessor(InlineProcessor):
