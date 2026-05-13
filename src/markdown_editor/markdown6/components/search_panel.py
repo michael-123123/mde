@@ -101,6 +101,13 @@ class SearchPanel(QWidget):
         self.results_tree.itemClicked.connect(self._on_item_clicked)
         layout.addWidget(self.results_tree, 1)
 
+        # Tooltip on hover, but only when truncated.
+        from markdown_editor.markdown6.components.tooltip_helpers import (
+            TruncationToolTipFilter,
+        )
+        self._tooltip_filter = TruncationToolTipFilter(self.results_tree)
+        self.results_tree.viewport().installEventFilter(self._tooltip_filter)
+
         # Clear button
         clear_btn = QPushButton("Clear")
         clear_btn.clicked.connect(self._clear_search)

@@ -46,6 +46,15 @@ class OutlinePanel(QWidget):
         self.tree.setAnimated(True)
         layout.addWidget(self.tree)
 
+        # Tooltip on hover, but only when the item text is truncated -
+        # heading text IS the information, so a tooltip on every hover
+        # would be noise.
+        from markdown_editor.markdown6.components.tooltip_helpers import (
+            TruncationToolTipFilter,
+        )
+        self._tooltip_filter = TruncationToolTipFilter(self.tree)
+        self.tree.viewport().installEventFilter(self._tooltip_filter)
+
     def _apply_theme(self):
         """Apply the current theme."""
         from markdown_editor.markdown6.theme import (
