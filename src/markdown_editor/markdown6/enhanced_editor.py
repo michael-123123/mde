@@ -1110,6 +1110,20 @@ class EnhancedEditor(QPlainTextEdit):
             markdown_only_pairs = {'*', '_'}
             skip_pair = char in markdown_only_pairs and self._cursor_inside_backticks()
 
+            # Suppress auto-pair on the 3rd backtick of a fence opener.
+            # State at this keystroke: line text ends with `` and cursor is
+            # at end of line. The default auto-pair branch would insert
+            # another `` pair leaving a stray trailing backtick; instead we
+            # want just a single ` so the line becomes ``` and the user can
+            # press Enter to scaffold the fence (handled below).
+            if char == "`" and not skip_pair:
+                cursor = self.textCursor()
+                col = cursor.positionInBlock()
+                line_text = cursor.block().text()
+                if col >= 2 and line_text[col - 2:col] == "``" and col == len(line_text):
+                    cursor.insertText("`")
+                    return
+
             # Handle closing character - skip over if next char is the same
             if char and char in self.AUTO_PAIRS.values() and not skip_pair:
                 cursor = self.textCursor()

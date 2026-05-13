@@ -2,7 +2,8 @@
 
 
 import pytest
-from PySide6.QtGui import QTextCursor
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeyEvent, QTextCursor
 
 from markdown_editor.markdown6.enhanced_editor import (
     EnhancedEditor,
@@ -10,6 +11,20 @@ from markdown_editor.markdown6.enhanced_editor import (
     LineNumberArea,
     WikiLinkCompleter,
 )
+
+
+def _press(editor: EnhancedEditor, char: str, key: Qt.Key = Qt.Key.Key_unknown):
+    """Send a QKeyEvent to the editor exactly the way Qt would."""
+    ev = QKeyEvent(
+        QKeyEvent.Type.KeyPress, key, Qt.KeyboardModifier.NoModifier, char,
+    )
+    editor.keyPressEvent(ev)
+
+
+def _type(editor: EnhancedEditor, text: str):
+    """Type a sequence of characters one keystroke at a time."""
+    for ch in text:
+        _press(editor, ch)
 
 
 @pytest.fixture
@@ -270,3 +285,33 @@ class TestEnhancedEditorFormatting:
         editor.selectAll()
         editor.format_code()
         assert "`" in editor.toPlainText()
+
+
+class TestFencedCodeAutoComplete:
+    """Behavior around typing ``` (fenced code block opener).
+
+    Empirically verified (see local/tmp/repro_backticks.py):
+      - 1st backtick: auto-pair inserts ``, cursor between -> `|`
+      - 2nd backtick: skip-close jumps over the existing close, cursor at end -> ``|
+      - 3rd backtick: cursor is at end-of-buffer, skip-close fails -> auto-pair
+        adds another `` pair -> ```|`  (BUG: stray trailing backtick)
+
+    Fix: suppress auto-pair on the 3rd backtick when the cursor is at end of
+    line and the line ends with ``.
+    """
+
+    def test_two_backticks_state(self, editor):
+        """Sanity: after 2 backticks, buffer is `` with cursor at end."""
+        _type(editor, "``")
+        assert editor.toPlainText() == "``"
+        assert editor.textCursor().position() == 2
+
+    def test_three_backticks_no_trailing_close(self, editor):
+        """After typing ```, buffer should be ``` with cursor at end -
+        NOT ```` with cursor in the middle.
+        """
+        _type(editor, "```")
+        assert editor.toPlainText() == "```"
+        assert editor.textCursor().position() == 3
+
+
