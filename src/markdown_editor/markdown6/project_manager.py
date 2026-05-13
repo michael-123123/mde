@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PySide6.QtCore import QDir, Qt, Signal
+from PySide6.QtCore import QDir, QSortFilterProxyModel, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -76,6 +76,54 @@ class _ProjectFileSystemModel(QFileSystemModel):
                     pass
             return str(file_path)
         return super().data(index, role)
+
+
+class _FileBrowserSortProxy(QSortFilterProxyModel):
+    """Sort proxy between ``QFileSystemModel`` and the project tree view.
+
+    Enforces two rules on top of the underlying model:
+
+    1. Directories always appear above files - regardless of sort order.
+       ``QFileSystemModel`` has no built-in flag for this; we override
+       ``lessThan`` to enforce it.
+    2. Within each group (dirs / files), sort by either filename or
+       ``QFileInfo.lastModified()``. ``QFileInfo`` is Qt's portable
+       timestamp accessor (same call on Linux/macOS/Windows), so the
+       comparison is OS-agnostic.
+
+    Sort direction is taken from ``sortOrder()``. Because Qt automatically
+    inverts the result of ``lessThan`` under DESC, we pre-invert the
+    dir-vs-file branch so directories stay on top either way.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._sort_key = "name"  # "name" | "mtime"
+
+    def set_sort_key(self, key: str):
+        if key not in ("name", "mtime"):
+            raise ValueError(f"sort key must be 'name' or 'mtime', got {key!r}")
+        if key == self._sort_key:
+            return
+        self._sort_key = key
+        self.invalidate()
+
+    def sort_key(self) -> str:
+        return self._sort_key
+
+    def lessThan(self, left, right):
+        src = self.sourceModel()
+        li = src.fileInfo(left)
+        ri = src.fileInfo(right)
+        # Invariant 1: dirs always above files. Pre-invert under DESC so
+        # Qt's automatic flip doesn't move them below.
+        if li.isDir() != ri.isDir():
+            asc = self.sortOrder() == Qt.SortOrder.AscendingOrder
+            return li.isDir() if asc else not li.isDir()
+        # Invariant 2: within the same kind, sort by chosen key.
+        if self._sort_key == "mtime":
+            return li.lastModified() < ri.lastModified()
+        return li.fileName().lower() < ri.fileName().lower()
 
 
 class ProjectPanel(QWidget):
