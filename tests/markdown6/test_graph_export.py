@@ -2,13 +2,10 @@
 
 from pathlib import Path
 
-import pytest
-
-from markdown_editor.markdown6.components.graph_export import (
+from markdown_editor.markdown6.components.graph_export import VerticalTab
+from markdown_editor.markdown6.link_detection import (
     MD_LINK_PATTERN,
     WIKI_LINK_PATTERN,
-    GraphExportDialog,
-    VerticalTab,
     mask_verbatim_regions,
 )
 
@@ -298,49 +295,11 @@ class TestVerbatimRegionMasking:
         assert WIKI_LINK_PATTERN.findall(masked) == []
 
 
-class TestResolveLinkErrorHandling:
-    """Tests for _resolve_link's defensive ENAMETOOLONG handling."""
-
-    def test_resolve_link_with_oversized_target_returns_none(self, tmp_path, caplog):
-        """Regression: a pathologically long target must NOT crash the export.
-
-        If `mask_verbatim_regions` fails to strip a malformed `[[...]]` (e.g.
-        bare-prose multi-line wiki link with no surrounding backticks), the
-        captured target can be hundreds-of-chars long. Path.exists() on that
-        raises OSError(ENAMETOOLONG); _resolve_link must swallow that one
-        specific errno, log a warning (with file:line for diagnostics), and
-        return None so the rest of the export proceeds.
-        """
-        source_file = tmp_path / "src.md"
-        source_file.write_text("dummy")
-        oversize_target = "x" * 4000  # well past NAME_MAX on every filesystem
-
-        with caplog.at_level("WARNING", logger="mde.markdown_editor.markdown6.components.graph_export"):
-            # `self` is unused inside _resolve_link, so passing None is safe.
-            result = GraphExportDialog._resolve_link(
-                None, oversize_target, source_file, file_index={}, line_number=42,
-            )
-
-        assert result is None
-        msgs = [rec.getMessage() for rec in caplog.records]
-        assert any("target too long" in m for m in msgs)
-        assert any(f"{source_file}:42" in m for m in msgs)
-
-    def test_resolve_link_other_oserror_still_propagates(self, tmp_path, monkeypatch):
-        """Only ENAMETOOLONG is swallowed; other OSErrors must surface so we
-        don't silently lose unexpected failures."""
-        source_file = tmp_path / "src.md"
-        source_file.write_text("dummy")
-
-        # Monkey-patch Path.exists to raise a non-ENAMETOOLONG OSError.
-        def boom(self):
-            raise OSError(13, "Permission denied")
-        monkeypatch.setattr(Path, "exists", boom)
-
-        with pytest.raises(OSError):
-            GraphExportDialog._resolve_link(
-                None, "some-target", source_file, file_index={},
-            )
+# `_resolve_link` moved out of the dialog into
+# :mod:`markdown_editor.markdown6.graph_exporter`. ENAMETOOLONG handling
+# coverage now lives in
+# ``test_graph_exporter.py::TestResolveLink::test_enametoolong_returns_none_and_logs``
+# and ``test_other_oserror_propagates``.
 
 
 class TestVerticalTab:

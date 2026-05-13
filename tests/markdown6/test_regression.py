@@ -64,8 +64,10 @@ class TestGraphExportLabelSpacing:
         dialog.engine_combo.setCurrentText("dot")
 
         # Generate graph
-        files = [project / "test.md"]
-        dot_source = dialog._generate_graph(files)
+        # `_generate_graph` was lifted into GraphExporter (see graph_exporter.py).
+        # The exporter reads selected_files from the dialog's file_tree, which
+        # is populated by GraphExportDialog._load_files() during construction.
+        dot_source = dialog._exporter.generate_dot()
 
         # Should have spacing attributes
         assert "nodesep" in dot_source
@@ -88,8 +90,10 @@ class TestGraphExportLabelSpacing:
         dialog.labels_below_check.setChecked(True)
         dialog.engine_combo.setCurrentText("circo")
 
-        files = [project / "test.md"]
-        dot_source = dialog._generate_graph(files)
+        # `_generate_graph` was lifted into GraphExporter (see graph_exporter.py).
+        # The exporter reads selected_files from the dialog's file_tree, which
+        # is populated by GraphExportDialog._load_files() during construction.
+        dot_source = dialog._exporter.generate_dot()
 
         # Should have overlap removal for force-directed layouts
         assert "overlap=prism" in dot_source
@@ -110,8 +114,10 @@ class TestGraphExportLabelSpacing:
 
         dialog.labels_below_check.setChecked(False)
 
-        files = [project / "test.md"]
-        dot_source = dialog._generate_graph(files)
+        # `_generate_graph` was lifted into GraphExporter (see graph_exporter.py).
+        # The exporter reads selected_files from the dialog's file_tree, which
+        # is populated by GraphExportDialog._load_files() during construction.
+        dot_source = dialog._exporter.generate_dot()
 
         # Should NOT have the extra spacing attributes
         assert "overlap=prism" not in dot_source
@@ -340,7 +346,7 @@ class TestWikiLinkPattern:
 
     def test_wiki_link_with_pipe_alias(self):
         """Test that wiki links with aliases are detected correctly."""
-        from markdown_editor.markdown6.components.graph_export import (
+        from markdown_editor.markdown6.link_detection import (
             WIKI_LINK_PATTERN,
         )
 
@@ -352,7 +358,7 @@ class TestWikiLinkPattern:
 
     def test_markdown_link_only_md_files(self):
         """Test that only .md/.mdown files are matched."""
-        from markdown_editor.markdown6.components.graph_export import (
+        from markdown_editor.markdown6.link_detection import (
             MD_LINK_PATTERN,
         )
 
