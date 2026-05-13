@@ -346,9 +346,7 @@ class TestWikiLinkPattern:
 
     def test_wiki_link_with_pipe_alias(self):
         """Test that wiki links with aliases are detected correctly."""
-        from markdown_editor.markdown6.link_detection import (
-            WIKI_LINK_PATTERN,
-        )
+        from markdown_editor.markdown6.link_detection import WIKI_LINK_PATTERN
 
         text = "See [[Document Name|display text]] for more."
         matches = WIKI_LINK_PATTERN.findall(text)
@@ -358,9 +356,7 @@ class TestWikiLinkPattern:
 
     def test_markdown_link_only_md_files(self):
         """Test that only .md/.mdown files are matched."""
-        from markdown_editor.markdown6.link_detection import (
-            MD_LINK_PATTERN,
-        )
+        from markdown_editor.markdown6.link_detection import MD_LINK_PATTERN
 
         text = "[doc](file.md) [img](image.png) [pdf](doc.pdf)"
         matches = MD_LINK_PATTERN.findall(text)

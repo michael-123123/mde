@@ -48,6 +48,11 @@ from markdown_editor.markdown6.syntax_highlighter import (
 )
 from markdown_editor.markdown6.theme import StyleSheets, get_theme
 
+# A line that is exactly ``` (optionally followed by a language tag) and
+# nothing else - i.e. a fenced-code-block opener. Used to decide whether
+# pressing Enter on the current line should scaffold a closing fence.
+_FENCE_OPENER_RE = re.compile(r"^```\w*$")
+
 logger = getLogger(__name__)
 
 
@@ -1110,6 +1115,20 @@ class EnhancedEditor(QPlainTextEdit):
             markdown_only_pairs = {'*', '_'}
             skip_pair = char in markdown_only_pairs and self._cursor_inside_backticks()
 
+            # Suppress auto-pair on the 3rd backtick of a fence opener.
+            # State at this keystroke: line text ends with `` and cursor is
+            # at end of line. The default auto-pair branch would insert
+            # another `` pair leaving a stray trailing backtick; instead we
+            # want just a single ` so the line becomes ``` and the user can
+            # press Enter to scaffold the fence (handled below).
+            if char == "`" and not skip_pair:
+                cursor = self.textCursor()
+                col = cursor.positionInBlock()
+                line_text = cursor.block().text()
+                if col >= 2 and line_text[col - 2:col] == "``" and col == len(line_text):
+                    cursor.insertText("`")
+                    return
+
             # Handle closing character - skip over if next char is the same
             if char and char in self.AUTO_PAIRS.values() and not skip_pair:
                 cursor = self.textCursor()
@@ -1147,6 +1166,35 @@ class EnhancedEditor(QPlainTextEdit):
                     # Check for wiki link trigger after [[
                     if char == '[':
                         QTimer.singleShot(0, self._check_wiki_link_trigger)
+                    return
+
+        # Scaffold a fenced code block when Enter is pressed on a line that
+        # is exactly ``` (with optional language tag) AND that line is a
+        # fence opener (not a closer). Insert \n``` after the cursor so the
+        # user lands on an empty middle line with a closing fence below.
+        #
+        # Opener vs closer disambiguation: walk up from the current line
+        # and count fence-marker lines. Even count -> we're outside any
+        # fence, this line opens a new one -> scaffold. Odd count -> we're
+        # inside a fence, this line closes it -> don't scaffold (otherwise
+        # pressing Enter on a closing ``` would add another fence below).
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            cursor = self.textCursor()
+            block = cursor.block()
+            block_text = block.text()
+            col = cursor.positionInBlock()
+            if col == len(block_text) and _FENCE_OPENER_RE.match(block_text):
+                fences_above = 0
+                prev = block.previous()
+                while prev.isValid():
+                    if _FENCE_OPENER_RE.match(prev.text()):
+                        fences_above += 1
+                    prev = prev.previous()
+                if fences_above % 2 == 0:
+                    cursor.insertText("\n\n```")
+                    cursor.movePosition(QTextCursor.MoveOperation.Up)
+                    cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
+                    self.setTextCursor(cursor)
                     return
 
         # Auto-indent on Enter
