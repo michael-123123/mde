@@ -82,6 +82,84 @@ _LEVEL_NAMES = {
 }
 
 
+_external_capture_started = False
+
+
+def capture_external_stderr() -> None:
+    """Redirect OS-level ``fd 2`` writes through Python's logger.
+
+    Native code embedded in mde (Chromium inside QtWebEngine, NSS,
+    parts of Qt itself) writes directly to file descriptor 2, bypassing
+    Python's ``sys.stderr``. The most common offender is::
+
+        [ERROR:nss_util.cc(357)] After loading Root Certs, loaded==false
+        : NSS error code: -8018
+
+    That line is harmless (mde only loads local HTML in the preview,
+    so root certs are never consulted) but it leaks to the terminal
+    regardless of our ``--log-level`` setting. This function rewires
+    fd 2 through a pipe, reads each line in a daemon thread, and
+    re-emits via the ``mde.external`` logger at DEBUG. Default INFO
+    level hides it; ``--log-level=debug`` surfaces it.
+
+    Must be called BEFORE ``setup()`` so the StreamHandler attached
+    to the ``mde`` root inherits the saved (still-real) stderr - if
+    we redirected after, our own log lines would loop back into the
+    capture pipe.
+
+    Idempotent: re-calls are no-ops.
+
+    Caveats:
+    - Windows: ``os.dup2`` works on Windows but the GUI launcher has
+      no console; this is a no-op there since fd 2 is already a sink.
+    - The daemon thread blocks on ``read()``; on shutdown the GIL is
+      released and the thread is torn down with the interpreter.
+    """
+    global _external_capture_started
+    if _external_capture_started:
+        return
+    if sys.platform == "win32":
+        # GUI launches on Windows have no console; native stderr already
+        # vanishes. Skip the rewire rather than introduce a flaky pipe.
+        _external_capture_started = True
+        return
+
+    try:
+        saved_stderr_fd = os.dup(2)
+        read_fd, write_fd = os.pipe()
+        os.dup2(write_fd, 2)
+        os.close(write_fd)
+    except OSError:
+        # If the OS refuses (sandbox, etc.), silently keep the noisy
+        # stderr — better than crashing the launcher.
+        return
+
+    # Point Python's sys.stderr at the saved fd so the logger's
+    # StreamHandler still reaches the terminal. If we left sys.stderr
+    # pointing at the redirected fd 2, every log line would feed back
+    # into the capture pipe and recurse.
+    import io
+    sys.stderr = io.TextIOWrapper(
+        os.fdopen(saved_stderr_fd, "wb", buffering=0),
+        encoding="utf-8",
+        write_through=True,
+    )
+
+    external_logger = logging.getLogger(f"{ROOT}.external")
+
+    def _reader():
+        with os.fdopen(read_fd, "r", buffering=1, errors="replace") as pipe:
+            for line in pipe:
+                line = line.rstrip()
+                if line:
+                    external_logger.debug("%s", line)
+
+    import threading
+    t = threading.Thread(target=_reader, daemon=True, name="mde-external-stderr")
+    t.start()
+    _external_capture_started = True
+
+
 def resolve_level(cli_value: str | None = None, default: int = logging.INFO) -> int:
     """Pick a log level from (CLI flag → ``MDE_LOG_LEVEL`` env var → default).
 

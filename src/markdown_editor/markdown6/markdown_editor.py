@@ -2109,9 +2109,14 @@ def main():
     import logging
 
     from markdown_editor.markdown6.logger import (
+        capture_external_stderr,
         resolve_level,
         setup as setup_logging,
     )
+    # Redirect native stderr (Chromium / NSS / Qt) through our logger
+    # BEFORE setup_logging so our StreamHandler inherits the saved
+    # stderr fd instead of the capture pipe.
+    capture_external_stderr()
     # This entry point has no CLI args of its own - level comes from
     # MDE_LOG_LEVEL or the default. The real CLI passes the parsed
     # --log-level via the cli main() in markdown_editor_cli.py.

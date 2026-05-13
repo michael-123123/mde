@@ -1391,9 +1391,14 @@ def cmd_gui(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Main entry point."""
     from markdown_editor.markdown6.logger import (
+        capture_external_stderr,
         resolve_level,
         setup as setup_logging,
     )
+    # Redirect native stderr (Chromium / NSS / Qt) through our logger
+    # BEFORE setup_logging so our StreamHandler inherits the saved
+    # stderr fd instead of the capture pipe.
+    capture_external_stderr()
 
     if argv is None:
         argv = sys.argv[1:]
