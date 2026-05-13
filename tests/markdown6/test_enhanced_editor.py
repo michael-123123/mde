@@ -1026,3 +1026,79 @@ class TestImagePasteSettings:
         expected_dir = tmp_path / "assets" / "img"
         images = list(expected_dir.glob("image_*.png"))
         assert len(images) == 1
+
+
+class TestHTMLTagCompletionKeystrokes:
+    """End-to-end through ``keyPressEvent``: typing ``>`` after an open
+    tag inserts the closer and parks the cursor between. Pins the
+    integration of the helper, the setting gate, and the verbatim guard.
+    """
+
+    def test_typing_gt_after_open_tag_inserts_closer(self, editor):
+        editor.setPlainText("<div")
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, ">")
+        assert editor.toPlainText() == "<div></div>"
+        # Cursor parked between the open '>' and the closer.
+        assert editor.textCursor().position() == len("<div>")
+
+    def test_typing_gt_with_attributes(self, editor):
+        editor.setPlainText('<a href="x"')
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, ">")
+        assert editor.toPlainText() == '<a href="x"></a>'
+
+    def test_self_closing_skipped(self, editor):
+        editor.setPlainText("<br/")
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, ">")
+        assert editor.toPlainText() == "<br/>"
+
+    def test_self_closing_with_space_skipped(self, editor):
+        editor.setPlainText("<br /")
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, ">")
+        assert editor.toPlainText() == "<br />"
+
+    def test_comment_opener_skipped(self, editor):
+        editor.setPlainText("<!--")
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        editor.setTextCursor(cursor)
+        _press(editor, ">")
+        assert editor.toPlainText() == "<!-->"
+
+    def test_already_closed_pair_skipped(self, editor):
+        """Cursor sits between ``<div`` and an existing ``</div>``;
+        typing ``>`` must not insert a second closer."""
+        _set_buffer_and_place_cursor(editor, "<div|</div>")
+        _press(editor, ">")
+        assert editor.toPlainText() == "<div></div>"
+
+    def test_completion_disabled_by_setting(self, editor):
+        editor.ctx.set("editor.html_tag_completion", False)
+        try:
+            editor.setPlainText("<div")
+            cursor = editor.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            editor.setTextCursor(cursor)
+            _press(editor, ">")
+            assert editor.toPlainText() == "<div>"
+        finally:
+            editor.ctx.set("editor.html_tag_completion", True)
+
+    def test_inside_fenced_code_block_skipped(self, editor):
+        """Inside a fenced code block the user expects literal text -
+        no auto-closing tags."""
+        _set_buffer_and_place_cursor(editor, "```\n<div|\n```")
+        _press(editor, ">")
+        # Just the '>' inserted, no closer.
+        assert editor.toPlainText() == "```\n<div>\n```"
