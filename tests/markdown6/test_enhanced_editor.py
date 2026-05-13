@@ -374,6 +374,57 @@ class TestFencedCodeAutoComplete:
         assert editor.toPlainText() == "```"
         assert editor.textCursor().position() == 3
 
+    def test_double_asterisk_opens_bold_pair(self, editor):
+        """Typing ** should produce '**|**' (cursor between two pairs)
+        - the markdown bold opener. The default skip-close would just
+        jump past the auto-paired close after the 1st *, giving '**|'
+        with no second pair, which loses the user's intent.
+        """
+        _type(editor, "**")
+        assert editor.toPlainText() == "****"
+        assert editor.textCursor().position() == 2
+
+    def test_double_underscore_opens_bold_pair(self, editor):
+        """Same as **|** but with the __underscore__ bold flavour."""
+        _type(editor, "__")
+        assert editor.toPlainText() == "____"
+        assert editor.textCursor().position() == 2
+
+    def test_double_tilde_opens_strikethrough_pair(self, editor):
+        """Typing ~~ should produce '~~|~~' (strikethrough opener).
+
+        `~` isn't in AUTO_PAIRS - single `~` has no markdown meaning so
+        we don't auto-pair it. But typing it twice opens the doubled
+        pair (State B path).
+        """
+        _type(editor, "~~")
+        assert editor.toPlainText() == "~~~~"
+        assert editor.textCursor().position() == 2
+
+    def test_single_tilde_is_just_one_char(self, editor):
+        """Sanity: typing a single ~ doesn't auto-pair (only the
+        doubled form does)."""
+        _type(editor, "~")
+        assert editor.toPlainText() == "~"
+        assert editor.textCursor().position() == 1
+
+    def test_double_dollar_opens_display_math_pair(self, editor):
+        """Typing $$ should produce '$$|$$' (display math opener).
+
+        `$` isn't in AUTO_PAIRS - single `$` is inline math and we'd
+        break common "I have $5" prose if we auto-paired it. But the
+        doubled form opens a pair (State B path)."""
+        _type(editor, "$$")
+        assert editor.toPlainText() == "$$$$"
+        assert editor.textCursor().position() == 2
+
+    def test_single_dollar_is_just_one_char(self, editor):
+        """Sanity: typing a single $ doesn't auto-pair - prose like
+        'I have $5' must not become 'I have $5$'."""
+        _type(editor, "$")
+        assert editor.toPlainText() == "$"
+        assert editor.textCursor().position() == 1
+
     # ── Sub-fix 2: Enter scaffolds a fenced block ──
 
     def test_enter_after_triple_backtick_scaffolds_fence(self, editor):

@@ -1143,6 +1143,50 @@ class EnhancedEditor(QPlainTextEdit):
                     cursor.insertText("`")
                     return
 
+            # Doubled-emphasis markers: typing the same emphasis char twice
+            # opens a doubled pair (the markdown bold / strikethrough /
+            # display-math typing pattern). Two reachable starting states
+            # because some markers auto-pair singly and others don't:
+            #
+            #   State A — `char|char` (typing 2nd char inside an
+            #     auto-paired single). Reached for `*` and `_` because
+            #     they're in AUTO_PAIRS. Insert `char*2` on top and move
+            #     left 1 -> final `**|**` / `__|__`.
+            #
+            #   State B — `char|` (typed once, no auto-pair, end-of-line or
+            #     next char differs). Reached for `~` and `$` because
+            #     neither is in AUTO_PAIRS - single `~` has no markdown
+            #     meaning and single `$` is inline math which we don't
+            #     auto-pair (would break common "I have $5" text). Insert
+            #     `char*3` (the typed char + the close pair) and move left
+            #     2 -> final `~~|~~` / `$$|$$`.
+            if char in ('*', '_', '~', '$') and not skip_pair:
+                cursor = self.textCursor()
+                col = cursor.positionInBlock()
+                line_text = cursor.block().text()
+                # State A: prev char and next char both match.
+                if (
+                    col >= 1
+                    and col < len(line_text)
+                    and line_text[col - 1] == char
+                    and line_text[col] == char
+                ):
+                    cursor.insertText(char + char)
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    self.setTextCursor(cursor)
+                    return
+                # State B: prev char matches, no matching next char.
+                if (
+                    col >= 1
+                    and line_text[col - 1] == char
+                    and (col >= len(line_text) or line_text[col] != char)
+                ):
+                    cursor.insertText(char + char + char)
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    self.setTextCursor(cursor)
+                    return
+
             # Handle closing character - skip over if next char is the same
             if char and char in self.AUTO_PAIRS.values() and not skip_pair:
                 cursor = self.textCursor()
