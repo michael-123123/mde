@@ -28,6 +28,12 @@ DEFAULT_SETTINGS = {
     "editor.highlight_current_line": True,
     "editor.show_whitespace": False,
     "editor.auto_pairs": True,
+    # Insert ``</tag>`` and place the cursor between when the user types
+    # ``>`` after an open HTML tag (e.g. ``<div``). Separate from
+    # ``editor.auto_pairs`` so users who like bracket pairing can disable
+    # tag completion independently. Skips self-closing tags, comments,
+    # already-closed pairs, and verbatim regions.
+    "editor.html_tag_completion": True,
     "editor.auto_indent": True,
     "editor.auto_indent_in_verbatim": True,
     "editor.paste_image_to_disk": True,

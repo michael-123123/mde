@@ -226,6 +226,9 @@ class SettingsDialog(QDialog):
         self.auto_pairs = QCheckBox("Auto-close brackets and quotes")
         behavior_layout.addRow("", self.auto_pairs)
 
+        self.html_tag_completion = QCheckBox("Auto-close HTML tags (<tag> -> <tag></tag>)")
+        behavior_layout.addRow("", self.html_tag_completion)
+
         self.highlight_current_line = QCheckBox("Highlight current line")
         behavior_layout.addRow("", self.highlight_current_line)
 
@@ -645,6 +648,9 @@ class SettingsDialog(QDialog):
         )
         self.word_wrap.setChecked(self.ctx.get("editor.word_wrap", True))
         self.auto_pairs.setChecked(self.ctx.get("editor.auto_pairs", True))
+        self.html_tag_completion.setChecked(
+            self.ctx.get("editor.html_tag_completion", True)
+        )
         self.highlight_current_line.setChecked(
             self.ctx.get("editor.highlight_current_line", True)
         )
@@ -861,6 +867,10 @@ class SettingsDialog(QDialog):
         )
         self.ctx.set("editor.word_wrap", self.word_wrap.isChecked())
         self.ctx.set("editor.auto_pairs", self.auto_pairs.isChecked())
+        self.ctx.set(
+            "editor.html_tag_completion",
+            self.html_tag_completion.isChecked(),
+        )
         self.ctx.set("editor.highlight_current_line", self.highlight_current_line.isChecked())
         self.ctx.set("editor.show_whitespace", self.show_whitespace.isChecked())
         self.ctx.set("editor.auto_save", self.auto_save.isChecked())

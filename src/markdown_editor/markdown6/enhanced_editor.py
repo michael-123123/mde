@@ -54,6 +54,60 @@ from markdown_editor.markdown6.theme import StyleSheets, get_theme
 # pressing Enter on the current line should scaffold a closing fence.
 _FENCE_OPENER_RE = re.compile(r"^```\w*$")
 
+# HTML tag-name shape used by ``_compute_html_tag_completion``. Matches
+# the start of any reasonable tag: letter, then word chars / dash / colon
+# (the colon supports namespaced names like ``svg:rect``; the dash
+# supports custom elements like ``my-button``).
+_HTML_TAG_NAME_RE = re.compile(r"([A-Za-z][\w:-]*)")
+
+
+def _compute_html_tag_completion(text: str, cursor_pos: int) -> str | None:
+    """Return the tag name to auto-close, or ``None`` to skip completion.
+
+    Called when the user is about to type ``>``. ``text`` is the buffer
+    contents BEFORE that keystroke; ``cursor_pos`` is where ``>`` is
+    about to land. A non-``None`` return value tells the caller to
+    insert ``></tag>`` and place the cursor between them.
+
+    Skip rules (each returns ``None``):
+
+    1. No ``<`` appears in the text before the cursor.
+    2. A ``>`` already sits between the last ``<`` and the cursor - we
+       are past a previous tag, not closing the one we just opened.
+    3. Content between ``<`` and cursor is empty / whitespace-only.
+    4. Trimmed content ends with ``/`` (self-closing: ``<br/>``,
+       ``<img ... />``).
+    5. First non-whitespace char inside is ``/``, ``!``, or ``?``
+       (closing tag / comment or doctype / processing instruction).
+    6. Content doesn't begin with a valid tag-name shape
+       (``[A-Za-z][\\w:-]*``).
+    7. Text after the cursor already starts with the matching closer
+       (``</tag>``), possibly with leading whitespace - avoids
+       double-closing when the user is re-typing into an existing pair.
+    """
+    pre = text[:cursor_pos]
+    last_lt = pre.rfind("<")
+    if last_lt == -1:
+        return None
+    if ">" in pre[last_lt:]:
+        return None
+    inside = pre[last_lt + 1:]
+    stripped = inside.rstrip()
+    if not stripped:
+        return None
+    if stripped.endswith("/"):
+        return None
+    if stripped[0] in "/!?":
+        return None
+    m = _HTML_TAG_NAME_RE.match(stripped)
+    if not m:
+        return None
+    tag = m.group(1)
+    post = text[cursor_pos:]
+    if post.lstrip().startswith(f"</{tag}>"):
+        return None
+    return tag
+
 # Either fence delimiter, including any language tag - matches both
 # ``` openers/closers AND ~~~ openers/closers. Used by the parity hybrid
 # in `_cursor_in_verbatim_region` to detect unclosed fences.
@@ -1252,6 +1306,31 @@ class EnhancedEditor(QPlainTextEdit):
                     # Check for wiki link trigger after [[
                     if char == '[':
                         QTimer.singleShot(0, self._check_wiki_link_trigger)
+                    return
+
+        # HTML tag completion: when the user types ``>`` and the text
+        # to the left of the cursor is an open tag (e.g. ``<div``), insert
+        # ``></tag>`` and place the cursor between. Gated by its own
+        # setting and suppressed inside verbatim regions (markdown code
+        # blocks should stay literal). The helper
+        # ``_compute_html_tag_completion`` owns the rules; this block
+        # just translates a non-None result into an editor mutation.
+        if (
+            event.text() == ">"
+            and self.ctx.get("editor.html_tag_completion", True)
+            and not self._cursor_in_verbatim_region()
+        ):
+            cursor = self.textCursor()
+            if not cursor.hasSelection():
+                tag = _compute_html_tag_completion(
+                    self.toPlainText(), cursor.position()
+                )
+                if tag:
+                    closer = f"</{tag}>"
+                    cursor.insertText(">" + closer)
+                    for _ in range(len(closer)):
+                        cursor.movePosition(QTextCursor.MoveOperation.Left)
+                    self.setTextCursor(cursor)
                     return
 
         # Scaffold a fenced code block when Enter is pressed on a line that
