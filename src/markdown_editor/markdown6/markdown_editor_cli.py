@@ -21,6 +21,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from markdown_editor.markdown6.graph_exporter import (
+    BrokenHandling,
+    GraphExporter,
+    GraphExporterConfig,
+    OutputFormat,
+)
 from markdown_editor.markdown6.link_detection import (
     MD_LINK_PATTERN,
     WIKI_LINK_PATTERN,
@@ -29,6 +35,54 @@ from markdown_editor.markdown6.link_detection import (
 from markdown_editor.markdown6.logger import getLogger
 
 logger = getLogger(__name__)
+
+
+class CliGraphExporterConfig(GraphExporterConfig):
+    """``GraphExporterConfig`` reading from an argparse ``Namespace``.
+
+    The file list is built outside (so ``--no-orphans`` filtering can run
+    before construction) and passed in explicitly.
+    """
+
+    def __init__(self, args: argparse.Namespace, files: list[Path]):
+        self._args = args
+        self._files = files
+
+    @property
+    def project_path(self) -> Path:
+        return self._args.project
+
+    @property
+    def selected_files(self) -> list[Path]:
+        return self._files
+
+    @property
+    def is_directed(self) -> bool:
+        return not self._args.undirected
+
+    @property
+    def engine(self) -> str:
+        return self._args.engine
+
+    @property
+    def label_template(self) -> str:
+        return self._args.labels
+
+    @property
+    def labels_below(self) -> bool:
+        return self._args.labels_below
+
+    @property
+    def broken_handling(self) -> BrokenHandling:
+        return self._args.broken
+
+    @property
+    def dark_mode(self) -> bool:
+        return self._args.dark
+
+    @property
+    def output_format(self) -> OutputFormat:
+        return self._args.format
 
 
 def _bundled_binary_path() -> Path | None:
@@ -233,7 +287,38 @@ Examples:
     graph_parser.add_argument(
         "--labels-below",
         action="store_true",
-        help="Place labels below nodes",
+        help="Place labels below nodes (uses node-as-point style)",
+    )
+    graph_parser.add_argument(
+        "--labels",
+        default="{stem}",
+        metavar="TEMPLATE",
+        help=(
+            "Node-label template. Available fields: {stem}, {filename}, "
+            "{relative_path}, {relative_path_no_ext}. "
+            "Default: {stem}"
+        ),
+    )
+    graph_parser.add_argument(
+        "--undirected",
+        action="store_true",
+        help="Produce an undirected graph (default: directed)",
+    )
+    graph_parser.add_argument(
+        "--broken",
+        choices=["red", "exclude", "warning", "normal"],
+        default="red",
+        help=(
+            "How to render links to non-existent files: "
+            "red (dashed-red node + edge), exclude (omit entirely), "
+            "warning (orange node with '(missing)' suffix), "
+            "normal (regular node + edge). Default: red"
+        ),
+    )
+    graph_parser.add_argument(
+        "--dark",
+        action="store_true",
+        help="Apply dark-mode styling to the rendered SVG",
     )
     graph_parser.add_argument(
         "--no-orphans",
@@ -467,131 +552,70 @@ def cmd_graph(args: argparse.Namespace) -> int:
         print(f"Error: No markdown files found in {args.project}", file=sys.stderr)
         return 1
 
-    # Build file index (stem -> path)
-    file_index = {f.stem.lower(): f for f in files}
-
-    # Parse links
-    nodes = {}  # path -> set of linked paths
-    for f in files:
-        # Mask code spans / fences / math / HTML so the link regexes don't
-        # treat `[[`, `]]`, `](`, `.md)` characters inside verbatim regions as
-        # link delimiters (matches what the markdown renderer would display).
-        content = mask_verbatim_regions(f.read_text(encoding="utf-8"))
-        links = set()
-
-        # Wiki links
-        for match in WIKI_LINK_PATTERN.findall(content):
-            target = match.lower()
-            if target in file_index:
-                links.add(file_index[target])
-
-        # Markdown links
-        for match in MD_LINK_PATTERN.finditer(content):
-            target = match.group(2)
-            # A pathologically long target (e.g. a bare-prose multi-line link
-            # the masker can't strip) can make resolve()/exists() raise
-            # OSError(ENAMETOOLONG). Skip those rather than crash the export.
-            try:
-                target_path = (f.parent / target).resolve()
-                if target_path.exists():
-                    links.add(target_path)
-            except OSError as e:
-                if e.errno == errno.ENAMETOOLONG:
-                    line_no = content[:match.start()].count('\n') + 1
-                    logger.warning(
-                        "Skipping markdown link at %s:%d: target too long (%d chars)",
-                        f, line_no, len(target),
-                    )
-                    continue
-                raise
-
-        nodes[f] = links
-
-    # Filter orphans if requested
+    # Filter orphans pre-export, while we still have the raw file list.
+    # The exporter's selected_files is what shows up as nodes; pruning here
+    # is the simplest place to do it.
     if args.no_orphans:
-        linked_files = set()
-        for f, links in nodes.items():
-            if links:
-                linked_files.add(f)
-                linked_files.update(links)
-        nodes = {f: links for f, links in nodes.items() if f in linked_files}
+        files = _filter_orphan_files(files)
 
-    # Generate DOT source
-    graph_type = "digraph"
-    edge_op = "->"
+    exporter = GraphExporter(CliGraphExporterConfig(args, files))
 
-    lines = [f'{graph_type} G {{']
-    lines.append(f'    layout={args.engine};')
-    lines.append('    bgcolor="transparent";')
-
-    if args.labels_below:
-        lines.append('    forcelabels=true;')
-        lines.append('    node [shape=point, width=0.15, height=0.15];')
-        lines.append('    graph [fontsize=10];')
-        if args.engine == "dot":
-            lines.append('    nodesep=0.8;')
-            lines.append('    ranksep=1.0;')
-        else:
-            lines.append('    overlap=prism;')
-            lines.append('    sep="+20,20";')
-    else:
-        lines.append('    node [shape=box, style=rounded];')
-
-    # Create node IDs
-    node_ids = {f: f"n{i}" for i, f in enumerate(nodes.keys())}
-
-    # Add nodes
-    for f, node_id in node_ids.items():
-        label = f.stem
-        if args.labels_below:
-            lines.append(f'    {node_id} [xlabel="{label}"];')
-        else:
-            lines.append(f'    {node_id} [label="{label}"];')
-
-    # Add edges
-    for f, links in nodes.items():
-        src_id = node_ids[f]
-        for link in links:
-            if link in node_ids:
-                dst_id = node_ids[link]
-                lines.append(f'    {src_id} {edge_op} {dst_id};')
-
-    lines.append('}')
-    dot_source = '\n'.join(lines)
-
-    # Output
-    if args.format == "dot":
-        if args.output:
-            args.output.write_text(dot_source, encoding="utf-8")
-            if not args.quiet:
-                print(f"Exported DOT to {args.output}")
-        else:
-            print(dot_source)
+    # DOT format with no `--output` writes to stdout instead of a file.
+    if args.format == "dot" and not args.output:
+        print(exporter.generate_dot())
         return 0
-
-    # Render with graphviz
-    try:
-        import graphviz
-    except ImportError:
-        print("Error: graphviz package required for image export. Install with: pip install graphviz", file=sys.stderr)
-        return 1
 
     if not args.output:
         print(f"Error: Output file required for {args.format} format", file=sys.stderr)
         return 1
 
     try:
-        g = graphviz.Source(dot_source, format=args.format, engine=args.engine)
-        output_path = str(args.output)
-        if output_path.endswith(f".{args.format}"):
-            output_path = output_path[:-len(f".{args.format}")]
-        g.render(output_path, cleanup=True)
-        if not args.quiet:
-            print(f"Exported graph to {args.output}")
-        return 0
+        exporter.export(args.output)
+    except ImportError:
+        print(
+            "Error: graphviz package required for image export. "
+            "Install with: pip install graphviz",
+            file=sys.stderr,
+        )
+        return 1
     except Exception as e:
         print(f"Error rendering graph: {e}", file=sys.stderr)
         return 1
+
+    if not args.quiet:
+        print(f"Exported graph to {args.output}")
+    return 0
+
+
+def _filter_orphan_files(files: list[Path]) -> list[Path]:
+    """Keep only files that participate in at least one link.
+
+    Mirrors the previous ``--no-orphans`` semantics: a file stays if it
+    links to another, OR if another file links to it. Uses the same
+    pattern-based scan the exporter does (but skips path resolution to
+    keep this purely textual / cheap).
+    """
+    # Build a set of {linked-to-stem-or-relpath} across all files.
+    targets: set[str] = set()
+    for f in files:
+        content = mask_verbatim_regions(f.read_text(encoding="utf-8"))
+        for match in WIKI_LINK_PATTERN.findall(content):
+            targets.add(match.lower())
+        for match in MD_LINK_PATTERN.finditer(content):
+            targets.add(Path(match.group(2)).stem.lower())
+
+    # Keep a file if it has any outbound link, or if any other file
+    # references its stem.
+    kept = []
+    for f in files:
+        content = mask_verbatim_regions(f.read_text(encoding="utf-8"))
+        has_outbound = bool(
+            WIKI_LINK_PATTERN.findall(content) or MD_LINK_PATTERN.findall(content)
+        )
+        has_inbound = f.stem.lower() in targets
+        if has_outbound or has_inbound:
+            kept.append(f)
+    return kept
 
 
 def cmd_stats(args: argparse.Namespace) -> int:

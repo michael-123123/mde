@@ -1,9 +1,11 @@
-"""Document graph export functionality.
+"""Document graph export GUI dialog.
 
-Generates a Graphviz graph from document links in a project.
+The DOT generation, link resolution, and SVG/PNG rendering live in
+:mod:`markdown_editor.markdown6.graph_exporter` (Qt-free). This module is
+the dialog UI plus a :class:`_GuiGraphExporterConfig` that reads the
+abstract config surface from the dialog's widgets.
 """
 
-import errno
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -36,28 +38,80 @@ except ImportError:
     HAS_WEBENGINE = False
     QWebEnginePage = None  # type: ignore
 
-from markdown_editor.markdown6 import graphviz_service
 from markdown_editor.markdown6.app_context import (
     get_app_context,
     get_project_markdown_files,
 )
 from markdown_editor.markdown6.file_tree_widget import FileTreeWidget
-
-# Re-exported for backward compatibility with existing test imports; the
-# canonical home is link_detection.py.
-from markdown_editor.markdown6.link_detection import (
-    MD_LINK_PATTERN,
-    WIKI_LINK_PATTERN,
-    mask_verbatim_regions,
+from markdown_editor.markdown6.graph_exporter import (
+    BrokenHandling,
+    GraphExporter,
+    GraphExporterConfig,
+    OutputFormat,
 )
-from markdown_editor.markdown6.logger import getLogger
 from markdown_editor.markdown6.theme import (
     StyleSheets,
     get_theme,
     get_theme_from_ctx,
 )
 
-logger = getLogger(__name__)
+
+class _GuiGraphExporterConfig(GraphExporterConfig):
+    """``GraphExporterConfig`` view over the dialog's widgets.
+
+    Every property reads live so the GUI's preview reflects whatever the
+    user just clicked, without any "rebuild config" step.
+    """
+
+    def __init__(self, dialog: "GraphExportDialog"):
+        self._dialog = dialog
+
+    @property
+    def project_path(self) -> Path:
+        return self._dialog.project_path
+
+    @property
+    def selected_files(self) -> list[Path]:
+        return self._dialog.file_tree.get_selected_files()
+
+    @property
+    def is_directed(self) -> bool:
+        return self._dialog.directed_radio.isChecked()
+
+    @property
+    def engine(self) -> str:
+        return self._dialog.engine_combo.currentText()
+
+    @property
+    def label_template(self) -> str:
+        text = self._dialog.label_combo.currentText()
+        if text == "Custom...":
+            return self._dialog.custom_label_input.text() or "{stem}"
+        return text
+
+    @property
+    def labels_below(self) -> bool:
+        return self._dialog.labels_below_check.isChecked()
+
+    @property
+    def broken_handling(self) -> BrokenHandling:
+        d = self._dialog
+        if d.broken_red_radio.isChecked():
+            return "red"
+        if d.broken_exclude_radio.isChecked():
+            return "exclude"
+        if d.broken_warning_radio.isChecked():
+            return "warning"
+        return "normal"
+
+    @property
+    def dark_mode(self) -> bool:
+        return self._dialog.ctx.get("view.theme") == "dark"
+
+    @property
+    def output_format(self) -> OutputFormat:
+        return self._dialog.format_combo.currentText().lower()
+
 
 class VerticalTab(QWidget):
     """A vertical tab widget with rotated text that can be clicked to expand/collapse panels."""
@@ -194,6 +248,17 @@ class GraphExportDialog(QDialog):
         self._init_ui()
         self._load_files()
         self._apply_theme()
+
+        # TECH DEBT: the line below creates a 3-edge reference cycle -
+        # dialog -> self._exporter -> exporter._cfg -> dialog. Python's gc
+        # handles it (no leak) but the config has a wider contract than
+        # ideal: it can reach the entire dialog rather than only the nine
+        # widgets it actually reads. Narrowing the contract would mean
+        # either weakref'ing the dialog, snapshotting widget values per
+        # call, or passing each widget explicitly to the config
+        # constructor. Documented and accepted; revisit if the dialog
+        # grows or if this couples in unwanted ways.
+        self._exporter = GraphExporter(_GuiGraphExporterConfig(self))
 
         self._initializing = False
 
@@ -555,7 +620,7 @@ class GraphExportDialog(QDialog):
     def _update_preview(self):
         """Update the live preview."""
         try:
-            files = self._get_selected_files()
+            files = self._exporter.config.selected_files
 
             if not files:
                 self._show_preview_message("No files selected")
@@ -567,10 +632,9 @@ class GraphExportDialog(QDialog):
                 self.preview_status.setText(f"⏳ Rendering {len(files)} files...")
                 QApplication.processEvents()
 
-            dot_source = self._generate_graph(files)
-            dark_mode = self.ctx.get("view.theme") == "dark"
-            engine = self.engine_combo.currentText()
-            svg_content = self._render_to_svg(dot_source, engine, dark_mode)
+            dot_source = self._exporter.generate_dot()
+            svg_content = self._exporter.render_to_svg(dot_source)
+            dark_mode = self._exporter.config.dark_mode
 
             if HAS_WEBENGINE and isinstance(self.preview_view, QWebEngineView):
                 html = self._create_preview_html(svg_content, dark_mode)
@@ -725,13 +789,12 @@ svg {{
 
     def _export(self):
         """Export the document graph."""
-        files = self._get_selected_files()
-        if not files:
+        if not self._exporter.config.selected_files:
             QMessageBox.warning(self, "No Files", "Please select at least one file.")
             return
 
         # Get output path
-        format_type = self.format_combo.currentText().lower()
+        format_type = self._exporter.config.output_format
         ext = {"svg": ".svg", "png": ".png", "dot": ".dot"}[format_type]
 
         output_path, _ = QFileDialog.getSaveFileName(
@@ -744,24 +807,10 @@ svg {{
         if not output_path:
             return
 
-        # Generate graph
         try:
-            dot_source = self._generate_graph(files)
+            dot_source = self._exporter.export(Path(output_path))
 
-            if format_type == "dot":
-                Path(output_path).write_text(dot_source, encoding="utf-8")
-            else:
-                # Render to SVG or PNG
-                dark_mode = self.ctx.get("view.theme") == "dark"
-                engine = self.engine_combo.currentText()
-
-                if format_type == "svg":
-                    svg_content = self._render_to_svg(dot_source, engine, dark_mode)
-                    Path(output_path).write_text(svg_content, encoding="utf-8")
-                else:  # png
-                    self._render_to_png(dot_source, output_path, engine)
-
-            # Show preview if requested
+            # Show preview if requested (re-uses the DOT we just rendered).
             if self.show_preview_check.isChecked():
                 self._show_preview(dot_source)
 
@@ -771,260 +820,11 @@ svg {{
         except Exception as e:
             QMessageBox.critical(self, "Export Error", f"Failed to generate graph:\n{e}")
 
-    def _generate_graph(self, files: list[Path]) -> str:
-        """Generate DOT source from document links."""
-        # Build file index
-        file_index = {}  # stem -> full path
-        for f in files:
-            file_index[f.stem.lower()] = f
-            # Also index by relative path without extension
-            rel_path = f.relative_to(self.project_path)
-            rel_no_ext = str(rel_path.with_suffix("")).lower()
-            file_index[rel_no_ext] = f
-
-        # Parse links from each file
-        links = []  # (source_path, target_path, exists)
-        all_targets = set()
-
-        for source_file in files:
-            try:
-                content = source_file.read_text(encoding="utf-8")
-            except Exception:
-                continue
-
-            # Mask out verbatim regions (code spans/blocks, math, HTML <pre>/
-            # <script>/<style>, HTML comments) so the regexes below don't
-            # treat `[[`, `]]`, `](`, `.md)` characters inside those regions
-            # as link delimiters.
-            content = mask_verbatim_regions(content)
-
-            # Find wiki links
-            for match in WIKI_LINK_PATTERN.finditer(content):
-                target = match.group(1).strip().lower()
-                line_no = content[:match.start()].count('\n') + 1
-                target_path = self._resolve_link(
-                    target, source_file, file_index, line_number=line_no,
-                )
-                exists = target_path is not None and target_path.exists()
-                links.append((source_file, target_path or target, exists))
-                all_targets.add(target_path or target)
-
-            # Find markdown links
-            for match in MD_LINK_PATTERN.finditer(content):
-                target = match.group(2).strip()
-                # Resolve relative to source file
-                target_path = (source_file.parent / target).resolve()
-                exists = target_path.exists()
-                links.append((source_file, target_path, exists))
-                all_targets.add(target_path)
-
-        # Generate DOT
-        is_directed = self.directed_radio.isChecked()
-        graph_type = "digraph" if is_directed else "graph"
-        edge_op = "->" if is_directed else "--"
-
-        label_template = self._get_label_template()
-        broken_handling = (
-            "red" if self.broken_red_radio.isChecked()
-            else "exclude" if self.broken_exclude_radio.isChecked()
-            else "warning" if self.broken_warning_radio.isChecked()
-            else "normal"
-        )
-
-        # Check if labels should be below nodes
-        labels_below = self.labels_below_check.isChecked()
-        engine = self.engine_combo.currentText()
-
-        lines = [f'{graph_type} DocumentGraph {{']
-        lines.append('    rankdir=LR;')
-
-        if labels_below:
-            # Use smaller font and increase spacing to prevent label overlap
-            lines.append('    forcelabels=true;')
-            lines.append('    node [shape=point, width=0.15, height=0.15];')
-            lines.append('    graph [fontsize=10];')
-            lines.append('    node [fontsize=10];')
-
-            # Spacing depends on layout engine
-            if engine == "dot":
-                # Hierarchical layout - increase rank and node separation
-                lines.append('    nodesep=0.8;')
-                lines.append('    ranksep=1.0;')
-            else:
-                # Force-directed layouts (neato, fdp, circo, twopi, sfdp)
-                # Use overlap removal and increase separation
-                lines.append('    overlap=prism;')
-                lines.append('    overlap_scaling=2;')
-                lines.append('    sep="+20,20";')
-        else:
-            lines.append('    node [shape=box, style=rounded];')
-        lines.append('')
-
-        # Add nodes
-        node_ids = {}  # path -> node_id
-        node_counter = 0
-
-        def get_node_id(path):
-            nonlocal node_counter
-            if path not in node_ids:
-                node_ids[path] = f"n{node_counter}"
-                node_counter += 1
-            return node_ids[path]
-
-        def get_label(path):
-            if isinstance(path, Path):
-                try:
-                    rel = path.relative_to(self.project_path)
-                except ValueError:
-                    rel = path
-                return label_template.format(
-                    stem=path.stem,
-                    filename=path.name,
-                    relative_path=str(rel),
-                    relative_path_no_ext=str(rel.with_suffix(""))
-                )
-            return str(path)
-
-        def get_tooltip(path):
-            """Get relative path for tooltip."""
-            if isinstance(path, Path):
-                try:
-                    return str(path.relative_to(self.project_path))
-                except ValueError:
-                    return str(path)
-            return str(path)
-
-        # Add file nodes (include URL for click handling)
-        for f in files:
-            node_id = get_node_id(f)
-            label = get_label(f)
-            tooltip = get_tooltip(f)
-            url = str(f).replace('"', '\\"')
-            if labels_below:
-                lines.append(f'    {node_id} [shape=point, xlabel="{label}", tooltip="{tooltip}", URL="{url}"];')
-            else:
-                lines.append(f'    {node_id} [label="{label}", tooltip="{tooltip}", URL="{url}"];')
-
-        # Add broken link nodes
-        broken_nodes = set()
-        for source, target, exists in links:
-            if not exists:
-                if broken_handling == "exclude":
-                    continue
-                if target not in broken_nodes:
-                    broken_nodes.add(target)
-                    node_id = get_node_id(target)
-                    label = get_label(target) if isinstance(target, Path) else target
-                    tooltip = get_tooltip(target)
-                    if broken_handling == "red":
-                        if labels_below:
-                            lines.append(f'    {node_id} [shape=point, xlabel="{label}", tooltip="{tooltip}", color=red];')
-                        else:
-                            lines.append(f'    {node_id} [label="{label}", tooltip="{tooltip}", color=red, style="dashed,rounded"];')
-                    elif broken_handling == "warning":
-                        if labels_below:
-                            lines.append(f'    {node_id} [shape=point, xlabel="{label}\\n(missing)", tooltip="{tooltip}", color=orange];')
-                        else:
-                            lines.append(f'    {node_id} [label="{label}\\n(missing)", tooltip="{tooltip}", color=orange, style="filled,rounded", fillcolor=lightyellow];')
-                    else:  # normal - show as regular node
-                        if labels_below:
-                            lines.append(f'    {node_id} [shape=point, xlabel="{label}", tooltip="{tooltip}"];')
-                        else:
-                            lines.append(f'    {node_id} [label="{label}", tooltip="{tooltip}"];')
-
-        lines.append('')
-
-        # Add edges
-        seen_edges = set()
-        for source, target, exists in links:
-            if not exists and broken_handling == "exclude":
-                continue
-
-            source_id = get_node_id(source)
-            target_id = get_node_id(target)
-
-            edge_key = (source_id, target_id) if is_directed else tuple(sorted([source_id, target_id]))
-            if edge_key in seen_edges:
-                continue
-            seen_edges.add(edge_key)
-
-            if exists or broken_handling == "normal":
-                lines.append(f'    {source_id} {edge_op} {target_id};')
-            else:
-                lines.append(f'    {source_id} {edge_op} {target_id} [style=dashed, color=red];')
-
-        lines.append('}')
-
-        return '\n'.join(lines)
-
-    def _resolve_link(
-        self,
-        target: str,
-        source_file: Path,
-        file_index: dict,
-        line_number: int | None = None,
-    ) -> Path | None:
-        """Resolve a wiki link target to a file path.
-
-        ``line_number`` (1-indexed, from the original file content) is used
-        only for diagnostics on the ENAMETOOLONG warning path.
-        """
-        # Try direct match
-        if target in file_index:
-            return file_index[target]
-
-        # Try with .md extension
-        target_md = target + ".md"
-        if target_md.lower() in file_index:
-            return file_index[target_md.lower()]
-
-        # Try relative to source. A pathologically long `target` (e.g. from a
-        # bare-prose multi-line `[[ ... ]]` that the masker can't strip) makes
-        # rel_path.exists() raise OSError(ENAMETOOLONG). Treat that as
-        # "unresolvable" and keep going - one malformed link shouldn't crash
-        # the whole export.
-        rel_path = source_file.parent / (target + ".md")
-        try:
-            if rel_path.exists():
-                return rel_path.resolve()
-        except OSError as e:
-            if e.errno == errno.ENAMETOOLONG:
-                loc = f"{source_file}:{line_number}" if line_number else str(source_file)
-                logger.warning(
-                    "Skipping wiki link at %s: target too long (%d chars)",
-                    loc, len(target),
-                )
-                return None
-            raise
-
-        return None
-
-    def _render_to_svg(self, dot_source: str, engine: str, dark_mode: bool) -> str:
-        """Render DOT to SVG string."""
-        import graphviz
-        graph = graphviz.Source(dot_source, engine=engine)
-        svg = graph.pipe(format='svg').decode('utf-8')
-
-        if dark_mode:
-            svg = graphviz_service._apply_dark_mode(svg)
-
-        return svg
-
-    def _render_to_png(self, dot_source: str, output_path: str, engine: str):
-        """Render DOT to PNG file."""
-        import graphviz
-        graph = graphviz.Source(dot_source, engine=engine)
-        # graphviz.Source.render() adds extension, so we remove it first
-        output_base = str(Path(output_path).with_suffix(""))
-        graph.render(output_base, format='png', cleanup=True)
-
     def _show_preview(self, dot_source: str):
         """Show the graph in a preview window."""
-        dark_mode = self.ctx.get("view.theme") == "dark"
-        engine = self.engine_combo.currentText()
-
+        dark_mode = self._exporter.config.dark_mode
         try:
-            svg_content = self._render_to_svg(dot_source, engine, dark_mode)
+            svg_content = self._exporter.render_to_svg(dot_source)
             dialog = GraphPreviewDialog(svg_content, self.project_path, dark_mode, self)
             dialog.file_clicked.connect(self._on_preview_file_clicked)
             dialog.exec()

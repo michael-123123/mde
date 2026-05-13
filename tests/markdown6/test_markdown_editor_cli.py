@@ -501,7 +501,8 @@ class TestCmdGraph:
 
         assert result == 0
         captured = capsys.readouterr()
-        assert "digraph G" in captured.out
+        # The exporter emits `digraph DocumentGraph` as the header.
+        assert "digraph DocumentGraph" in captured.out
         assert "->" in captured.out
 
     def test_graph_dot_file(self, tmp_path, capsys):
