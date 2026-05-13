@@ -64,6 +64,14 @@ DEFAULT_SETTINGS = {
     "files.detect_external_changes": True,
     # File visibility
     "files.show_hidden": False,
+    # Project file-browser sort options (persisted across sessions so
+    # the user's chosen order survives close/open).
+    # ``project.sort_key``: "name" (default) | "mtime" - filename vs
+    # last-modified time. Directories are *always* grouped above files
+    # regardless of this setting; see ``_FileBrowserSortProxy``.
+    # ``project.sort_order``: "asc" (default) | "desc".
+    "project.sort_key": "name",
+    "project.sort_order": "asc",
     # Logseq mode
     "view.logseq_mode": False,
     # External tool paths (empty string = use system PATH)

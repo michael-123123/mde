@@ -175,7 +175,7 @@ class ProjectPanel(QWidget):
         # ``mapFromSource`` / ``mapToSource``.
         self.proxy = _FileBrowserSortProxy(self)
         self.proxy.setSourceModel(self.file_model)
-        self.proxy.sort(0, Qt.SortOrder.AscendingOrder)
+        self._apply_sort_from_settings()
 
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.proxy)
@@ -240,6 +240,25 @@ class ProjectPanel(QWidget):
             self._apply_theme()
         elif key == "files.show_hidden":
             self._apply_hidden_filter()
+        elif key in ("project.sort_key", "project.sort_order"):
+            self._apply_sort_from_settings()
+
+    def _apply_sort_from_settings(self):
+        """Read sort_key / sort_order from settings and apply to the proxy.
+
+        Defensive: unknown values fall back to defaults so a hand-edited
+        settings file can't break the panel.
+        """
+        key = self.ctx.get("project.sort_key", "name")
+        if key not in ("name", "mtime"):
+            key = "name"
+        order_str = self.ctx.get("project.sort_order", "asc")
+        order = (
+            Qt.SortOrder.DescendingOrder if order_str == "desc"
+            else Qt.SortOrder.AscendingOrder
+        )
+        self.proxy.set_sort_key(key)
+        self.proxy.sort(0, order)
 
     def _open_folder(self):
         """Open a folder as project."""
