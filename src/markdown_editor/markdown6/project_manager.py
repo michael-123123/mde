@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from PySide6.QtCore import QDir, QSortFilterProxyModel, Qt, Signal
+from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -212,8 +213,86 @@ class ProjectPanel(QWidget):
         self.graph_btn.clicked.connect(self._on_graph_export_clicked)
         btn_layout.addWidget(self.graph_btn)
 
+        # Spacer keeps the sort button right-aligned, separated from the
+        # export-related buttons on the left.
         btn_layout.addStretch()
+
+        self.sort_btn = QToolButton()
+        self.sort_btn.setText("⇅")
+        self.sort_btn.setToolTip("Sort options")
+        self.sort_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.sort_btn.setMenu(self._build_sort_menu())
+        btn_layout.addWidget(self.sort_btn)
+
         layout.addLayout(btn_layout)
+
+    def _build_sort_menu(self) -> QMenu:
+        """Build the sort-options popup menu attached to the sort button.
+
+        Two action groups - one for key (name / mtime), one for order
+        (asc / desc) - both exclusive so the menu always has exactly one
+        checkmark per group, matching the user's persisted choice.
+        Toggling a radio writes the corresponding ctx setting; the
+        settings_changed signal then calls back into the panel via
+        ``_apply_sort_from_settings``.
+        """
+        menu = QMenu(self)
+
+        # --- Sort key group ---
+        key_group = QActionGroup(menu)
+        key_group.setExclusive(True)
+        current_key = self.ctx.get("project.sort_key", "name")
+
+        act_name = menu.addAction("Sort by Name")
+        act_name.setCheckable(True)
+        act_name.setActionGroup(key_group)
+        act_name.setChecked(current_key == "name")
+        act_name.triggered.connect(
+            lambda: self.ctx.set("project.sort_key", "name")
+        )
+
+        act_mtime = menu.addAction("Sort by Modified")
+        act_mtime.setCheckable(True)
+        act_mtime.setActionGroup(key_group)
+        act_mtime.setChecked(current_key == "mtime")
+        act_mtime.triggered.connect(
+            lambda: self.ctx.set("project.sort_key", "mtime")
+        )
+
+        menu.addSeparator()
+
+        # --- Sort order group ---
+        order_group = QActionGroup(menu)
+        order_group.setExclusive(True)
+        current_order = self.ctx.get("project.sort_order", "asc")
+
+        act_asc = menu.addAction("Ascending")
+        act_asc.setCheckable(True)
+        act_asc.setActionGroup(order_group)
+        act_asc.setChecked(current_order == "asc")
+        act_asc.triggered.connect(
+            lambda: self.ctx.set("project.sort_order", "asc")
+        )
+
+        act_desc = menu.addAction("Descending")
+        act_desc.setCheckable(True)
+        act_desc.setActionGroup(order_group)
+        act_desc.setChecked(current_order == "desc")
+        act_desc.triggered.connect(
+            lambda: self.ctx.set("project.sort_order", "desc")
+        )
+
+        # Remember actions so we can keep checkmarks in sync if the
+        # settings change from elsewhere (e.g. another panel, settings
+        # dialog, hand-edit + reload).
+        self._sort_actions = {
+            ("name",): act_name,
+            ("mtime",): act_mtime,
+            ("asc",): act_asc,
+            ("desc",): act_desc,
+        }
+
+        return menu
 
     def _apply_theme(self):
         """Apply the current theme."""
@@ -259,6 +338,13 @@ class ProjectPanel(QWidget):
         )
         self.proxy.set_sort_key(key)
         self.proxy.sort(0, order)
+        # Keep menu checkmarks in sync if the change came from elsewhere.
+        actions = getattr(self, "_sort_actions", None)
+        if actions:
+            actions[("name",)].setChecked(key == "name")
+            actions[("mtime",)].setChecked(key == "mtime")
+            actions[("asc",)].setChecked(order_str == "asc")
+            actions[("desc",)].setChecked(order_str == "desc")
 
     def _open_folder(self):
         """Open a folder as project."""
