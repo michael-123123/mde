@@ -490,6 +490,45 @@ class TestFencedCodeAutoComplete:
         assert editor.toPlainText() == "$$$" + "$$"
         assert editor.textCursor().position() == 3
 
+    def test_double_equals_opens_highlight_pair(self, editor):
+        """Typing == opens a `==|==` pair (Pandoc/Obsidian highlight).
+        `=` isn't in AUTO_PAIRS, so this is State B."""
+        _type(editor, "==")
+        assert editor.toPlainText() == "===="
+        assert editor.textCursor().position() == 2
+
+    def test_single_equals_is_just_one_char(self, editor):
+        """Sanity: single = is common in prose (math, code-ish), must
+        not auto-pair."""
+        _type(editor, "=")
+        assert editor.toPlainText() == "="
+        assert editor.textCursor().position() == 1
+
+    def test_triple_equals_capped_at_two(self, editor):
+        """Cap at 2 for `=`: no `===` pair in markdown."""
+        _type(editor, "===")
+        assert editor.toPlainText() == "===" + "=="
+        assert editor.textCursor().position() == 3
+
+    def test_double_pipe_opens_spoiler_pair(self, editor):
+        """Typing || opens a `||\\|\\|` pair (spoiler). `|` isn't in
+        AUTO_PAIRS - single `|` is too common (tables, OR, etc.)."""
+        _type(editor, "||")
+        assert editor.toPlainText() == "||||"
+        assert editor.textCursor().position() == 2
+
+    def test_single_pipe_is_just_one_char(self, editor):
+        """Sanity: single | for table cells / OR doesn't auto-pair."""
+        _type(editor, "|")
+        assert editor.toPlainText() == "|"
+        assert editor.textCursor().position() == 1
+
+    def test_triple_pipe_capped_at_two(self, editor):
+        """Cap at 2 for `|`: no `|||` pair in any flavor we support."""
+        _type(editor, "|||")
+        assert editor.toPlainText() == "|||" + "||"
+        assert editor.textCursor().position() == 3
+
     def test_fence_scaffold_respects_auto_pairs_setting(self, editor):
         """``editor.auto_pairs`` gates the fence scaffold too: with the
         setting off, pressing Enter on a ``` line should be a plain
