@@ -3,7 +3,8 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PySide6.QtCore import QDir, Qt, Signal
+from PySide6.QtCore import QDir, QSortFilterProxyModel, Qt, Signal
+from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -78,6 +79,54 @@ class _ProjectFileSystemModel(QFileSystemModel):
         return super().data(index, role)
 
 
+class _FileBrowserSortProxy(QSortFilterProxyModel):
+    """Sort proxy between ``QFileSystemModel`` and the project tree view.
+
+    Enforces two rules on top of the underlying model:
+
+    1. Directories always appear above files - regardless of sort order.
+       ``QFileSystemModel`` has no built-in flag for this; we override
+       ``lessThan`` to enforce it.
+    2. Within each group (dirs / files), sort by either filename or
+       ``QFileInfo.lastModified()``. ``QFileInfo`` is Qt's portable
+       timestamp accessor (same call on Linux/macOS/Windows), so the
+       comparison is OS-agnostic.
+
+    Sort direction is taken from ``sortOrder()``. Because Qt automatically
+    inverts the result of ``lessThan`` under DESC, we pre-invert the
+    dir-vs-file branch so directories stay on top either way.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._sort_key = "name"  # "name" | "mtime"
+
+    def set_sort_key(self, key: str):
+        if key not in ("name", "mtime"):
+            raise ValueError(f"sort key must be 'name' or 'mtime', got {key!r}")
+        if key == self._sort_key:
+            return
+        self._sort_key = key
+        self.invalidate()
+
+    def sort_key(self) -> str:
+        return self._sort_key
+
+    def lessThan(self, left, right):
+        src = self.sourceModel()
+        li = src.fileInfo(left)
+        ri = src.fileInfo(right)
+        # Invariant 1: dirs always above files. Pre-invert under DESC so
+        # Qt's automatic flip doesn't move them below.
+        if li.isDir() != ri.isDir():
+            asc = self.sortOrder() == Qt.SortOrder.AscendingOrder
+            return li.isDir() if asc else not li.isDir()
+        # Invariant 2: within the same kind, sort by chosen key.
+        if self._sort_key == "mtime":
+            return li.lastModified() < ri.lastModified()
+        return li.fileName().lower() < ri.fileName().lower()
+
+
 class ProjectPanel(QWidget):
     """A panel for managing project files.
 
@@ -121,8 +170,16 @@ class ProjectPanel(QWidget):
         self.file_model.setNameFilterDisables(False)
         self._apply_hidden_filter()
 
+        # Sort proxy sits between the file-system model and the tree view.
+        # It enforces "dirs always first" plus user-chosen sort key/order.
+        # Every code path that crosses this boundary must use
+        # ``mapFromSource`` / ``mapToSource``.
+        self.proxy = _FileBrowserSortProxy(self)
+        self.proxy.setSourceModel(self.file_model)
+        self._apply_sort_from_settings()
+
         self.tree_view = QTreeView()
-        self.tree_view.setModel(self.file_model)
+        self.tree_view.setModel(self.proxy)
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setAnimated(True)
 
@@ -156,8 +213,90 @@ class ProjectPanel(QWidget):
         self.graph_btn.clicked.connect(self._on_graph_export_clicked)
         btn_layout.addWidget(self.graph_btn)
 
+        # Spacer keeps the sort button right-aligned, separated from the
+        # export-related buttons on the left.
         btn_layout.addStretch()
+
+        self.sort_btn = QToolButton()
+        self.sort_btn.setText("⇅")
+        self.sort_btn.setToolTip("Sort options")
+        self.sort_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.sort_btn.setMenu(self._build_sort_menu())
+        # Hide Qt's auto-added menu indicator chevron - it visually
+        # squishes the down-arrow half of the ⇅ glyph. Discoverability
+        # comes from the tooltip and the button's hover/press feedback.
+        self.sort_btn.setStyleSheet("QToolButton::menu-indicator { image: none; }")
+        btn_layout.addWidget(self.sort_btn)
+
         layout.addLayout(btn_layout)
+
+    def _build_sort_menu(self) -> QMenu:
+        """Build the sort-options popup menu attached to the sort button.
+
+        Two action groups - one for key (name / mtime), one for order
+        (asc / desc) - both exclusive so the menu always has exactly one
+        checkmark per group, matching the user's persisted choice.
+        Toggling a radio writes the corresponding ctx setting; the
+        settings_changed signal then calls back into the panel via
+        ``_apply_sort_from_settings``.
+        """
+        menu = QMenu(self)
+
+        # --- Sort key group ---
+        key_group = QActionGroup(menu)
+        key_group.setExclusive(True)
+        current_key = self.ctx.get("project.sort_key", "name")
+
+        act_name = menu.addAction("Sort by Name")
+        act_name.setCheckable(True)
+        act_name.setActionGroup(key_group)
+        act_name.setChecked(current_key == "name")
+        act_name.triggered.connect(
+            lambda: self.ctx.set("project.sort_key", "name")
+        )
+
+        act_mtime = menu.addAction("Sort by Modified")
+        act_mtime.setCheckable(True)
+        act_mtime.setActionGroup(key_group)
+        act_mtime.setChecked(current_key == "mtime")
+        act_mtime.triggered.connect(
+            lambda: self.ctx.set("project.sort_key", "mtime")
+        )
+
+        menu.addSeparator()
+
+        # --- Sort order group ---
+        order_group = QActionGroup(menu)
+        order_group.setExclusive(True)
+        current_order = self.ctx.get("project.sort_order", "asc")
+
+        act_asc = menu.addAction("Ascending")
+        act_asc.setCheckable(True)
+        act_asc.setActionGroup(order_group)
+        act_asc.setChecked(current_order == "asc")
+        act_asc.triggered.connect(
+            lambda: self.ctx.set("project.sort_order", "asc")
+        )
+
+        act_desc = menu.addAction("Descending")
+        act_desc.setCheckable(True)
+        act_desc.setActionGroup(order_group)
+        act_desc.setChecked(current_order == "desc")
+        act_desc.triggered.connect(
+            lambda: self.ctx.set("project.sort_order", "desc")
+        )
+
+        # Remember actions so we can keep checkmarks in sync if the
+        # settings change from elsewhere (e.g. another panel, settings
+        # dialog, hand-edit + reload).
+        self._sort_actions = {
+            ("name",): act_name,
+            ("mtime",): act_mtime,
+            ("asc",): act_asc,
+            ("desc",): act_desc,
+        }
+
+        return menu
 
     def _apply_theme(self):
         """Apply the current theme."""
@@ -184,6 +323,32 @@ class ProjectPanel(QWidget):
             self._apply_theme()
         elif key == "files.show_hidden":
             self._apply_hidden_filter()
+        elif key in ("project.sort_key", "project.sort_order"):
+            self._apply_sort_from_settings()
+
+    def _apply_sort_from_settings(self):
+        """Read sort_key / sort_order from settings and apply to the proxy.
+
+        Defensive: unknown values fall back to defaults so a hand-edited
+        settings file can't break the panel.
+        """
+        key = self.ctx.get("project.sort_key", "name")
+        if key not in ("name", "mtime"):
+            key = "name"
+        order_str = self.ctx.get("project.sort_order", "asc")
+        order = (
+            Qt.SortOrder.DescendingOrder if order_str == "desc"
+            else Qt.SortOrder.AscendingOrder
+        )
+        self.proxy.set_sort_key(key)
+        self.proxy.sort(0, order)
+        # Keep menu checkmarks in sync if the change came from elsewhere.
+        actions = getattr(self, "_sort_actions", None)
+        if actions:
+            actions[("name",)].setChecked(key == "name")
+            actions[("mtime",)].setChecked(key == "mtime")
+            actions[("asc",)].setChecked(order_str == "asc")
+            actions[("desc",)].setChecked(order_str == "desc")
 
     def _open_folder(self):
         """Open a folder as project."""
@@ -206,7 +371,7 @@ class ProjectPanel(QWidget):
         except (ValueError, RuntimeError):
             self._lazy = True
         self.file_model.setRootPath(str(path))
-        self.tree_view.setRootIndex(self.file_model.index(str(path)))
+        self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
         # Remember last project
         self.ctx.set("project.last_path", str(path))
         # Clear filter
@@ -224,11 +389,17 @@ class ProjectPanel(QWidget):
         self.ctx.set("project.expanded_dirs", expanded)
 
     def _collect_expanded(self, parent_index, result: list[str]):
-        """Recursively collect expanded directory paths."""
-        for row in range(self.file_model.rowCount(parent_index)):
-            child = self.file_model.index(row, 0, parent_index)
+        """Recursively collect expanded directory paths.
+
+        ``parent_index`` is a proxy index (``tree_view.rootIndex()`` and
+        proxy children); we walk the proxy and ask ``file_model`` for
+        the underlying path via ``mapToSource``.
+        """
+        for row in range(self.proxy.rowCount(parent_index)):
+            child = self.proxy.index(row, 0, parent_index)
             if self.tree_view.isExpanded(child):
-                result.append(self.file_model.filePath(child))
+                src = self.proxy.mapToSource(child)
+                result.append(self.file_model.filePath(src))
                 self._collect_expanded(child, result)
 
     def restore_tree_state(self):
@@ -268,9 +439,9 @@ class ProjectPanel(QWidget):
         for dir_path in list(self._pending_expand):
             # Expand if this dir is inside (or equal to) the just-loaded dir
             if dir_path == loaded_path or str(Path(dir_path).parent) == loaded_path:
-                index = self.file_model.index(dir_path)
-                if index.isValid():
-                    self.tree_view.expand(index)
+                src = self.file_model.index(dir_path)
+                if src.isValid():
+                    self.tree_view.expand(self.proxy.mapFromSource(src))
                     newly_expanded.append(dir_path)
         self._pending_expand -= set(newly_expanded)
         if not self._pending_expand:
@@ -297,15 +468,24 @@ class ProjectPanel(QWidget):
         if not self._lazy:
             self.tree_view.expandAll()
 
+    def _proxy_to_path(self, index) -> str:
+        """Resolve a tree-view index (which may be a proxy or, in tests,
+        a source index) into a filesystem path. Tolerating both keeps
+        existing tests that pass ``file_model.index(...)`` directly
+        working without rewriting every call site."""
+        if index.model() is self.proxy:
+            index = self.proxy.mapToSource(index)
+        return self.file_model.filePath(index)
+
     def _on_item_clicked(self, index):
         """Handle item click."""
-        path = self.file_model.filePath(index)
+        path = self._proxy_to_path(index)
         if Path(path).is_file():
             self.file_selected.emit(path)
 
     def _on_item_double_clicked(self, index):
         """Handle item double click."""
-        path = self.file_model.filePath(index)
+        path = self._proxy_to_path(index)
         if Path(path).is_file():
             self.file_double_clicked.emit(path)
 
@@ -315,7 +495,7 @@ class ProjectPanel(QWidget):
         if not index.isValid():
             return
 
-        path = Path(self.file_model.filePath(index))
+        path = Path(self._proxy_to_path(index))
         menu = QMenu(self)
 
         if path.is_file():

@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMessageBox
 
 from markdown_editor.markdown6.app_context import get_app_context
@@ -463,8 +464,8 @@ class TestTreeStatePersistence:
         loaded = set()
         panel.file_model.directoryLoaded.connect(loaded.add)
         try:
-            idx = panel.file_model.index(dir_str)
-            panel.tree_view.expand(idx)
+            src = panel.file_model.index(dir_str)
+            panel.tree_view.expand(panel.proxy.mapFromSource(src))
             qtbot.waitUntil(lambda: dir_str in loaded, timeout=5000)
         finally:
             panel.file_model.directoryLoaded.disconnect(loaded.add)
@@ -473,7 +474,9 @@ class TestTreeStatePersistence:
         """Wait until a directory is expanded in the tree view."""
         dir_str = str(dir_path)
         qtbot.waitUntil(
-            lambda: panel.tree_view.isExpanded(panel.file_model.index(dir_str)),
+            lambda: panel.tree_view.isExpanded(
+                panel.proxy.mapFromSource(panel.file_model.index(dir_str))
+            ),
             timeout=5000,
         )
 
@@ -510,9 +513,15 @@ class TestTreeStatePersistence:
         self._expand_and_wait(qtbot, panel1, dir_b)
 
         # Verify they are expanded
-        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_a)))
-        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_c)))
-        assert panel1.tree_view.isExpanded(panel1.file_model.index(str(dir_b)))
+        assert panel1.tree_view.isExpanded(
+            panel1.proxy.mapFromSource(panel1.file_model.index(str(dir_a)))
+        )
+        assert panel1.tree_view.isExpanded(
+            panel1.proxy.mapFromSource(panel1.file_model.index(str(dir_c)))
+        )
+        assert panel1.tree_view.isExpanded(
+            panel1.proxy.mapFromSource(panel1.file_model.index(str(dir_b)))
+        )
 
         # Save state
         panel1.save_tree_state()
@@ -557,7 +566,9 @@ class TestTreeStatePersistence:
         QApplication.processEvents()
 
         # Should NOT be expanded
-        assert not panel.tree_view.isExpanded(panel.file_model.index(str(dir_a)))
+        assert not panel.tree_view.isExpanded(
+            panel.proxy.mapFromSource(panel.file_model.index(str(dir_a)))
+        )
 
     def test_restore_ignores_dirs_from_different_project(self, qtbot, tmp_path):
         """Saved dirs from a different project root are ignored."""
@@ -587,6 +598,116 @@ class TestTreeStatePersistence:
 
         # The pending set should be empty (filtered out)
         assert not panel._pending_expand
+
+
+class TestSortIntegration:
+    """End-to-end: menu actions change sort, settings persist."""
+
+    @pytest.fixture
+    def sort_project(self, tmp_path):
+        """Project with both files and dirs, names chosen so name- and
+        mtime-sorted orders differ."""
+        import os
+        import time
+        root = tmp_path / "sort_proj"
+        root.mkdir()
+        (root / "bravo_dir").mkdir()
+        (root / "alpha_dir").mkdir()
+        alpha = root / "alpha.md"
+        zeta = root / "zeta.md"
+        alpha.write_text("a")
+        zeta.write_text("z")
+        now = time.time()
+        # alpha younger than zeta, so name-asc and mtime-asc disagree.
+        os.utime(zeta, (now - 5000, now - 5000))
+        os.utime(alpha, (now - 1000, now - 1000))
+        return root
+
+    def _names_under_root(self, panel):
+        """Return file/dir names in the order the tree view currently shows."""
+        root_idx = panel.tree_view.rootIndex()
+        out = []
+        for row in range(panel.proxy.rowCount(root_idx)):
+            src = panel.proxy.mapToSource(panel.proxy.index(row, 0, root_idx))
+            out.append(panel.file_model.fileName(src))
+        return out
+
+    def _wait_for_root(self, qtbot, panel, project_path):
+        loaded = set()
+        panel.file_model.directoryLoaded.connect(loaded.add)
+        try:
+            qtbot.waitUntil(lambda: str(project_path) in loaded, timeout=5000)
+        finally:
+            panel.file_model.directoryLoaded.disconnect(loaded.add)
+
+    def test_menu_action_changes_sort_to_mtime(self, qtbot, sort_project):
+        """Trigger the 'Sort by Modified' action; files reorder by mtime."""
+        from markdown_editor.markdown6.app_context import get_app_context
+        panel = ProjectPanel(get_app_context())
+        qtbot.addWidget(panel)
+
+        loaded = set()
+        panel.file_model.directoryLoaded.connect(loaded.add)
+        panel.set_project_path(sort_project)
+        qtbot.waitUntil(lambda: str(sort_project) in loaded, timeout=5000)
+        panel.file_model.directoryLoaded.disconnect(loaded.add)
+
+        # Default: name ascending - alpha before zeta among files.
+        names = self._names_under_root(panel)
+        files = [n for n in names if "." in n]
+        assert files == ["alpha.md", "zeta.md"]
+
+        # Trigger the menu action for mtime.
+        panel._sort_actions[("mtime",)].trigger()
+
+        # Now zeta (older) before alpha (newer) under ASC.
+        names = self._names_under_root(panel)
+        files = [n for n in names if "." in n]
+        assert files == ["zeta.md", "alpha.md"]
+
+    def test_menu_action_changes_order_to_descending(self, qtbot, sort_project):
+        """Triggering 'Descending' flips the file order; dirs stay on top."""
+        from markdown_editor.markdown6.app_context import get_app_context
+        panel = ProjectPanel(get_app_context())
+        qtbot.addWidget(panel)
+
+        loaded = set()
+        panel.file_model.directoryLoaded.connect(loaded.add)
+        panel.set_project_path(sort_project)
+        qtbot.waitUntil(lambda: str(sort_project) in loaded, timeout=5000)
+        panel.file_model.directoryLoaded.disconnect(loaded.add)
+
+        panel._sort_actions[("desc",)].trigger()
+        names = self._names_under_root(panel)
+        files = [n for n in names if "." in n]
+        dirs = [n for n in names if "." not in n]
+        # Files reversed alphabetically; dirs still ABOVE files.
+        assert files == ["zeta.md", "alpha.md"]
+        assert names[:len(dirs)] == dirs, "directories must stay on top under DESC"
+
+    def test_sort_choice_persists_across_panel_recreate(self, qtbot, sort_project):
+        """User picks a sort - the next panel built on the same ctx
+        starts with that choice. This is the close-and-reopen scenario
+        without literally closing the application."""
+        from markdown_editor.markdown6.app_context import get_app_context
+        ctx = get_app_context()
+
+        panel1 = ProjectPanel(ctx)
+        qtbot.addWidget(panel1)
+        panel1._sort_actions[("mtime",)].trigger()
+        panel1._sort_actions[("desc",)].trigger()
+
+        # Settings should now hold the user's choice.
+        assert ctx.get("project.sort_key") == "mtime"
+        assert ctx.get("project.sort_order") == "desc"
+
+        # New panel on the same ctx - sort should reflect persisted state.
+        panel2 = ProjectPanel(ctx)
+        qtbot.addWidget(panel2)
+        assert panel2.proxy.sort_key() == "mtime"
+        assert panel2.proxy.sortOrder() == Qt.SortOrder.DescendingOrder
+        assert panel2._sort_actions[("mtime",)].isChecked()
+        assert panel2._sort_actions[("desc",)].isChecked()
 
 
 class TestPandocOption:
