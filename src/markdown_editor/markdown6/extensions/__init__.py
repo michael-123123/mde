@@ -41,6 +41,9 @@ from markdown_editor.markdown6.extensions.source_lines import (  # noqa: F401
     SourceLinePostprocessor,
     SourceLinePreprocessor,
 )
+from markdown_editor.markdown6.extensions.spoiler import (  # noqa: F401
+    SpoilerExtension,
+)
 from markdown_editor.markdown6.extensions.strikethrough import (  # noqa: F401
     StrikethroughExtension,
 )
