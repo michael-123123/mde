@@ -43,6 +43,8 @@ from markdown_editor.markdown6.extensions.source_lines import (  # noqa: F401
 )
 from markdown_editor.markdown6.extensions.spoiler import (  # noqa: F401
     SpoilerExtension,
+    get_spoiler_css,
+    get_spoiler_js,
 )
 from markdown_editor.markdown6.extensions.strikethrough import (  # noqa: F401
     StrikethroughExtension,

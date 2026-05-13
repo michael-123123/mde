@@ -3,7 +3,10 @@
 import markdown
 import pytest
 
-from markdown_editor.markdown6.extensions import SpoilerExtension
+from markdown_editor.markdown6.extensions import (
+    SpoilerExtension,
+    get_spoiler_css,
+)
 
 
 @pytest.fixture
@@ -47,3 +50,49 @@ class TestSpoilerExtension:
         ``a `` and ``b``."""
         out = md.convert("| a | b |")
         assert 'class="spoiler"' not in out
+
+
+class TestSpoilerCSS:
+    def test_returns_css_string(self):
+        css = get_spoiler_css(dark_mode=False)
+        assert isinstance(css, str)
+        assert "span.spoiler" in css
+
+    def test_blurs_text_by_default(self):
+        """The base rule must blur the text - users see *something* is
+        there (size, position) but can't read it until they reveal."""
+        css = get_spoiler_css()
+        assert "filter: blur(" in css
+
+    def test_revealed_class_clears_blur(self):
+        """`.revealed` (toggled by the click handler) removes the blur."""
+        css = get_spoiler_css()
+        assert "span.spoiler.revealed" in css
+        # Find the revealed block and check it clears the filter.
+        revealed_block = css.split("span.spoiler.revealed")[1].split("}")[0]
+        assert "filter: none" in revealed_block
+
+
+class TestSpoilerJS:
+    def test_returns_script_tag(self):
+        from markdown_editor.markdown6.extensions import get_spoiler_js
+        js = get_spoiler_js()
+        assert "<script>" in js
+        assert "</script>" in js
+
+    def test_toggles_revealed_class_on_click(self):
+        from markdown_editor.markdown6.extensions import get_spoiler_js
+        js = get_spoiler_js()
+        # The click handler must toggle the `revealed` class.
+        assert "classList.toggle" in js
+        assert "revealed" in js
+        assert "addEventListener('click'" in js or 'addEventListener("click"' in js
+
+    def test_keyboard_accessible(self):
+        """Enter / Space should also toggle - keyboard accessibility."""
+        from markdown_editor.markdown6.extensions import get_spoiler_js
+        js = get_spoiler_js()
+        assert "Enter" in js
+        assert "addEventListener('keydown'" in js or 'addEventListener("keydown"' in js
+
+
