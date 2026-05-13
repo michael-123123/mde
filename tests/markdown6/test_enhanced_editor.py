@@ -625,3 +625,32 @@ class TestWikiCompleterSuppressedInVerbatim:
         _set_buffer_and_place_cursor(editor, "see [[N|")
         result = editor._check_wiki_link_trigger()
         assert result is True
+
+
+class TestSnippetExpansionSuppressedInVerbatim:
+    """Behaviour #12: typing ``/h1`` then Tab inside a fenced block
+    should NOT expand to ``# Heading``. Snippet triggers are markdown
+    templates; inside code they are literal characters."""
+
+    def test_snippet_does_not_expand_in_fence(self, editor):
+        _set_buffer_and_place_cursor(editor, "```\n/h1|\n```")
+        before = editor.toPlainText()
+        result = editor.try_expand_snippet()
+        assert result is False
+        # Buffer unchanged.
+        assert editor.toPlainText() == before
+
+    def test_snippet_does_not_expand_in_inline_code(self, editor):
+        _set_buffer_and_place_cursor(editor, "before `/h1|` after")
+        before = editor.toPlainText()
+        result = editor.try_expand_snippet()
+        assert result is False
+        assert editor.toPlainText() == before
+
+    def test_snippet_still_expands_in_prose(self, editor):
+        """Sanity: outside verbatim, /h1 still expands to a heading."""
+        _set_buffer_and_place_cursor(editor, "/h1|")
+        result = editor.try_expand_snippet()
+        assert result is True
+        # Snippet replaced the trigger.
+        assert "/h1" not in editor.toPlainText()

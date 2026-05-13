@@ -1638,6 +1638,12 @@ class EnhancedEditor(QPlainTextEdit):
 
     def try_expand_snippet(self) -> bool:
         """Try to expand a snippet at the cursor position."""
+        # Snippet triggers (e.g. /h1, /bold) are markdown templates -
+        # inside a verbatim region they are literal characters and must
+        # not be silently rewritten.
+        if self._cursor_in_verbatim_region():
+            return False
+
         cursor = self.textCursor()
         block_text = cursor.block().text()
         col = cursor.positionInBlock()
