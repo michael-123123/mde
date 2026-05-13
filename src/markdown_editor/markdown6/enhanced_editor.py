@@ -1117,6 +1117,14 @@ class EnhancedEditor(QPlainTextEdit):
         if self.ctx.get("editor.auto_pairs", True):
             char = event.text()
 
+            # Suppress every auto-pair behaviour inside verbatim regions
+            # (code spans, fenced blocks, indented code, math, HTML
+            # pre/script/style/comments). The user expects literal
+            # characters inside those contexts.
+            if char and char in self.AUTO_PAIRS and self._cursor_in_verbatim_region():
+                super().keyPressEvent(event)
+                return
+
             # Skip markdown-only auto-pairs (* _) inside inline code
             markdown_only_pairs = {'*', '_'}
             skip_pair = char in markdown_only_pairs and self._cursor_inside_backticks()

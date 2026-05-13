@@ -466,3 +466,41 @@ class TestVerbatimRegionDetector:
     def test_inside_html_comment(self, editor):
         _set_buffer_and_place_cursor(editor, "<!--|-->")
         assert editor._cursor_in_verbatim_region() is True
+
+
+class TestAutoPairsSuppressedInVerbatim:
+    """Behaviors #1-#5 from the autocomplete inventory: every entry in
+    AUTO_PAIRS should be suppressed when the cursor is inside a verbatim
+    region. Parameterised across a fenced block, inline code span, and
+    unclosed fence (the three most common contexts).
+    """
+
+    # All entries in EnhancedEditor.AUTO_PAIRS.
+    AUTO_PAIR_CHARS = ['(', '[', '{', '"', "'", '`', '*', '_']
+
+    FIXTURES = [
+        ("```\n|\n```", "fenced backtick"),
+        ("~~~\n|\n~~~", "fenced tilde"),
+        ("```python\n|", "unclosed fence"),
+        ("text `co|de` more", "inline code span"),
+        ("intro $a|+b$ done", "inline math"),
+    ]
+
+    @pytest.mark.parametrize("ch", AUTO_PAIR_CHARS)
+    @pytest.mark.parametrize("fixture,label", FIXTURES)
+    def test_auto_pair_suppressed(self, editor, ch, fixture, label):
+        """Type ``ch`` inside a verbatim region. Only the single char
+        should land in the buffer - no paired close, no skip-over jump,
+        no wiki completer popup."""
+        _set_buffer_and_place_cursor(editor, fixture)
+        before = editor.toPlainText()
+        before_pos = editor.textCursor().position()
+        _press(editor, ch)
+        after = editor.toPlainText()
+        # Exactly one new char appears, at the cursor position.
+        assert after == before[:before_pos] + ch + before[before_pos:], (
+            f"{label}: expected only {ch!r} inserted; got buffer change "
+            f"{before!r} -> {after!r}"
+        )
+        # Cursor moved by exactly 1.
+        assert editor.textCursor().position() == before_pos + 1
