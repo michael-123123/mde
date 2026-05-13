@@ -222,6 +222,10 @@ class ProjectPanel(QWidget):
         self.sort_btn.setToolTip("Sort options")
         self.sort_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.sort_btn.setMenu(self._build_sort_menu())
+        # Hide Qt's auto-added menu indicator chevron - it visually
+        # squishes the down-arrow half of the ⇅ glyph. Discoverability
+        # comes from the tooltip and the button's hover/press feedback.
+        self.sort_btn.setStyleSheet("QToolButton::menu-indicator { image: none; }")
         btn_layout.addWidget(self.sort_btn)
 
         layout.addLayout(btn_layout)
