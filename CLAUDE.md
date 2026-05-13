@@ -272,6 +272,18 @@ Do not skip steps. Do not claim a bug is fixed without completing step 4.
 
 The changelog update is a required step of [Deploying](#deploying), not an optional extra - do the changelog commit first, push it, and only then tag the release.
 
+### Gathering commits for the changelog
+
+To enumerate commits since the last tag, run:
+
+```bash
+git log <prev-tag>..master --no-merges --format='%h %ai %s'
+```
+
+**Never pipe through `head`, `tail`, `wc`, or any other truncator.** A two-week gap can easily contain 30-40 commits across a dozen PRs; truncating output silently drops features from the changelog. Read the full list, then group commits by the feature/PR they implemented (commits within one PR may span many slices: helper, wiring, settings, UI, tests, fixes). Each group typically condenses into one user-facing bullet.
+
+Pre-flight check before writing the changelog: count the unique PRs in the range with `git log <prev-tag>..master --merges --format='%s' | grep -c 'Merge pull request'`. The number of user-facing bullets in the new changelog entry should be in the same ballpark - a 15-PR deploy that produces 3 bullets is a sign you dropped features.
+
 ## Merging to Master
 
 Never merge branches into master directly via `git merge`. Always go through a GitHub PR:
