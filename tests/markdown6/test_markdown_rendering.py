@@ -36,6 +36,30 @@ def test_tilde_strikethrough_renders_as_del():
     assert "<del>b</del>" in html, html
 
 
+def test_double_equals_renders_as_mark():
+    """`==text==` (Pandoc/Obsidian highlight) must produce `<mark>`."""
+    html = build_markdown().convert("a ==b== c")
+    assert "<mark>b</mark>" in html, html
+
+
+def test_double_pipe_renders_as_spoiler_span():
+    """`||text||` (Discord/Obsidian spoiler) must produce a span with
+    class ``spoiler``."""
+    html = build_markdown().convert("see ||hidden|| now")
+    assert '<span class="spoiler">hidden</span>' in html, html
+
+
+def test_pipe_in_table_row_is_not_a_spoiler():
+    """Sanity: GFM tables use ``|`` as cell separator. A row like
+    ``| a | b |`` must render as a table, not as a spoiler."""
+    src = "| a | b |\n|---|---|\n| 1 | 2 |\n"
+    html = build_markdown().convert(src)
+    # `<table` (no closing bracket) since SourceLineExtension may add
+    # data-source-line attribute.
+    assert "<table" in html
+    assert 'class="spoiler"' not in html
+
+
 def test_unmarked_fence_does_not_emit_error_tokens():
     """An unmarked code fence (no language tag) must NOT trip Pygments'
     `guess_lexer` — that classifies content as some random language and

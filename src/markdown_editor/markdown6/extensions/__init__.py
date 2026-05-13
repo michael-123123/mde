@@ -27,6 +27,9 @@ from markdown_editor.markdown6.extensions.logseq import (  # noqa: F401
     LogseqExtension,
     LogseqPreprocessor,
 )
+from markdown_editor.markdown6.extensions.mark import (  # noqa: F401
+    MarkExtension,
+)
 from markdown_editor.markdown6.extensions.math import (  # noqa: F401
     MathExtension,
     MathPostprocessor,
@@ -37,6 +40,11 @@ from markdown_editor.markdown6.extensions.source_lines import (  # noqa: F401
     SourceLineExtension,
     SourceLinePostprocessor,
     SourceLinePreprocessor,
+)
+from markdown_editor.markdown6.extensions.spoiler import (  # noqa: F401
+    SpoilerExtension,
+    get_spoiler_css,
+    get_spoiler_js,
 )
 from markdown_editor.markdown6.extensions.strikethrough import (  # noqa: F401
     StrikethroughExtension,

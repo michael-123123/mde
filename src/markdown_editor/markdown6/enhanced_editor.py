@@ -1161,13 +1161,17 @@ class EnhancedEditor(QPlainTextEdit):
             #     `char*3` (the typed char + the close pair) and move left
             #     2 -> final `~~|~~` / `$$|$$`.
             #
-            # Cap: markdown emphasis bottoms out at a fixed depth - 3 for
-            # `*`/`_` (italic, bold, italic-bold) and 2 for `~`/`$`. If
-            # the user has already typed enough matching chars to reach
-            # the cap, stop opening new pairs and just insert the typed
-            # char literally. Without this the logic would stack pairs
-            # forever and produce buffers like `*****|*****`.
-            cap_for = {'*': 3, '_': 3, '~': 2, '$': 2}
+            # Cap: markdown emphasis bottoms out at a fixed depth.
+            #   * and _ : *italic* / **bold** / ***italic-bold***  (cap 3)
+            #   ~       : ~~strikethrough~~                          (cap 2)
+            #   $       : $inline$ / $$display$$                     (cap 2)
+            #   =       : ==highlight==  (Pandoc/Obsidian mark)      (cap 2)
+            #   |       : ||spoiler||    (Discord/Obsidian)          (cap 2)
+            # If the user has already typed enough matching chars to
+            # reach the cap, stop opening new pairs and just insert the
+            # typed char literally. Without this the logic would stack
+            # pairs forever and produce buffers like `*****|*****`.
+            cap_for = {'*': 3, '_': 3, '~': 2, '$': 2, '=': 2, '|': 2}
             if char in cap_for and not skip_pair:
                 cursor = self.textCursor()
                 col = cursor.positionInBlock()

@@ -53,10 +53,12 @@ from markdown_editor.markdown6.extensions import (
     CalloutExtension,
     GraphvizExtension,
     LogseqExtension,
+    MarkExtension,
     MathExtension,
     MermaidExtension,
     NormalizeListIndentExtension,
     SourceLineExtension,
+    SpoilerExtension,
     StrikethroughExtension,
     TaskListExtension,
     WikiLinkExtension,
@@ -64,6 +66,8 @@ from markdown_editor.markdown6.extensions import (
     get_math_js,
     get_mermaid_css,
     get_mermaid_js,
+    get_spoiler_css,
+    get_spoiler_js,
     get_tasklist_css,
 )
 from markdown_editor.markdown6.templates.preview import PREVIEW_TEMPLATE_FULL
@@ -169,6 +173,8 @@ def build_markdown(
         GraphvizExtension(),
         TaskListExtension(),
         StrikethroughExtension(),
+        MarkExtension(),
+        SpoilerExtension(),
         SourceLineExtension(),
     ]
     if extra_extensions:
@@ -311,6 +317,8 @@ def wrap_html_in_full_template(
 
     callout_css = get_callout_css(dark_mode)
     tasklist_css = get_tasklist_css(dark_mode)
+    spoiler_css = get_spoiler_css(dark_mode)
+    spoiler_js = get_spoiler_js()
     graphviz_css = graphviz_service.get_graphviz_css(dark_mode)
     graphviz_js = (
         graphviz_service.get_graphviz_js()
@@ -335,7 +343,8 @@ def wrap_html_in_full_template(
         code_size=code_size, body_class=body_class,
         pygments_css=pygments_css, callout_css=callout_css,
         graphviz_css=graphviz_css, mermaid_css=mermaid_css,
-        tasklist_css=tasklist_css,
+        tasklist_css=tasklist_css, spoiler_css=spoiler_css,
+        spoiler_js=spoiler_js,
         math_js=math_js, mermaid_js=mermaid_js, graphviz_js=graphviz_js,
         content=body, total_lines=total_lines,
         scroll_past_end_div=scroll_past_end_div,
