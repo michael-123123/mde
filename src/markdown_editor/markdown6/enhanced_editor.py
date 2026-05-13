@@ -1160,10 +1160,34 @@ class EnhancedEditor(QPlainTextEdit):
             #     auto-pair (would break common "I have $5" text). Insert
             #     `char*3` (the typed char + the close pair) and move left
             #     2 -> final `~~|~~` / `$$|$$`.
-            if char in ('*', '_', '~', '$') and not skip_pair:
+            #
+            # Cap: markdown emphasis bottoms out at a fixed depth - 3 for
+            # `*`/`_` (italic, bold, italic-bold) and 2 for `~`/`$`. If
+            # the user has already typed enough matching chars to reach
+            # the cap, stop opening new pairs and just insert the typed
+            # char literally. Without this the logic would stack pairs
+            # forever and produce buffers like `*****|*****`.
+            cap_for = {'*': 3, '_': 3, '~': 2, '$': 2}
+            if char in cap_for and not skip_pair:
                 cursor = self.textCursor()
                 col = cursor.positionInBlock()
                 line_text = cursor.block().text()
+
+                # Consecutive matching chars immediately before cursor.
+                consec_before = 0
+                i = col - 1
+                while i >= 0 and line_text[i] == char:
+                    consec_before += 1
+                    i -= 1
+
+                if consec_before >= cap_for[char]:
+                    # At the markdown emphasis cap. Insert the char
+                    # literally - don't open another pair and don't fall
+                    # through to skip-close (which would yank the cursor
+                    # past an existing close, confusing the user).
+                    cursor.insertText(char)
+                    return
+
                 # State A: prev char and next char both match.
                 if (
                     col >= 1

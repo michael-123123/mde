@@ -451,6 +451,45 @@ class TestFencedCodeAutoComplete:
         assert editor.toPlainText() == "$"
         assert editor.textCursor().position() == 1
 
+    def test_triple_asterisk_opens_italic_bold(self, editor):
+        """Typing *** opens markdown's italic-bold emphasis. Cap is 3
+        for *, so this is allowed."""
+        _type(editor, "***")
+        assert editor.toPlainText() == "******"
+        assert editor.textCursor().position() == 3
+
+    def test_four_asterisks_does_not_stack_past_cap(self, editor):
+        """Typing **** should NOT keep opening pairs - markdown
+        emphasis caps at 3 (`***italic-bold***`). The 4th char inserts
+        literally so the user sees they've gone past the cap.
+        """
+        _type(editor, "****")
+        # 4th char is a literal insert; no new pair opens.
+        # Stars before cursor: 4 (the typed stars), stars after: 3 (the
+        # close pairs from the first three keypresses).
+        assert editor.toPlainText() == "****" + "***", (
+            f"got {editor.toPlainText()!r}"
+        )
+        assert editor.textCursor().position() == 4
+
+    def test_five_asterisks_still_capped(self, editor):
+        _type(editor, "*****")
+        assert editor.toPlainText() == "*****" + "***"
+        assert editor.textCursor().position() == 5
+
+    def test_triple_tilde_capped_at_two(self, editor):
+        """`~` caps at 2 (`~~strikethrough~~` is the only valid form)."""
+        _type(editor, "~~~")
+        # 3rd ~ inserts literally; close pair from 2nd keypress is `~~`.
+        assert editor.toPlainText() == "~~~" + "~~"
+        assert editor.textCursor().position() == 3
+
+    def test_triple_dollar_capped_at_two(self, editor):
+        """`$` caps at 2 (`$$display$$` is the deepest)."""
+        _type(editor, "$$$")
+        assert editor.toPlainText() == "$$$" + "$$"
+        assert editor.textCursor().position() == 3
+
     def test_fence_scaffold_respects_auto_pairs_setting(self, editor):
         """``editor.auto_pairs`` gates the fence scaffold too: with the
         setting off, pressing Enter on a ``` line should be a plain
