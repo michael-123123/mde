@@ -2111,8 +2111,9 @@ def main():
     from markdown_editor.markdown6.logger import (
         capture_external_stderr,
         resolve_level,
-        setup as setup_logging,
     )
+    from markdown_editor.markdown6.logger import setup as setup_logging
+
     # Redirect native stderr (Chromium / NSS / Qt) through our logger
     # BEFORE setup_logging so our StreamHandler inherits the saved
     # stderr fd instead of the capture pipe.
