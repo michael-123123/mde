@@ -36,6 +36,12 @@ def test_tilde_strikethrough_renders_as_del():
     assert "<del>b</del>" in html, html
 
 
+def test_double_equals_renders_as_mark():
+    """`==text==` (Pandoc/Obsidian highlight) must produce `<mark>`."""
+    html = build_markdown().convert("a ==b== c")
+    assert "<mark>b</mark>" in html, html
+
+
 def test_unmarked_fence_does_not_emit_error_tokens():
     """An unmarked code fence (no language tag) must NOT trip Pygments'
     `guess_lexer` — that classifies content as some random language and

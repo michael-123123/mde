@@ -53,6 +53,7 @@ from markdown_editor.markdown6.extensions import (
     CalloutExtension,
     GraphvizExtension,
     LogseqExtension,
+    MarkExtension,
     MathExtension,
     MermaidExtension,
     NormalizeListIndentExtension,
@@ -169,6 +170,7 @@ def build_markdown(
         GraphvizExtension(),
         TaskListExtension(),
         StrikethroughExtension(),
+        MarkExtension(),
         SourceLineExtension(),
     ]
     if extra_extensions:
