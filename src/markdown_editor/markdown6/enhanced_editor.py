@@ -1221,6 +1221,20 @@ class EnhancedEditor(QPlainTextEdit):
                 else:
                     break
 
+            # Inside a verbatim region (code span/block, math, HTML pre/
+            # script/style/comment), list continuation is always wrong (the
+            # line is content, not a list). Auto-indent is kept by default
+            # since preserving indent is desirable while typing code; the
+            # `editor.auto_indent_in_verbatim` setting toggles it off.
+            if self._cursor_in_verbatim_region():
+                if not self.ctx.get("editor.auto_indent_in_verbatim", True):
+                    super().keyPressEvent(event)
+                    return
+                super().keyPressEvent(event)
+                if indent:
+                    self.textCursor().insertText(indent)
+                return
+
             # Check for list continuation
             list_match = re.match(r"^(\s*)([-*+]|\d+\.)\s", block_text)
             if list_match:

@@ -535,3 +535,56 @@ class TestAutoPairsSuppressedInVerbatim:
         )
         # Cursor moved by exactly 1.
         assert editor.textCursor().position() == before_pos + 1
+
+
+class TestEnterIndentListSuppressedInVerbatim:
+    """Behaviours #7-#9. List continuation and empty-list-marker strip
+    are ALWAYS suppressed inside verbatim. Auto-indent (which preserves
+    leading whitespace) is KEPT by default - typing indented code inside
+    a fence should keep its indent on Enter. A setting
+    (``editor.auto_indent_in_verbatim``) can disable that too.
+    """
+
+    def test_list_continuation_suppressed_in_fence(self, editor):
+        """``- item`` inside a fenced block should NOT auto-add ``- ``
+        on the new line - it's code, not a list."""
+        _set_buffer_and_place_cursor(editor, "```\n- item|\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # The next line is empty (not '- '). The buffer becomes
+        # "```\n- item\n|\n```" with no marker continuation.
+        assert "- item\n- " not in editor.toPlainText()
+        # Cursor is on a line that's empty (or contains only leading
+        # whitespace from auto-indent, which is fine).
+        cursor_line = editor.textCursor().block().text()
+        assert cursor_line.lstrip(" \t") == ""
+
+    def test_empty_list_strip_suppressed_in_fence(self, editor):
+        """An empty list marker ``- |`` inside a fence: Enter should NOT
+        invoke the "strip the empty marker" logic - it should treat the
+        line as plain text."""
+        _set_buffer_and_place_cursor(editor, "```\n- |\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # The '- ' on the original line must still be there.
+        assert "- " in editor.toPlainText()
+
+    def test_auto_indent_preserved_in_fence_by_default(self, editor):
+        """With default settings, indent IS preserved inside a fence."""
+        _set_buffer_and_place_cursor(editor, "```\n    code|\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        # New line starts with 4 spaces.
+        cursor = editor.textCursor()
+        new_line = cursor.block().text()
+        assert new_line.startswith("    "), (
+            f"expected 4-space indent on new line; got {new_line!r}"
+        )
+
+    def test_auto_indent_suppressed_when_setting_off(self, editor):
+        """With ``editor.auto_indent_in_verbatim=False``, indent is NOT
+        preserved inside a fence - new line starts at column 0."""
+        editor.ctx.set("editor.auto_indent_in_verbatim", False)
+        _set_buffer_and_place_cursor(editor, "```\n    code|\n```")
+        _press(editor, "\n", key=Qt.Key.Key_Return)
+        new_line = editor.textCursor().block().text()
+        assert new_line == "", (
+            f"expected empty new line (no indent) with setting off; got {new_line!r}"
+        )
