@@ -209,3 +209,65 @@ class TestGetSnippetManager:
         manager1 = get_snippet_manager()
         manager2 = get_snippet_manager()
         assert manager1 is manager2
+
+
+class TestCtrlJSnippetPopupSuppressedInVerbatim:
+    """Behaviour #13: invoking the snippet picker (Ctrl+J) should NOT
+    open the popup when the cursor is inside a verbatim region.
+
+    Uses monkeypatch to track whether the SnippetPopup constructor was
+    called, rather than actually executing the modal dialog.
+    """
+
+    @pytest.mark.timeout(15, method="thread")
+    def test_popup_suppressed_in_fence(self, qtbot, monkeypatch):
+        from markdown_editor.markdown6 import markdown_editor as mde_mod
+        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+
+        editor = MarkdownEditor()
+        qtbot.addWidget(editor)
+        editor.new_tab()
+        tab = editor.current_tab()
+        tab.editor.setPlainText("```\n\n```")
+        cursor = tab.editor.textCursor()
+        cursor.setPosition(4)   # middle line of the fence
+        tab.editor.setTextCursor(cursor)
+        # Sanity check.
+        assert tab.editor._cursor_in_verbatim_region() is True
+
+        constructed: list = []
+
+        class _SpyPopup:
+            def __init__(self, *args, **kwargs):
+                constructed.append((args, kwargs))
+            def exec(self):
+                return 0
+
+        monkeypatch.setattr(mde_mod, "SnippetPopup", _SpyPopup)
+        editor._show_snippet_popup()
+        assert constructed == [], "SnippetPopup should not be constructed inside verbatim"
+
+    @pytest.mark.timeout(15, method="thread")
+    def test_popup_still_opens_in_prose(self, qtbot, monkeypatch):
+        """Sanity: outside verbatim, the popup still constructs."""
+        from markdown_editor.markdown6 import markdown_editor as mde_mod
+        from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+
+        editor = MarkdownEditor()
+        qtbot.addWidget(editor)
+        editor.new_tab()
+        tab = editor.current_tab()
+        tab.editor.setPlainText("just prose here")
+
+        constructed: list = []
+
+        class _SpyPopup:
+            def __init__(self, *args, **kwargs):
+                constructed.append((args, kwargs))
+            def exec(self):
+                return 0
+            selected_snippet = None
+
+        monkeypatch.setattr(mde_mod, "SnippetPopup", _SpyPopup)
+        editor._show_snippet_popup()
+        assert len(constructed) == 1, "SnippetPopup should construct in prose"
