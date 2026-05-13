@@ -40,3 +40,44 @@ def test_checkbox_round_trips_to_setting(settings_dialog):
     settings_dialog.auto_indent_in_verbatim.setChecked(True)
     settings_dialog._apply()
     assert settings_dialog.ctx.get("editor.auto_indent_in_verbatim") is True
+
+
+# ── Image paste toggle + folder ────────────────────────────────────
+
+
+def test_paste_image_widgets_exist(settings_dialog):
+    """The dialog exposes the paste-image controls."""
+    assert hasattr(settings_dialog, "paste_image_to_disk")
+    assert hasattr(settings_dialog, "paste_image_dir")
+    assert hasattr(settings_dialog, "paste_image_dir_browse")
+
+
+def test_paste_image_defaults_loaded(settings_dialog):
+    """Defaults: toggle on, folder empty."""
+    assert settings_dialog.paste_image_to_disk.isChecked() is True
+    assert settings_dialog.paste_image_dir.text() == ""
+
+
+def test_paste_image_toggle_round_trips(settings_dialog):
+    settings_dialog.paste_image_to_disk.setChecked(False)
+    settings_dialog._apply()
+    assert settings_dialog.ctx.get("editor.paste_image_to_disk") is False
+    settings_dialog.paste_image_to_disk.setChecked(True)
+    settings_dialog._apply()
+    assert settings_dialog.ctx.get("editor.paste_image_to_disk") is True
+
+
+def test_paste_image_dir_round_trips(settings_dialog, tmp_path):
+    settings_dialog.paste_image_dir.setText(str(tmp_path))
+    settings_dialog._apply()
+    assert settings_dialog.ctx.get("editor.paste_image_dir") == str(tmp_path)
+
+
+def test_paste_image_dir_disabled_when_toggle_off(settings_dialog):
+    """Folder controls grey out when the master toggle is off."""
+    settings_dialog.paste_image_to_disk.setChecked(False)
+    assert settings_dialog.paste_image_dir.isEnabled() is False
+    assert settings_dialog.paste_image_dir_browse.isEnabled() is False
+    settings_dialog.paste_image_to_disk.setChecked(True)
+    assert settings_dialog.paste_image_dir.isEnabled() is True
+    assert settings_dialog.paste_image_dir_browse.isEnabled() is True

@@ -856,3 +856,79 @@ class TestImagePasteSuppressedInVerbatim:
 
         editor.insertFromMimeData(mime)
         assert len(paste_called) == 1
+
+
+class TestImagePasteSettings:
+    """The image-paste-as-markdown feature is gated by a setting
+    (``editor.paste_image_to_disk``) and the save location is
+    configurable (``editor.paste_image_dir``)."""
+
+    def _mime_with_image(self):
+        from PySide6.QtCore import QMimeData
+        from PySide6.QtGui import QImage
+        m = QMimeData()
+        img = QImage(1, 1, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFF)
+        m.setImageData(img)
+        return m
+
+    def test_paste_image_disabled_is_noop(self, editor, monkeypatch):
+        """``paste_image_to_disk=False``: _paste_image not called."""
+        editor.ctx.set("editor.paste_image_to_disk", False)
+        editor.setPlainText("")
+        paste_called: list = []
+        monkeypatch.setattr(
+            editor, "_paste_image", lambda src: paste_called.append(src),
+        )
+        editor.insertFromMimeData(self._mime_with_image())
+        assert paste_called == []
+
+    def test_paste_image_default_dir_uses_doc_relative_images(
+        self, editor, tmp_path,
+    ):
+        """Default (paste_image_dir='') + saved doc: image lands in
+        ``<doc_dir>/images/``."""
+        doc = tmp_path / "doc.md"
+        doc.write_text("")
+        editor.file_path = doc
+        editor.setPlainText("")
+        editor.insertFromMimeData(self._mime_with_image())
+        images = list((tmp_path / "images").glob("image_*.png"))
+        assert len(images) == 1
+        # Markdown link inserted with the relative path.
+        assert "![image](" in editor.toPlainText()
+        assert "images/" in editor.toPlainText()
+
+    def test_paste_image_absolute_dir_saves_there(
+        self, editor, tmp_path,
+    ):
+        """Absolute ``paste_image_dir``: image saved at that path
+        regardless of doc location."""
+        custom = tmp_path / "custom"
+        editor.ctx.set("editor.paste_image_dir", str(custom))
+        # Doc is somewhere else.
+        doc = tmp_path / "elsewhere" / "doc.md"
+        doc.parent.mkdir()
+        doc.write_text("")
+        editor.file_path = doc
+        editor.setPlainText("")
+        editor.insertFromMimeData(self._mime_with_image())
+        images = list(custom.glob("image_*.png"))
+        assert len(images) == 1, (
+            f"expected image in {custom}; got {list(custom.iterdir()) if custom.exists() else 'no dir'}"
+        )
+
+    def test_paste_image_relative_dir_resolved_against_doc(
+        self, editor, tmp_path,
+    ):
+        """Relative ``paste_image_dir`` like ``assets/img`` is resolved
+        against the doc's parent directory."""
+        editor.ctx.set("editor.paste_image_dir", "assets/img")
+        doc = tmp_path / "doc.md"
+        doc.write_text("")
+        editor.file_path = doc
+        editor.setPlainText("")
+        editor.insertFromMimeData(self._mime_with_image())
+        expected_dir = tmp_path / "assets" / "img"
+        images = list(expected_dir.glob("image_*.png"))
+        assert len(images) == 1

@@ -1500,12 +1500,18 @@ class EnhancedEditor(QPlainTextEdit):
 
     def insertFromMimeData(self, source: QMimeData):
         """Handle paste from mime data, including images."""
-        # Don't run the image-save-and-insert-markdown-link path when the
-        # cursor is inside a verbatim region. Pasting an image into code/
-        # math is almost certainly a mistake; fall through to the default
-        # paste (which has no useful representation for image data and
-        # will be a no-op for our purposes - the right answer).
-        if source.hasImage() and not self._cursor_in_verbatim_region():
+        # Gates on the image-save-and-insert-markdown-link path:
+        # - `editor.paste_image_to_disk`: user can disable the whole
+        #   feature; with it off, pasted images fall through to Qt's
+        #   default (a no-op for image data, which is the right answer
+        #   if the user wants to ignore image clipboards).
+        # - Verbatim region: pasting an image into code/math is almost
+        #   certainly a mistake.
+        if (
+            source.hasImage()
+            and self.ctx.get("editor.paste_image_to_disk", True)
+            and not self._cursor_in_verbatim_region()
+        ):
             self._paste_image(source)
         else:
             super().insertFromMimeData(source)
@@ -1516,21 +1522,12 @@ class EnhancedEditor(QPlainTextEdit):
         if image.isNull():
             return
 
-        # Determine save location
-        if self.file_path:
-            # Save relative to current file
-            images_dir = self.file_path.parent / "images"
-        else:
-            # Ask user where to save
-            folder = QFileDialog.getExistingDirectory(
-                self, "Select Images Folder", str(Path.home())
-            )
-            if not folder:
-                return
-            images_dir = Path(folder)
+        images_dir = self._resolve_paste_image_dir()
+        if images_dir is None:
+            return
 
-        # Create images directory if needed
-        images_dir.mkdir(exist_ok=True)
+        # Create the target directory (mkdir -p semantics).
+        images_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1539,16 +1536,58 @@ class EnhancedEditor(QPlainTextEdit):
 
         # Save the image
         if image.save(str(image_path)):
-            # Insert markdown image link
+            # Insert markdown image link. If the doc has a path, use a
+            # relative path to keep the markdown portable; otherwise
+            # absolute.
             if self.file_path:
-                # Use relative path
-                rel_path = image_path.relative_to(self.file_path.parent)
-                markdown = f"![image]({rel_path})"
+                try:
+                    rel_path = image_path.relative_to(self.file_path.parent)
+                    markdown = f"![image]({rel_path})"
+                except ValueError:
+                    # image_path isn't under the doc - use absolute.
+                    markdown = f"![image]({image_path})"
             else:
                 markdown = f"![image]({image_path})"
 
             cursor = self.textCursor()
             cursor.insertText(markdown)
+
+    def _resolve_paste_image_dir(self) -> Path | None:
+        """Decide where the next pasted image should be saved.
+
+        Resolution rules:
+          - If ``editor.paste_image_dir`` is set:
+              * Absolute path -> use as-is.
+              * Relative path -> resolved against the doc's directory if
+                the doc has been saved; otherwise prompt the user (no
+                anchor to resolve against).
+          - Else (setting empty - the historical default):
+              * If the doc has been saved -> ``<doc_dir>/images/``.
+              * Otherwise prompt the user for a folder.
+
+        Returns ``None`` to signal "give up and don't paste" (e.g. the
+        user cancelled the folder prompt).
+        """
+        configured = (self.ctx.get("editor.paste_image_dir", "") or "").strip()
+        if configured:
+            candidate = Path(configured).expanduser()
+            if candidate.is_absolute():
+                return candidate
+            if self.file_path:
+                return (self.file_path.parent / candidate).resolve()
+            # Relative path but no doc to anchor against - prompt.
+            folder = QFileDialog.getExistingDirectory(
+                self, "Select Images Folder", str(Path.home())
+            )
+            return Path(folder) if folder else None
+
+        # Setting empty - historical defaults.
+        if self.file_path:
+            return self.file_path.parent / "images"
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Images Folder", str(Path.home())
+        )
+        return Path(folder) if folder else None
 
     # ==================== WIKI LINKS ====================
 
