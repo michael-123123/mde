@@ -1003,6 +1003,7 @@ class MarkdownEditor(QMainWindow):
             self._update_recent_files_menu()
 
             self.status_bar.showMessage(f"Opened: {path}")
+            logger.info("Opened: %s (%d chars)", path, len(content))
             self._dispatch_plugin_signal(SignalKind.FILE_OPENED, tab)
         except Exception as e:
             logger.exception(f"Could not open file: {path}")
@@ -1025,6 +1026,7 @@ class MarkdownEditor(QMainWindow):
             self.update_tab_title(tab)
             self.update_window_title()
             self.status_bar.showMessage(f"Saved: {tab.file_path}")
+            logger.info("Saved: %s", tab.file_path)
             self._dispatch_plugin_signal(SignalKind.SAVE, tab)
             return True
         except Exception as e:
@@ -1081,6 +1083,7 @@ class MarkdownEditor(QMainWindow):
                 source_path=tab.file_path,
             )
             self.status_bar.showMessage(f"Exported to: {file_path}")
+            logger.info("Exported HTML: %s", file_path)
         except Exception as e:
             logger.exception(f"Could not export HTML to {file_path}")
             QMessageBox.critical(self, "Error", f"Could not export file: {e}")
@@ -2102,6 +2105,8 @@ class MarkdownEditor(QMainWindow):
 
 def main():
     """Run the Markdown editor application."""
+    import logging
+
     from markdown_editor.markdown6.logger import (
         resolve_level,
         setup as setup_logging,
@@ -2109,7 +2114,9 @@ def main():
     # This entry point has no CLI args of its own - level comes from
     # MDE_LOG_LEVEL or the default. The real CLI passes the parsed
     # --log-level via the cli main() in markdown_editor_cli.py.
-    setup_logging(level=resolve_level())
+    level = resolve_level()
+    setup_logging(level=level)
+    logger.info("mde starting (log level=%s)", logging.getLevelName(level))
 
     app = QApplication(sys.argv)
     app.setApplicationName("Markdown Editor")
@@ -2121,6 +2128,7 @@ def main():
 
     editor = MarkdownEditor()
     editor.show()
+    logger.info("Main window shown")
 
     if sys.argv[1:]:
         for arg in sys.argv[1:]:

@@ -370,6 +370,9 @@ class ProjectPanel(QWidget):
             self._lazy = not path.resolve().is_relative_to(home.resolve())
         except (ValueError, RuntimeError):
             self._lazy = True
+        logger.info(
+            "Project root: %s%s", path, " (lazy mode)" if self._lazy else "",
+        )
         self.file_model.setRootPath(str(path))
         self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
         # Remember last project

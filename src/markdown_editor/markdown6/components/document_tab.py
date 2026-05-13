@@ -652,6 +652,7 @@ class DocumentTab(QWidget):
         """Handle external file modification with non-modal notification."""
         name = self.file_path.name if self.file_path else "File"
         self.external_change_bar.show_change(name)
+        logger.info("External change detected: %s", self.file_path or name)
 
     def _on_editor_scroll(self):
         """Handle editor scroll for sync scrolling."""
@@ -917,6 +918,7 @@ class DocumentTab(QWidget):
             # modificationChanged(False) will propagate to unsaved_changes.
             self.editor.document().setModified(False)
             self.main_window.update_tab_title(self)
+            logger.info("Reloaded: %s (%d chars)", self.file_path, len(content))
 
     def get_tab_title(self) -> str:
         """Return the title for this tab."""

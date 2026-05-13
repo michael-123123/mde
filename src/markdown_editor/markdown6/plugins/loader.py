@@ -292,4 +292,10 @@ def load_all(
     plugins = discover_plugins(roots)
     for plugin in plugins:
         load_plugin(plugin, user_disabled=user_disabled)
+    loaded = [p for p in plugins if p.status == PluginStatus.ENABLED]
+    if plugins:
+        logger.info(
+            "Plugins: %d loaded, %d total discovered",
+            len(loaded), len(plugins),
+        )
     return plugins
