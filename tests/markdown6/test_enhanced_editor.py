@@ -588,3 +588,40 @@ class TestEnterIndentListSuppressedInVerbatim:
         assert new_line == "", (
             f"expected empty new line (no indent) with setting off; got {new_line!r}"
         )
+
+
+class TestWikiCompleterSuppressedInVerbatim:
+    """Behaviours #10/#11: typing ``[[`` inside a verbatim region must
+    NOT pop the wiki-link completer."""
+
+    @pytest.fixture(autouse=True)
+    def _stock_available_links(self, editor):
+        """Give the editor a non-empty link list so the popup CAN show
+        absent any suppression."""
+        editor.set_available_links(["NoteOne", "NoteTwo", "Plan"])
+        yield
+
+    def test_wiki_completer_does_not_show_in_fence(self, editor):
+        _set_buffer_and_place_cursor(editor, "```\n[[N|\n```")
+        # _check_wiki_link_trigger should return False when in verbatim.
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_does_not_show_in_inline_code(self, editor):
+        _set_buffer_and_place_cursor(editor, "before `[[N|` after")
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_does_not_show_in_inline_math(self, editor):
+        _set_buffer_and_place_cursor(editor, "before $[[N|$ after")
+        result = editor._check_wiki_link_trigger()
+        assert result is False
+        assert not editor.wiki_link_completer.isVisible()
+
+    def test_wiki_completer_still_shows_in_prose(self, editor):
+        """Sanity: outside verbatim, the completer still pops."""
+        _set_buffer_and_place_cursor(editor, "see [[N|")
+        result = editor._check_wiki_link_trigger()
+        assert result is True

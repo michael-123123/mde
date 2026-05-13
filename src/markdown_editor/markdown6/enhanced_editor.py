@@ -1561,6 +1561,13 @@ class EnhancedEditor(QPlainTextEdit):
 
     def _check_wiki_link_trigger(self):
         """Check if we should show wiki link autocomplete."""
+        # Don't pop the wiki completer when the cursor sits inside a
+        # verbatim region - `[[` there is literal text, not a link.
+        if self._cursor_in_verbatim_region():
+            if self.wiki_link_completer:
+                self.wiki_link_completer.hide()
+            return False
+
         cursor = self.textCursor()
         block_text = cursor.block().text()
         col = cursor.positionInBlock()
