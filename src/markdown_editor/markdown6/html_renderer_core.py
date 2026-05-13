@@ -58,6 +58,7 @@ from markdown_editor.markdown6.extensions import (
     MermaidExtension,
     NormalizeListIndentExtension,
     SourceLineExtension,
+    SpoilerExtension,
     StrikethroughExtension,
     TaskListExtension,
     WikiLinkExtension,
@@ -171,6 +172,7 @@ def build_markdown(
         TaskListExtension(),
         StrikethroughExtension(),
         MarkExtension(),
+        SpoilerExtension(),
         SourceLineExtension(),
     ]
     if extra_extensions:
