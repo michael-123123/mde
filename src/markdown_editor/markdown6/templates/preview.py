@@ -249,6 +249,8 @@ PREVIEW_TEMPLATE_FULL = """
                 {mermaid_css}
                 /* Task lists */
                 {tasklist_css}
+                /* Spoilers (||text||) */
+                {spoiler_css}
                 /* When zoomed, let diagram SVGs scale instead of fitting container */
                 body.zoomed .mermaid-diagram svg,
                 body.zoomed .graphviz-diagram svg {{
@@ -294,6 +296,7 @@ PREVIEW_TEMPLATE_FULL = """
             {scroll_past_end_div}
             {mermaid_js}
             {graphviz_js}
+            {spoiler_js}
             <script>
             /* Ctrl+click on images/diagrams → open in external app */
             document.addEventListener('mousemove', function(e) {{

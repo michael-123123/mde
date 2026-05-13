@@ -96,3 +96,21 @@ class TestSpoilerJS:
         assert "addEventListener('keydown'" in js or 'addEventListener("keydown"' in js
 
 
+def test_spoiler_css_and_js_reach_rendered_preview():
+    """Integration: build_markdown() output goes through the full
+    template wrap, which must include the spoiler CSS AND the
+    click-to-reveal JS so ||text|| works end-to-end in the preview."""
+    from markdown_editor.markdown6.app_context import init_app_context
+    from markdown_editor.markdown6.html_renderer_core import (
+        render_html_document,
+    )
+
+    ctx = init_app_context(ephemeral=True)
+    html = render_html_document("||hidden||", ctx)
+    # Body has the span.
+    assert '<span class="spoiler">hidden</span>' in html
+    # CSS rule that blurs.
+    assert "span.spoiler" in html
+    assert "filter: blur(" in html
+    # JS handler that toggles on click.
+    assert "classList.toggle" in html

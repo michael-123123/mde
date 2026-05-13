@@ -55,6 +55,8 @@ from markdown_editor.markdown6.extensions import (
     get_math_js,
     get_mermaid_css,
     get_mermaid_js,
+    get_spoiler_css,
+    get_spoiler_js,
     get_tasklist_css,
 )
 from markdown_editor.markdown6.html_renderer_core import (
@@ -646,6 +648,10 @@ class MarkdownEditor(QMainWindow):
         # Get task list CSS
         tasklist_css = get_tasklist_css(dark_mode)
 
+        # Get spoiler CSS + click-to-reveal JS (||text|| handling)
+        spoiler_css = get_spoiler_css(dark_mode)
+        spoiler_js = get_spoiler_js()
+
         # Get graphviz CSS and JS
         graphviz_css = graphviz_service.get_graphviz_css(dark_mode)
         graphviz_js = graphviz_service.get_graphviz_js() if not graphviz_service.has_graphviz() else ""
@@ -670,7 +676,8 @@ class MarkdownEditor(QMainWindow):
             code_size=code_size, body_class=body_class,
             pygments_css=pygments_css, callout_css=callout_css,
             graphviz_css=graphviz_css, mermaid_css=mermaid_css,
-            tasklist_css=tasklist_css,
+            tasklist_css=tasklist_css, spoiler_css=spoiler_css,
+            spoiler_js=spoiler_js,
             math_js=math_js, mermaid_js=mermaid_js, graphviz_js=graphviz_js,
             content=content, total_lines=total_lines,
             scroll_past_end_div=scroll_past_end_div,
