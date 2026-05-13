@@ -398,3 +398,71 @@ class TestFencedCodeAutoComplete:
         # No closing fence scaffolded - that ``` was inline, not an opener.
         assert "```" in editor.toPlainText()
         assert editor.toPlainText().count("```") == 1
+
+
+def _set_buffer_and_place_cursor(editor: EnhancedEditor, text: str, marker: str = "|"):
+    """Set the editor buffer to *text* with the cursor at the offset of
+    *marker*. The marker itself is stripped from the buffer.
+
+    Lets each test specify a fixture string like ``\"```\\n|\\n```\"``
+    and have the cursor placed precisely.
+    """
+    pos = text.index(marker)
+    cleaned = text[:pos] + text[pos + len(marker):]
+    editor.setPlainText(cleaned)
+    cursor = editor.textCursor()
+    cursor.setPosition(pos)
+    editor.setTextCursor(cursor)
+
+
+class TestVerbatimRegionDetector:
+    """``EnhancedEditor._cursor_in_verbatim_region()`` recognises every
+    V1–V10 verbatim region (inline code, fenced code block, indented
+    code block, inline math, display math, HTML pre/script/style, HTML
+    comment), plus an unclosed fence via the parity hybrid.
+    """
+
+    def test_outside_returns_false_empty_buffer(self, editor):
+        assert editor._cursor_in_verbatim_region() is False
+
+    def test_outside_returns_false_paragraph(self, editor):
+        _set_buffer_and_place_cursor(editor, "Hello | world")
+        assert editor._cursor_in_verbatim_region() is False
+
+    def test_inside_inline_code_span(self, editor):
+        _set_buffer_and_place_cursor(editor, "text `co|de` here")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_fenced_block(self, editor):
+        _set_buffer_and_place_cursor(editor, "```\n|\n```")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_tilde_fence(self, editor):
+        _set_buffer_and_place_cursor(editor, "~~~\n|\n~~~")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_unclosed_fence_hybrid(self, editor):
+        # No closing fence yet - the masker won't see this as verbatim, but
+        # the parity hybrid should still flag it.
+        _set_buffer_and_place_cursor(editor, "```python\n|")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_indented_code_block(self, editor):
+        _set_buffer_and_place_cursor(editor, "para\n\n    cod|e here")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_inline_math(self, editor):
+        _set_buffer_and_place_cursor(editor, "before $x| + 1$ after")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_display_math(self, editor):
+        _set_buffer_and_place_cursor(editor, "$$\n|\n$$")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_html_pre(self, editor):
+        _set_buffer_and_place_cursor(editor, "<pre>|</pre>")
+        assert editor._cursor_in_verbatim_region() is True
+
+    def test_inside_html_comment(self, editor):
+        _set_buffer_and_place_cursor(editor, "<!--|-->")
+        assert editor._cursor_in_verbatim_region() is True
