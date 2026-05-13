@@ -369,6 +369,13 @@ class ProjectPanel(QWidget):
             home = Path.home()
             self._lazy = not path.resolve().is_relative_to(home.resolve())
         except (ValueError, RuntimeError):
+            # path.resolve() can hit symlink loops (RuntimeError) or
+            # cross-drive comparison issues on Windows (ValueError);
+            # default to lazy mode so a broken root doesn't freeze us.
+            logger.exception(
+                "Could not resolve project path %s relative to home; "
+                "defaulting to lazy mode", path,
+            )
             self._lazy = True
         logger.info(
             "Project root: %s%s", path, " (lazy mode)" if self._lazy else "",
@@ -456,6 +463,9 @@ class ProjectPanel(QWidget):
         try:
             self.file_model.directoryLoaded.disconnect(self._on_directory_loaded)
         except RuntimeError:
+            # Qt raises RuntimeError when disconnecting a slot that
+            # was never connected (or already disconnected). That can
+            # happen during cleanup races; intentionally silent.
             pass
 
     def _on_filter_changed(self, text: str):
@@ -804,7 +814,9 @@ class ProjectExportDialog(QDialog):
             self.accept()
         except export_service.ExportError as e:
             progress.close()
+            logger.exception("Project export error")
             QMessageBox.warning(self, "Export Error", str(e))
         except Exception as e:
             progress.close()
+            logger.exception("Project export failed")
             QMessageBox.critical(self, "Error", f"Export failed: {e}")
