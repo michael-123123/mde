@@ -1,7 +1,9 @@
 """A feature-rich Qt6 Markdown editor with split-screen editing and preview."""
 
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
@@ -96,6 +98,41 @@ from markdown_editor.markdown6.theme import (
 logger = getLogger(__name__)
 
 
+# Two unhandled Esc presses within this window exit Zen mode. The
+# window is short enough that the user has to be deliberately tapping
+# Esc twice, but long enough to forgive a slight pause.
+_ZEN_DOUBLE_ESC_MS = 500
+
+
+def _monotonic_ms() -> int:
+    """Wall-monotonic clock in integer milliseconds. Wrapped so tests
+    can monkeypatch a deterministic clock."""
+    return int(time.monotonic() * 1000)
+
+
+# Sentinel for restoring an unconstrained widget height. Qt's
+# QWIDGETSIZE_MAX is 16777215 (24-bit).
+_WIDGET_HEIGHT_UNBOUND = 16777215
+
+
+@dataclass
+class _ZenSnapshot:
+    """What was visible / collapsed before Zen mode took over. Used to
+    restore the exact pre-Zen state when Zen is toggled off.
+
+    ``menu_bar_max_height`` is stored separately from ``menu_bar_visible``
+    because we hide the menu bar by collapsing it to zero height rather
+    than ``setVisible(False)`` — a hidden menu bar stops routing its
+    QAction shortcuts, which would prevent the Zen toggle itself from
+    firing while Zen is active.
+    """
+    menu_bar_visible: bool
+    menu_bar_max_height: int
+    sidebar_visible: bool
+    sidebar_collapsed: bool
+    tab_bar_visible: bool
+    status_bar_visible: bool
+
 
 def apply_application_theme(dark_mode: bool):
     """Apply a light or dark theme to the entire application."""
@@ -162,6 +199,14 @@ class MarkdownEditor(QMainWindow):
         # are read from `plugins.extra_dirs` inside `_plugin_roots()`.
         self._extra_plugin_dirs: list[Path] = list(extra_plugin_dirs or [])
         self._is_fullscreen = False
+        # Zen mode state: transient, never persisted. _zen_snapshot
+        # captures pre-Zen visibility/collapse so exit restores exactly
+        # what the user had. _last_unhandled_esc_ms tracks the
+        # double-Esc gesture; only Esc events that reach the main
+        # window unhandled (i.e. nothing else consumed them) count.
+        self._zen_mode_active = False
+        self._zen_snapshot: _ZenSnapshot | None = None
+        self._last_unhandled_esc_ms = 0
         self._diagram_executor = ThreadPoolExecutor(max_workers=4)
         self._set_application_icon()
         # ``self.md`` is built inside ``_load_plugins`` (called by
@@ -852,6 +897,20 @@ class MarkdownEditor(QMainWindow):
 
         # Update the toggle button (which will update visibility)
         self.preview_toggle_btn.setChecked(value)
+        self._update_editor_preview_visibility()
+
+    def _toggle_editor(self):
+        """Toggle editor visibility via menu - syncs with toggle button.
+
+        Mirrors ``_toggle_preview``. The two panes can't both be hidden
+        at the same time; if hiding the editor would leave nothing
+        visible (preview also off), re-check the action and bail.
+        """
+        value = self.toggle_editor_action.isChecked()
+        if not value and not self.preview_toggle_btn.isChecked():
+            self.toggle_editor_action.setChecked(True)
+            return
+        self.editor_toggle_btn.setChecked(value)
         self._update_editor_preview_visibility()
 
     def _toggle_line_numbers(self):
@@ -1687,6 +1746,104 @@ class MarkdownEditor(QMainWindow):
     def _toggle_sidebar(self):
         """Toggle sidebar visibility."""
         self.sidebar.toggle()
+
+    def _toggle_zen_mode(self):
+        """Toggle Zen mode — hide everything except the editor/preview
+        panes, or restore the pre-Zen layout. State is transient (not
+        persisted); a restart always returns to non-Zen.
+        """
+        if self._zen_mode_active:
+            self._exit_zen_mode()
+        else:
+            self._enter_zen_mode()
+        # Keep the menu/palette checkbox in sync with the actual state.
+        action = getattr(self, "toggle_zen_mode_action", None)
+        if action is not None:
+            action.setChecked(self._zen_mode_active)
+
+    def _enter_zen_mode(self):
+        """Snapshot current visibility and hide everything but the
+        editor/preview pane(s). Pane visibility itself is unchanged —
+        Zen does not flip ``view.show_preview`` or hide the editor; it
+        only hides the chrome around them.
+        """
+        mb = self.menuBar()
+        self._zen_snapshot = _ZenSnapshot(
+            menu_bar_visible=mb.isVisible(),
+            menu_bar_max_height=mb.maximumHeight(),
+            sidebar_visible=self.sidebar.isVisible(),
+            sidebar_collapsed=self.sidebar.isCollapsed(),
+            tab_bar_visible=self.tab_widget.tabBar().isVisible(),
+            status_bar_visible=self.statusBar().isVisible(),
+        )
+        # Collapse the menu bar to zero height rather than hiding it: a
+        # hidden menuBar() stops routing its QAction shortcuts, which
+        # would prevent the Zen toggle action itself from firing while
+        # Zen is active. Zero height is invisible to the user but
+        # keeps shortcut routing alive.
+        mb.setMaximumHeight(0)
+        self.sidebar.setVisible(False)
+        self.tab_widget.tabBar().setVisible(False)
+        self.statusBar().setVisible(False)
+        # Find bar is transient — close it on entry. Not restored on
+        # exit (treating restore as surprising; users press Zen to
+        # escape such bars).
+        tab = self.current_tab()
+        if tab is not None and tab.find_replace_bar.isVisible():
+            tab.find_replace_bar.hide()
+        self._zen_mode_active = True
+        self._last_unhandled_esc_ms = 0
+
+    def _exit_zen_mode(self):
+        """Restore the snapshot taken on entry."""
+        snap = self._zen_snapshot
+        if snap is None:
+            # Shouldn't happen — defensive. Just clear the flag.
+            self._zen_mode_active = False
+            return
+        mb = self.menuBar()
+        mb.setMaximumHeight(snap.menu_bar_max_height or _WIDGET_HEIGHT_UNBOUND)
+        mb.setVisible(snap.menu_bar_visible)
+        self.sidebar.setVisible(snap.sidebar_visible)
+        # Preserve collapse state — without re-applying this, exiting
+        # Zen could silently uncollapse the sidebar.
+        self.sidebar.setCollapsed(snap.sidebar_collapsed, animated=False)
+        self.tab_widget.tabBar().setVisible(snap.tab_bar_visible)
+        self.statusBar().setVisible(snap.status_bar_visible)
+        self._zen_mode_active = False
+        self._zen_snapshot = None
+        self._last_unhandled_esc_ms = 0
+
+    def _on_unhandled_escape(self):
+        """Called when an Esc keypress reached the main window without
+        being consumed by an overlay (find bar, completer, etc.). Two
+        such Escs within ``_ZEN_DOUBLE_ESC_MS`` exit Zen.
+        """
+        if not self._zen_mode_active:
+            return
+        now = _monotonic_ms()
+        if (
+            self._last_unhandled_esc_ms
+            and now - self._last_unhandled_esc_ms < _ZEN_DOUBLE_ESC_MS
+        ):
+            self._toggle_zen_mode()
+            return
+        self._last_unhandled_esc_ms = now
+
+    def keyPressEvent(self, event):
+        """Catch Esc keypresses that bubbled up to the main window
+        unhandled by any focused widget. The main window receives the
+        event only when no child accepted it — exactly the "unhandled
+        Esc" semantics the double-tap exit needs."""
+        if (
+            self._zen_mode_active
+            and event.key() == Qt.Key.Key_Escape
+            and not event.isAutoRepeat()
+        ):
+            self._on_unhandled_escape()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def _on_search_file_requested(self, file_path: str, line_number: int):
         """Handle search result click - open file at line."""

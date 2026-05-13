@@ -173,6 +173,11 @@ Examples:
         help="Open in read-only mode",
     )
     parser.add_argument(
+        "--zen-mode",
+        action="store_true",
+        help="Start in Zen mode (hide menu, sidebar, tab bar, and status bar)",
+    )
+    parser.add_argument(
         "--new-session",
         action="store_true",
         help="Use default settings in memory only (don't load or save user settings)",
@@ -1381,6 +1386,11 @@ def cmd_gui(args: argparse.Namespace) -> int:
         tab = editor.current_tab()
         if tab:
             tab.editor.setReadOnly(True)
+
+    # Zen mode (apply before show() so the user never sees a flash of
+    # the full chrome).
+    if args.zen_mode:
+        editor._toggle_zen_mode()
 
     editor.show()
     ret = app.exec()
