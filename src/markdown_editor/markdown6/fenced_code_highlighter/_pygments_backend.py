@@ -109,8 +109,20 @@ _INITIAL_STATE = State(opaque=_INITIAL_OPAQUE)
 
 @functools.cache
 def _get_lexer(alias: str) -> RegexLexer | None:
+    # PHP's default lexer starts in HTML mode and switches to PHP only after
+    # `<?php`. Because we lex per-line for the ExtendedRegexLexer flavour
+    # (no cross-line state), every line AFTER `<?php` in a `php` fenced block
+    # would otherwise be lexed in HTML mode and fall through to Token.Other.
+    # `startinline=True` starts the lexer directly in PHP mode so every line
+    # in a `php` block highlights as PHP. Trade-off: a fenced block that
+    # genuinely mixes HTML and PHP loses the HTML highlighting for its HTML
+    # bits - rare in real-world docs/examples.
+    lexer_kwargs: dict = {}
+    if alias.lower() in ("php", "php3", "php4", "php5", "phtml"):
+        lexer_kwargs["startinline"] = True
+
     try:
-        return get_lexer_by_name(alias)
+        return get_lexer_by_name(alias, **lexer_kwargs)
     except ClassNotFound:
         return None
 

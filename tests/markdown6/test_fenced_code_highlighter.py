@@ -333,6 +333,39 @@ class TestExtendedRegexLexer:
         r = _hl("html", "<title>Example</title>")
         assert len(r.spans) > 0
 
+    def test_php_keyword_highlights_without_preceding_open_tag(self):
+        """Regression: lines AFTER `<?php` must still highlight as PHP.
+
+        PHP is the only ExtendedRegexLexer-flavour language that doesn't
+        start in its own mode by default (it starts in HTML, switches via
+        `<?php`). Our per-line lex strategy (no cross-line state) used to
+        bucket every line after `<?php` into `Token.Other`, rendering them
+        as a single grey blob. Fix: pass `startinline=True` to PhpLexer so
+        every line is lexed in PHP mode regardless of state.
+        """
+        # A PHP body line by itself - no `<?php` on this line.
+        r = _hl("php", 'function fizzbuzz(int $n): string { return $n; }')
+        # The keyword `function` and the identifier `fizzbuzz` should have
+        # distinct colors (proving the lexer recognised them, not lumped
+        # everything as Token.Other -> default color).
+        kw_color = _color_at(r.spans, 0)       # `function` keyword
+        ident_color = _color_at(r.spans, 9)    # `fizzbuzz` name
+        var_color = _color_at(r.spans, 22)     # `$n` variable
+        assert kw_color is not None
+        assert ident_color is not None
+        assert var_color is not None
+        # At least two of these three must differ - if everything was
+        # `Token.Other` they'd all share the default color.
+        assert len({kw_color, ident_color, var_color}) > 1
+
+    def test_php_open_tag_still_emits_a_span(self):
+        """Sanity: `<?php` on its own line still produces a colored span,
+        even with startinline=True (the lexer still recognises the tag
+        because PHP allows escaping out via `?>` and back in via `<?php`).
+        """
+        r = _hl("php", "<?php")
+        assert len(r.spans) > 0
+
 
 class TestNonRegexLexer:
     """JSON's lexer is hand-rolled — neither RegexLexer nor
