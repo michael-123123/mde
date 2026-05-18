@@ -312,6 +312,38 @@ def test_paste_image_blocked_when_read_only(editor, tmp_path):
 
 
 @pytest.mark.timeout(15, method="thread")
+def test_project_panel_mutations_blocked_when_read_only(editor, tmp_path, monkeypatch):
+    """The project panel's _new_file / _new_folder / _rename_file /
+    _delete_file methods bail when the app is in read-only mode. The
+    context menu also disables those entries (UX feedback), but the
+    function gate is the correctness layer - tests confirm the gate
+    actually prevents filesystem mutations."""
+    from PySide6.QtWidgets import QInputDialog, QMessageBox
+
+    editor.project_panel.set_project_path(tmp_path)
+    target = tmp_path / "x.md"
+    target.write_text("original")
+
+    # Stub input prompts so we'd otherwise proceed.
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **kw: ("newname.md", True))
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *a, **kw: QMessageBox.StandardButton.Yes,
+    )
+
+    editor.set_read_only_mode(True)
+    editor.project_panel._rename_file(target)
+    editor.project_panel._delete_file(target)
+    editor.project_panel._new_file(tmp_path)
+    editor.project_panel._new_folder(tmp_path)
+    # Original file untouched, nothing new created.
+    assert target.exists()
+    assert target.read_text() == "original"
+    assert not (tmp_path / "newname.md").exists()
+
+
+@pytest.mark.timeout(15, method="thread")
 def test_close_cancel_keeps_read_only(editor, tmp_path, monkeypatch):
     """If user picks Cancel at the close prompt, RO stays on (close
     aborted, app continues in the locked state)."""
