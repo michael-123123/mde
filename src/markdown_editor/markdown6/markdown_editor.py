@@ -19,6 +19,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QTabWidget,
     QToolButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -96,6 +98,110 @@ from markdown_editor.markdown6.theme import (
 )
 
 logger = getLogger(__name__)
+
+
+def get_app_version() -> str:
+    """Resolve the running mde version.
+
+    Reads from ``importlib.metadata`` (populated by setuptools-scm at
+    build / install time) so we never hard-code a version that would
+    drift behind the actual tag. Falls back to ``"dev"`` for editable
+    installs where the distribution metadata isn't registered.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            return version("markdown-editor")
+        except PackageNotFoundError:
+            return "dev"
+    except ImportError:
+        return "dev"
+
+
+def _about_text() -> str:
+    """Body of the Help → About dialog. Short intro + version. Kept
+    deliberately concise; the README is the long-form reference."""
+    return (
+        "mde - Markdown Editor\n\n"
+        "A feature-rich desktop Markdown editor built with Qt6 (PySide6). "
+        "Live preview, wiki links, diagrams, project management, and "
+        "export to HTML/PDF/DOCX.\n\n"
+        f"Version: {get_app_version()}"
+    )
+
+
+def _version_text() -> str:
+    """Body of the Help → Version popup - just the version."""
+    return f"Version: {get_app_version()}"
+
+
+def _brand_pixmap(target_px: int):
+    """Load the mde icon scaled to `target_px` square. Returns None if
+    the icon asset is missing (defensive: source installs always have
+    it, but bundled builds can occasionally drop assets)."""
+    from PySide6.QtGui import QPixmap
+
+    icon_path = Path(__file__).parent / "icons" / "markdown-editor-256.png"
+    if not icon_path.exists():
+        return None
+    pix = QPixmap(str(icon_path))
+    if pix.isNull():
+        return None
+    return pix.scaled(
+        target_px, target_px,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+
+
+def _build_branded_dialog(parent, title: str, body: str, icon_px: int) -> QDialog:
+    """Compose a small modal dialog with the mde symbol centered above
+    centered body text and an OK button. Used for Help → About and
+    Help → Version so the brand presentation is consistent.
+
+    Idiomatic Qt: QVBoxLayout with the QLabels carrying AlignCenter.
+    QMessageBox would left-align the icon next to the text, which is
+    not what we want for a branded popup.
+    """
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(title)
+
+    layout = QVBoxLayout(dialog)
+    layout.setContentsMargins(24, 24, 24, 16)
+    layout.setSpacing(16)
+
+    icon_label = QLabel()
+    icon_label.setObjectName("brand_icon")
+    icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    pix = _brand_pixmap(icon_px)
+    if pix is not None:
+        icon_label.setPixmap(pix)
+    layout.addWidget(icon_label)
+
+    text_label = QLabel(body)
+    text_label.setObjectName("brand_text")
+    text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    text_label.setWordWrap(True)
+    text_label.setTextInteractionFlags(
+        Qt.TextInteractionFlag.TextSelectableByMouse
+    )
+    layout.addWidget(text_label)
+
+    buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+    buttons.accepted.connect(dialog.accept)
+    layout.addWidget(buttons)
+
+    return dialog
+
+
+def _build_about_dialog(parent) -> QDialog:
+    """About dialog: full intro + version, larger icon (128 px)."""
+    return _build_branded_dialog(parent, "About mde", _about_text(), icon_px=128)
+
+
+def _build_version_dialog(parent) -> QDialog:
+    """Version popup: just the version, smaller icon (64 px)."""
+    return _build_branded_dialog(parent, "Version", _version_text(), icon_px=64)
 
 
 # Two unhandled Esc presses within this window exit Zen mode. The
@@ -1298,31 +1404,14 @@ class MarkdownEditor(QMainWindow):
         self.project_panel.save_tree_state()
 
     def _show_about(self):
-        """Show about dialog."""
-        QMessageBox.about(
-            self,
-            "About Markdown Editor",
-            "Markdown Editor (PySide6)\n\n"
-            "A feature-rich Markdown editor with live preview.\n\n"
-            "Features:\n"
-            "• Split-screen editing and preview\n"
-            "• Syntax highlighting\n"
-            "• Multiple tabs\n"
-            "• Find and replace\n"
-            "• Customizable shortcuts\n"
-            "• Dark/light themes\n"
-            "• Outline/TOC panel\n"
-            "• Command palette\n"
-            "• Section folding\n"
-            "• Math/LaTeX support\n"
-            "• Mermaid diagrams\n"
-            "• Callouts/admonitions\n"
-            "• Wiki-style links\n"
-            "• Snippets\n"
-            "• Table editor\n"
-            "• Project folders\n"
-            "• And more!"
-        )
+        """Show the About dialog - short intro and version. The full
+        feature list lives in the README; duplicating it here just
+        guarantees drift."""
+        _build_about_dialog(self).exec()
+
+    def _show_version(self):
+        """Show a minimal popup with just the version string."""
+        _build_version_dialog(self).exec()
 
     def _show_graph_export(self):
         """Show the document graph export dialog."""

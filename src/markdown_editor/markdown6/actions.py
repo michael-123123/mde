@@ -257,6 +257,8 @@ MENU_STRUCTURE: list[MenuDef] = [
 
     MenuDef("&Help", [
         ActionDef("help.about", "&About", "_show_about"),
+        ActionDef("help.version", "&Version", "_show_version",
+                  palette_name="Show Version", palette_category="Help"),
     ]),
 ]
 
