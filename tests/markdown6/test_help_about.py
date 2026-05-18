@@ -10,9 +10,15 @@ the version in its own popup.
 from __future__ import annotations
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QDialog, QLabel
 
+from markdown_editor.markdown6.actions import MENU_STRUCTURE
 from markdown_editor.markdown6.markdown_editor import (
+    MarkdownEditor,
     _about_text,
+    _build_about_dialog,
+    _build_version_dialog,
     _version_text,
     get_app_version,
 )
@@ -68,8 +74,6 @@ def test_version_text_is_just_version():
 @pytest.mark.timeout(15, method="thread")
 def test_help_version_action_registered():
     """`help.version` is wired into the actions registry."""
-    from markdown_editor.markdown6.actions import MENU_STRUCTURE
-
     found = False
     for menu in MENU_STRUCTURE:
         if menu.label == "&Help":
@@ -87,10 +91,6 @@ def test_about_dialog_has_centered_icon(qtbot):
     text; we build a custom QDialog so the icon can sit centered above
     a centered body. This test asserts the dialog has an icon QLabel
     with a non-null pixmap and AlignCenter alignment."""
-    from markdown_editor.markdown6.markdown_editor import _build_about_dialog
-    from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QLabel
-
     dialog = _build_about_dialog(None)
     qtbot.addWidget(dialog)
     icon_label = dialog.findChild(QLabel, "brand_icon")
@@ -103,10 +103,6 @@ def test_about_dialog_has_centered_icon(qtbot):
 
 @pytest.mark.timeout(15, method="thread")
 def test_about_dialog_has_centered_text(qtbot):
-    from markdown_editor.markdown6.markdown_editor import _build_about_dialog
-    from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QLabel
-
     dialog = _build_about_dialog(None)
     qtbot.addWidget(dialog)
     text_label = dialog.findChild(QLabel, "brand_text")
@@ -119,10 +115,6 @@ def test_about_dialog_has_centered_text(qtbot):
 def test_version_dialog_has_centered_icon(qtbot):
     """Same icon-centered treatment for the smaller Help → Version
     popup — the brand should be present and centered."""
-    from markdown_editor.markdown6.markdown_editor import _build_version_dialog
-    from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QLabel
-
     dialog = _build_version_dialog(None)
     qtbot.addWidget(dialog)
     icon_label = dialog.findChild(QLabel, "brand_icon")
@@ -133,10 +125,6 @@ def test_version_dialog_has_centered_icon(qtbot):
 
 @pytest.mark.timeout(15, method="thread")
 def test_version_dialog_has_centered_text(qtbot):
-    from markdown_editor.markdown6.markdown_editor import _build_version_dialog
-    from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QLabel
-
     dialog = _build_version_dialog(None)
     qtbot.addWidget(dialog)
     text_label = dialog.findChild(QLabel, "brand_text")
@@ -149,9 +137,6 @@ def test_version_dialog_has_centered_text(qtbot):
 def test_show_about_does_not_throw(qtbot, monkeypatch):
     """Smoke test the dialog plumbing - calling _show_about with a
     real editor must not raise. Stub exec so the modal doesn't block."""
-    from PySide6.QtWidgets import QDialog
-    from markdown_editor.markdown6.markdown_editor import MarkdownEditor
-
     monkeypatch.setattr(QDialog, "exec", lambda self: 0)
     editor = MarkdownEditor()
     qtbot.addWidget(editor)
@@ -160,9 +145,6 @@ def test_show_about_does_not_throw(qtbot, monkeypatch):
 
 @pytest.mark.timeout(15, method="thread")
 def test_show_version_does_not_throw(qtbot, monkeypatch):
-    from PySide6.QtWidgets import QDialog
-    from markdown_editor.markdown6.markdown_editor import MarkdownEditor
-
     monkeypatch.setattr(QDialog, "exec", lambda self: 0)
     editor = MarkdownEditor()
     qtbot.addWidget(editor)

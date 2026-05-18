@@ -14,6 +14,7 @@ from PySide6.QtGui import (
     QIcon,
     QKeySequence,
     QPalette,
+    QPixmap,
     QShortcut,
     QTextCursor,
 )
@@ -144,8 +145,6 @@ def _brand_pixmap(target_px: int):
     """Load the mde icon scaled to `target_px` square. Returns None if
     the icon asset is missing (defensive: source installs always have
     it, but bundled builds can occasionally drop assets)."""
-    from PySide6.QtGui import QPixmap
-
     icon_path = Path(__file__).parent / "icons" / "markdown-editor-256.png"
     if not icon_path.exists():
         return None

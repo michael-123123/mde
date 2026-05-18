@@ -17,14 +17,16 @@ single active tab's editor widget. New design is application-wide:
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox
 
 from markdown_editor.markdown6.markdown_editor import (
     MarkdownEditor,
     MutationPermit,
 )
+from markdown_editor.plugins import MutationPermit as ShimMutationPermit
 
 
 @pytest.fixture
@@ -265,8 +267,6 @@ def test_close_save_path_can_save_even_in_read_only(editor, tmp_path, monkeypatc
     succeeds even when RO is on. We invoke the same `_check_tab_unsaved_changes`
     + save sequence the close handler uses, with the QMessageBox
     stubbed to return 'Save'."""
-    from PySide6.QtWidgets import QMessageBox
-
     f = tmp_path / "x.md"
     f.write_text("original")
     editor.open_file(f)
@@ -295,8 +295,6 @@ def test_paste_image_blocked_when_read_only(editor, tmp_path):
     every tab's editor when RO is on, checking isReadOnly() is the
     right gate at this layer (paste-image is user-driven; no permit
     pathway needed)."""
-    from unittest.mock import MagicMock
-
     tab = editor.current_tab()
     editor.set_read_only_mode(True)
     QApplication.processEvents()
@@ -319,8 +317,7 @@ def test_mutation_permit_exported_via_plugin_shim():
     internal `markdown_editor.markdown6.markdown_editor` namespace,
     which we explicitly tell them not to do (see CLAUDE.md → plugin
     rules)."""
-    from markdown_editor.plugins import MutationPermit as ShimPermit
-    assert ShimPermit is MutationPermit
+    assert ShimMutationPermit is MutationPermit
 
 
 @pytest.mark.timeout(15, method="thread")
@@ -330,8 +327,6 @@ def test_project_panel_mutations_blocked_when_read_only(editor, tmp_path, monkey
     context menu also disables those entries (UX feedback), but the
     function gate is the correctness layer - tests confirm the gate
     actually prevents filesystem mutations."""
-    from PySide6.QtWidgets import QInputDialog, QMessageBox
-
     editor.project_panel.set_project_path(tmp_path)
     target = tmp_path / "x.md"
     target.write_text("original")
@@ -359,8 +354,6 @@ def test_project_panel_mutations_blocked_when_read_only(editor, tmp_path, monkey
 def test_close_cancel_keeps_read_only(editor, tmp_path, monkeypatch):
     """If user picks Cancel at the close prompt, RO stays on (close
     aborted, app continues in the locked state)."""
-    from PySide6.QtWidgets import QMessageBox
-
     f = tmp_path / "x.md"
     f.write_text("original")
     editor.open_file(f)

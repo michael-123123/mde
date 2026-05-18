@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-from markdown_editor.markdown6.logger import resolve_level
+from markdown_editor.markdown6.logger import resolve_level, set_level, setup
 
 
 @pytest.fixture(autouse=True)
@@ -133,7 +133,6 @@ class TestSetLevel:
     factored in (the initial setup() runs before settings load)."""
 
     def test_set_level_updates_existing_handler(self):
-        from markdown_editor.markdown6.logger import setup, set_level
         # setup is idempotent; safe to call from a test.
         setup(level=logging.INFO)
         set_level(logging.WARNING)
@@ -142,7 +141,6 @@ class TestSetLevel:
             assert h.level == logging.WARNING
 
     def test_set_level_can_lower_threshold(self):
-        from markdown_editor.markdown6.logger import setup, set_level
         setup(level=logging.WARNING)
         set_level(logging.DEBUG)
         root = logging.getLogger("mde")

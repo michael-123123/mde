@@ -13,17 +13,21 @@ location, verbose-error-messages toggle, etc.
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 from PySide6.QtWidgets import QApplication, QComboBox
 
+from markdown_editor.markdown6.app_context import get_app_context
 from markdown_editor.markdown6.components.settings_dialog import (
     SettingsDialog,
 )
+from markdown_editor.markdown6.logger import setup as setup_logging
+from markdown_editor.markdown6.markdown_editor import MarkdownEditor
 
 
 @pytest.fixture
 def dialog(qtbot):
-    from markdown_editor.markdown6.app_context import get_app_context
     d = SettingsDialog(get_app_context())
     qtbot.addWidget(d)
     QApplication.processEvents()
@@ -54,7 +58,6 @@ def test_log_level_dropdown_has_four_levels(dialog):
 def test_log_level_dropdown_loads_current_setting(qtbot):
     """The dropdown reflects the persisted ``log.level`` when the
     dialog opens."""
-    from markdown_editor.markdown6.app_context import get_app_context
     ctx = get_app_context()
     ctx.set("log.level", "warning")
     d = SettingsDialog(ctx)
@@ -88,11 +91,7 @@ def test_log_level_change_applies_live(qtbot):
     """Changing log.level via Settings (or any other setter) should
     take effect immediately - no restart required. MarkdownEditor
     listens to ctx.settings_changed and calls logger.set_level."""
-    import logging
-    from markdown_editor.markdown6.logger import setup
-    from markdown_editor.markdown6.markdown_editor import MarkdownEditor
-
-    setup(level=logging.INFO)
+    setup_logging(level=logging.INFO)
     editor = MarkdownEditor()
     qtbot.addWidget(editor)
 
