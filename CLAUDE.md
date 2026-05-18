@@ -289,10 +289,11 @@ Pre-flight check before writing the changelog: count the unique PRs in the range
 Never merge branches into master directly via `git merge`. Always go through a GitHub PR:
 
 1. Merge or rebase from master into the feature branch to ensure it's up to date. Resolve any conflicts.
-2. Push the branch to origin.
-3. Create a PR with `gh pr create`.
-4. Approve the PR with `gh pr review --approve`. GitHub forbids approving your own PR - if you are the PR author, this step will fail with `Can not approve your own pull request`. That's expected on this single-author repo; skip the approval and continue to step 5.
-5. Merge the PR with `gh pr merge --merge --delete-branch`.
+2. **Check for semantic gaps between master and the branch.** Whether or not there were textual conflicts, look at the diff between master and the branch's pre-merge tip. Textual conflicts only catch overlapping line edits; they miss the case where master added something *related to* the branch's change that the branch never had a chance to touch. Example: the branch adds a new setting that should apply to all modals; master meanwhile added a new modal that slipped past the setting because the setting didn't exist yet when the modal was written. Walk both sides of the diff with this lens - for each change on the branch, ask "did master add anything new that this change should also apply to?", and for each change on master, ask "does the branch's work need to extend to this?". If you find a gap, fix it on the branch before continuing. If you're not sure, stop and ask.
+3. Push the branch to origin.
+4. Create a PR with `gh pr create`.
+5. Approve the PR with `gh pr review --approve`. GitHub forbids approving your own PR - if you are the PR author, this step will fail with `Can not approve your own pull request`. That's expected on this single-author repo; skip the approval and continue to step 6.
+6. Merge the PR with `gh pr merge --merge --delete-branch`.
 
 The PR must only be approved and merged when the branch has a clean merge/rebase from master. This applies any time you are asked to merge to master/main.
 
