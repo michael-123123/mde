@@ -77,6 +77,7 @@ from markdown_editor.markdown6.plugins.api import (
     register_settings_schema,
     register_text_transform,
 )
+from markdown_editor.markdown6.markdown_editor import MutationPermit
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 
 __all__ = [
@@ -99,6 +100,9 @@ __all__ = [
     "plugin_settings",
     "DocumentHandle",
     "Field",
+    # Read-only bypass (opt-in; surprises users who toggled RO on -
+    # use sparingly). See `get_main_window().allow_mutation(op)`.
+    "MutationPermit",
     # Notifications (post info/warning/error to the bell drawer)
     "notify_info",
     "notify_warning",

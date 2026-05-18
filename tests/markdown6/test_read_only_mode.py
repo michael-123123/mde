@@ -312,6 +312,18 @@ def test_paste_image_blocked_when_read_only(editor, tmp_path):
 
 
 @pytest.mark.timeout(15, method="thread")
+def test_mutation_permit_exported_via_plugin_shim():
+    """Plugin authors import from `markdown_editor.plugins`. The
+    bypass type must be reachable via that path - otherwise plugins
+    that need to write during RO would have to reach into the
+    internal `markdown_editor.markdown6.markdown_editor` namespace,
+    which we explicitly tell them not to do (see CLAUDE.md → plugin
+    rules)."""
+    from markdown_editor.plugins import MutationPermit as ShimPermit
+    assert ShimPermit is MutationPermit
+
+
+@pytest.mark.timeout(15, method="thread")
 def test_project_panel_mutations_blocked_when_read_only(editor, tmp_path, monkeypatch):
     """The project panel's _new_file / _new_folder / _rename_file /
     _delete_file methods bail when the app is in read-only mode. The
