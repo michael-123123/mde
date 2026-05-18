@@ -5,6 +5,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-05-18
+
+### Added
+
+- **Zen mode.** `Ctrl+Alt+Z` hides the menu bar, sidebar, tab bar, and status bar so only the editor / preview panes remain. The pane configuration (editor only, preview only, or both) is preserved from your existing toggles. Double-Esc is a backup exit. The find bar and other transient overlays (command palette, snippet popup) keep working inside Zen. (#35)
+- **`--zen-mode` CLI flag.** Launch directly into Zen mode: `mde --zen-mode foo.md`. (#35)
+- **Toggle Editor action.** `Ctrl+Shift+E` toggles the editor pane, mirroring `Ctrl+Shift+V` for the preview. The previous `Ctrl+Shift+E` (Toggle Project Panel) moves to `Ctrl+Alt+E`. (#35)
+- **Configurable log level.** New `--log-level {debug,info,warning,error}` CLI flag and `MDE_LOG_LEVEL` environment variable. Default remains `info`. (#34)
+
+### Changed
+
+- **Native stderr (Chromium / NSS / Qt) captured into the editor log.** Noise from the WebEngine subsystem that previously leaked onto the terminal is now redirected to the `mde.external` logger at DEBUG, so default-level logs stay clean. (#34)
+- **More INFO and DEBUG logs across the editor.** User-visible actions (open / save / export / project switch / preview render) log at INFO; internal state transitions log at DEBUG. Makes `--log-level debug` actually useful for diagnosing user reports. (#34)
+
+### Fixed
+
+- **Graph export, project export, and diagram render failures are now logged.** Previously these paths swallowed exceptions silently, which made it hard to figure out why a render or export produced an empty file. (#34)
+- **Plugin README read errors are logged.** OSError reading a plugin's README no longer disappears silently. (#34)
+
 ## [0.1.19] - 2026-05-13
 
 ### Added
