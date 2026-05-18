@@ -41,7 +41,7 @@ Requires Python 3.11+.
 
 ### Pre-built AppImage (Linux, no install required)
 
-Download `MarkdownEditor-<version>-x86_64.AppImage` from the releases page, make it executable, run it:
+Download `MarkdownEditor-<version>-x86_64.AppImage` from the [latest release](https://github.com/michael-123123/mde/releases/latest), make it executable, run it:
 
 ```bash
 chmod +x MarkdownEditor-*-x86_64.AppImage
@@ -63,7 +63,7 @@ Slightly slower cold-start, but works on any Linux that can execute a static ELF
 
 ### Pre-built binaries (Windows, no Python required)
 
-Three artifacts are attached to every release on the [releases page](https://github.com/michael-123123/mde/releases). Pick whichever fits your needs — none of them require a system Python installation; the bundled runtime ships Qt, WebEngine, Python, and all dependencies.
+Three artifacts are attached to every release; grab them from the [latest release](https://github.com/michael-123123/mde/releases/latest) page. Pick whichever fits your needs — none of them require a system Python installation; the bundled runtime ships Qt, WebEngine, Python, and all dependencies.
 
 | File | What it is | When to pick it |
 |---|---|---|
