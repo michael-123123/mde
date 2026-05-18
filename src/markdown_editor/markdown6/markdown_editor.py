@@ -692,15 +692,28 @@ class MarkdownEditor(QMainWindow):
         self._configure_autosave()
 
     def _configure_autosave(self):
-        """Start or stop the autosave timer based on settings."""
-        if self.ctx.get("editor.auto_save", False):
+        """Start or stop the autosave timer based on settings.
+
+        Refuses to start the timer while read-only mode is on - belt and
+        braces alongside the function-level gate in ``_auto_save_all``.
+        Without this, toggling ``editor.auto_save`` on while RO is on
+        would resurrect the timer; the next tick would then rely on the
+        gate alone."""
+        if self.ctx.get("editor.auto_save", False) and not self._read_only_mode:
             interval_s = self.ctx.get("editor.auto_save_interval", 60)
             self._autosave_timer.start(interval_s * 1000)
         else:
             self._autosave_timer.stop()
 
     def _auto_save_all(self):
-        """Save all tabs that have a file path and unsaved changes."""
+        """Save all tabs that have a file path and unsaved changes.
+
+        Autosave never bypasses read-only mode: pass no permit, so a
+        direct call here while RO is on bails immediately. The timer
+        itself is paused by ``_apply_read_only_state``; this guard
+        catches any non-timer caller."""
+        if not self._authorize('autosave', None):
+            return
         for i in range(self.tab_widget.count()):
             tab = self.tab_widget.widget(i)
             if tab and tab.file_path and tab.unsaved_changes:

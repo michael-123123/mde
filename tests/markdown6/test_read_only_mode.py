@@ -430,3 +430,30 @@ def test_save_all_action_disabled_when_read_only(editor):
     editor.set_read_only_mode(True)
     QApplication.processEvents()
     assert not action.isEnabled()
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_auto_save_all_blocked_in_read_only(editor, tmp_path):
+    """The autosave timer is paused when RO flips on, but a direct
+    call to ``_auto_save_all`` must also bail. Defense-in-depth: any
+    future signal path that re-fires the autosave routine while RO
+    is on must not write to disk."""
+    f = tmp_path / "x.md"
+    f.write_text("orig")
+    _dirty_existing(editor, f, "mod")
+
+    editor.set_read_only_mode(True)
+    editor._auto_save_all()
+    assert f.read_text() == "orig"
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_configure_autosave_does_not_resurrect_timer_in_read_only(editor):
+    """If the user toggles ``editor.auto_save`` on while RO is on,
+    ``_configure_autosave`` must not start the timer. Otherwise the
+    next tick would attempt to write through, relying on the
+    function-level gate alone to save us. Belt and braces."""
+    editor.set_read_only_mode(True)
+    editor.ctx.set("editor.auto_save", True)
+    editor._configure_autosave()
+    assert not editor._autosave_timer.isActive()
