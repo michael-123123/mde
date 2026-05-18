@@ -1381,11 +1381,10 @@ def cmd_gui(args: argparse.Namespace) -> int:
         if last_path and (project_path is None or project_path == last_path):
             editor.restore_open_files()
 
-    # Read-only mode
+    # Read-only mode: app-wide write lock (not just the active tab).
+    # See markdown_editor.MarkdownEditor.set_read_only_mode.
     if args.read_only:
-        tab = editor.current_tab()
-        if tab:
-            tab.editor.setReadOnly(True)
+        editor.set_read_only_mode(True)
 
     # Zen mode (apply before show() so the user never sees a flash of
     # the full chrome).

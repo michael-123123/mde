@@ -916,8 +916,13 @@ class DocumentTab(QWidget):
         # Keep zoom in sync as diagrams arrive.
         self._apply_preview_zoom()
 
-    def reload_file(self):
-        """Reload the file from disk."""
+    def reload_file(self, permit=None):
+        """Reload the file from disk. Overwriting in-memory state with
+        disk content discards unsaved changes, so this is gated as a
+        mutating operation. Pass a ``MutationPermit`` to bypass the
+        read-only gate."""
+        if not self.main_window._authorize('reload_file', permit):
+            return
         if self.file_path and self.file_path.exists():
             content = self.file_path.read_text(encoding="utf-8")
             self.editor.setPlainText(content)
