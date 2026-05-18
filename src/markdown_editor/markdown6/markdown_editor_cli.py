@@ -1331,6 +1331,7 @@ def cmd_gui(args: argparse.Namespace) -> int:
     from PySide6.QtWidgets import QApplication
 
     from markdown_editor.markdown6.app_context import get_app_context
+    from markdown_editor.markdown6.logger import resolve_level, set_level
     from markdown_editor.markdown6.markdown_editor import (
         MarkdownEditor,
         apply_application_theme,
@@ -1341,6 +1342,16 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     # Apply saved theme at startup (before creating editor)
     ctx = get_app_context()
+
+    # Re-resolve the log level now that settings are loaded. The early
+    # main() call only saw CLI + env; this re-apply adds the persisted
+    # ``log.level`` setting to the precedence chain. Idempotent if no
+    # setting was persisted - resolve_level returns the same value.
+    set_level(resolve_level(
+        getattr(args, "log_level", None),
+        settings_value=ctx.get("log.level"),
+    ))
+
     theme = args.theme if args.theme else ctx.get("view.theme", "light")
     apply_application_theme(theme == "dark")
 
