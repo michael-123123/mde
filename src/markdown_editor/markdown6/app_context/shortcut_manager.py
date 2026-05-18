@@ -54,6 +54,7 @@ DEFAULT_SHORTCUTS = {
     "file.open_project": "Ctrl+Shift+O",
     "file.save": "Ctrl+S",
     "file.save_as": "Ctrl+Shift+S",
+    "file.save_all": "Ctrl+Alt+S",
     "file.close_tab": "Ctrl+W",
     "file.quit": "Ctrl+Q",
     # Edit operations

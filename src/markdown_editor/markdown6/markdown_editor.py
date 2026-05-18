@@ -1113,6 +1113,69 @@ class MarkdownEditor(QMainWindow):
         tab.editor.set_file_path(tab.file_path)
         return self.save_file()
 
+    def save_all(self) -> int:
+        """Save every tab with unsaved changes; return the count saved.
+
+        Tabs with a `file_path` are written inline. Untitled tabs are routed
+        through the Save-As dialog (one prompt per untitled tab); cancelling
+        an individual dialog skips that tab but does not abort the rest.
+        Per-file write errors are collected and surfaced in a single modal
+        at the end so a user with many dirty tabs is not spammed with
+        dialogs mid-operation.
+        """
+        original_index = self.tab_widget.currentIndex()
+        saved = 0
+        skipped_untitled = 0
+        failures: list[tuple[str, str]] = []
+
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if not tab or not tab.unsaved_changes:
+                continue
+
+            if tab.file_path is None:
+                self.tab_widget.setCurrentIndex(i)
+                if self.save_file_as():
+                    saved += 1
+                else:
+                    skipped_untitled += 1
+                continue
+
+            try:
+                tab.editor._ignore_next_file_change = True
+                tab.file_path.write_text(tab.editor.toPlainText(), encoding="utf-8")
+                tab.editor.document().setModified(False)
+                self.update_tab_title(tab)
+                logger.info("Saved: %s", tab.file_path)
+                self._dispatch_plugin_signal(SignalKind.SAVE, tab)
+                saved += 1
+            except Exception as e:
+                logger.exception(f"Could not save file: {tab.file_path}")
+                failures.append((str(tab.file_path), str(e)))
+
+        if self.tab_widget.currentIndex() != original_index and original_index >= 0:
+            self.tab_widget.setCurrentIndex(original_index)
+
+        self.update_window_title()
+
+        if failures:
+            lines = "\n".join(f"• {p}: {err}" for p, err in failures)
+            QMessageBox.critical(
+                self,
+                "Save All",
+                f"Could not save {len(failures)} file(s):\n\n{lines}",
+            )
+
+        if saved == 0 and not failures and skipped_untitled == 0:
+            self.status_bar.showMessage("Nothing to save")
+        elif saved > 0:
+            msg = f"Saved {saved} file{'s' if saved != 1 else ''}"
+            if failures:
+                msg += f"; {len(failures)} failed"
+            self.status_bar.showMessage(msg)
+
+        return saved
+
     def _export_html(self):
         """Export the current document to HTML via the shared export_service.
 
