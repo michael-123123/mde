@@ -83,6 +83,8 @@ MENU_STRUCTURE: list[MenuDef] = [
         SEPARATOR,
         ActionDef("file.save", "&Save", "save_file",
                   palette_name="Save", palette_category="File"),
+        ActionDef("file.save_all", "Save A&ll", "save_all",
+                  palette_name="Save All Files", palette_category="File"),
         ActionDef("file.save_as", "Save &As...", "save_file_as",
                   attr="save_as_action", palette_name="Save As", palette_category="File"),
         SEPARATOR,
