@@ -101,6 +101,12 @@ DEFAULT_SETTINGS = {
     # `set(..., False)` on a non-ephemeral ctx. See decision G in
     # local/html-export-unify.md.
     "export.use_canonical_fonts": False,
+    # Diagnostics - third tier of the log-level chain (below
+    # ``--log-level`` CLI flag and ``MDE_LOG_LEVEL`` env var). Surfaced
+    # in Settings → Diagnostics so users can change log level without
+    # touching shell config. Values: "debug" | "info" | "warning" |
+    # "error". Bad values fall through to "info" via resolve_level.
+    "log.level": "info",
     # Plugin system - list of plugin names the user has toggled off in
     # Settings → Plugins. Names not in this list default to enabled.
     "plugins.disabled": [],

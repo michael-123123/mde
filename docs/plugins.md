@@ -111,6 +111,44 @@ def bold():
             doc.move_cursor(-2)      # cursor between the asterisks
 ```
 
+## Mutating while the app is in read-only mode
+
+The user can put the app into a read-only state - typing is blocked,
+save / save-as / reload are disabled, plugin mutation methods raise
+`PermissionError`. If your plugin has a legitimate reason to mutate
+during that state (rare; do this only if you have a clear reason),
+opt in explicitly:
+
+```python
+from markdown_editor.plugins import get_active_document, get_main_window
+
+def append_newline():
+    doc = get_active_document()
+    if doc is None:
+        return
+    editor = get_main_window()
+    with editor.allow_mutation("insert_at_cursor") as permit:
+        doc.insert_at_cursor("\n", permit=permit)
+```
+
+Properties of the bypass:
+
+- **One-shot.** Each permit authorizes exactly one mutation call.
+- **Op-specific.** A permit issued for `"insert_at_cursor"` cannot
+  authorize a `replace_all`. The op name in `allow_mutation(op)` must
+  match the method being called.
+- **In-band.** The permit must be passed explicitly as `permit=`.
+  Signal handlers firing during the same window cannot reference the
+  permit, so user keystrokes (Ctrl+S etc.) inside an
+  `allow_mutation` block remain blocked.
+- **Logged.** Every issued permit emits an INFO log entry; unused
+  permits emit a WARNING when the block exits. Users can see plugin
+  activity in the bell drawer / log if something seems off.
+
+This is a back door, not a hammer. Users who toggle read-only mode
+expect writes to stop - bypassing without a clear reason is the kind
+of plugin behavior that gets a plugin disabled.
+
 ## Custom fenced-code renderer
 
 Render any fence language as inline HTML - same mechanism as the built-in `mermaid` and `graphviz` blocks:

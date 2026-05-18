@@ -164,21 +164,51 @@ def capture_external_stderr() -> None:
     _external_capture_started = True
 
 
-def resolve_level(cli_value: str | None = None, default: int = logging.INFO) -> int:
-    """Pick a log level from (CLI flag → ``MDE_LOG_LEVEL`` env var → default).
+def resolve_level(
+    cli_value: str | None = None,
+    *,
+    settings_value: str | None = None,
+    default: int = logging.INFO,
+) -> int:
+    """Pick a log level from the precedence chain:
 
-    ``cli_value`` and the env var accept case-insensitive names
-    (``debug`` / ``info`` / ``warning`` / ``error``). Anything
-    unrecognised falls back to ``default`` - bad input never crashes
-    the launch path.
+        CLI flag → ``MDE_LOG_LEVEL`` env var → settings.log.level → default.
+
+    Each layer accepts case-insensitive names (``debug`` / ``info`` /
+    ``warning`` / ``error``, plus ``warn`` as alias for warning).
+    Anything unrecognised at any layer falls through to the next -
+    bad input never crashes the launch path.
+
+    ``settings_value`` is the persisted ``log.level`` from
+    ``SettingsManager``; pass ``None`` (or omit) when no persisted
+    value applies (e.g. ephemeral / new-session launches).
     """
-    for candidate in (cli_value, os.environ.get("MDE_LOG_LEVEL")):
+    for candidate in (
+        cli_value,
+        os.environ.get("MDE_LOG_LEVEL"),
+        settings_value,
+    ):
         if not candidate:
             continue
         lv = _LEVEL_NAMES.get(candidate.strip().lower())
         if lv is not None:
             return lv
     return default
+
+
+def set_level(level: int) -> None:
+    """Update the visible-log floor on every handler already installed
+    by ``setup()``. Useful after settings are loaded: ``main()`` calls
+    ``setup()`` early with the CLI / env / default chain, and once
+    ``AppContext`` is up the caller re-applies the level with the
+    persisted ``log.level`` factored in.
+
+    Each handler's filter level rises or falls; the root logger stays
+    at DEBUG so per-module overrides still work.
+    """
+    root = logging.getLogger(ROOT)
+    for handler in root.handlers:
+        handler.setLevel(level)
 
 
 def setup(level: int = logging.DEBUG) -> None:

@@ -70,8 +70,30 @@ class DocumentHandle:
         return bool(getattr(self._tab, "unsaved_changes", False))
 
     # --- Mutators ------------------------------------------------------------
+    #
+    # Every mutator routes through ``_authorize_or_raise`` so the
+    # app-wide read-only gate (MarkdownEditor._read_only_mode) blocks
+    # plugin writes. Plugins that legitimately need to mutate during
+    # read-only mode wrap their call in ``editor.allow_mutation(op)``
+    # and pass the yielded permit as the ``permit=`` kwarg.
 
-    def replace_all(self, new_text: str) -> None:
+    def _authorize_or_raise(self, op: str, permit) -> None:
+        """Consult the app-level mutation gate. Raises ``PermissionError``
+        if blocked, so plugin code gets a loud failure instead of a
+        silent no-op (silent failures in plugins are debugging nightmares).
+        """
+        main = getattr(self._tab, "main_window", None)
+        if main is None or not hasattr(main, "_authorize"):
+            return   # standalone test contexts: skip the gate
+        if not main._authorize(op, permit):
+            raise PermissionError(
+                f"plugin write blocked: op={op!r} - app is in read-only "
+                f"mode. Wrap the call in `editor.allow_mutation({op!r})` "
+                f"and pass the permit if this is intentional."
+            )
+
+    def replace_all(self, new_text: str, *, permit=None) -> None:
+        self._authorize_or_raise('replace_all', permit)
         cursor = self._editor.textCursor()
         cursor.beginEditBlock()
         try:
@@ -81,7 +103,8 @@ class DocumentHandle:
         finally:
             cursor.endEditBlock()
 
-    def replace_range(self, start: int, end: int, text: str) -> None:
+    def replace_range(self, start: int, end: int, text: str, *, permit=None) -> None:
+        self._authorize_or_raise('replace_range', permit)
         length = len(self.text)
         if start < 0 or end < start or end > length:
             raise ValueError(
@@ -97,7 +120,8 @@ class DocumentHandle:
         finally:
             cursor.endEditBlock()
 
-    def insert_at_cursor(self, text: str) -> None:
+    def insert_at_cursor(self, text: str, *, permit=None) -> None:
+        self._authorize_or_raise('insert_at_cursor', permit)
         cursor = self._editor.textCursor()
         cursor.beginEditBlock()
         try:
@@ -105,7 +129,8 @@ class DocumentHandle:
         finally:
             cursor.endEditBlock()
 
-    def wrap_selection(self, before: str, after: str) -> None:
+    def wrap_selection(self, before: str, after: str, *, permit=None) -> None:
+        self._authorize_or_raise('wrap_selection', permit)
         cursor = self._editor.textCursor()
         selected = cursor.selectedText()
         cursor.beginEditBlock()

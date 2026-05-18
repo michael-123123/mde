@@ -1,6 +1,8 @@
 """Tests for ``logger.resolve_level``.
 
-The resolution chain is: CLI flag → ``MDE_LOG_LEVEL`` env var → default.
+The resolution chain is:
+    CLI flag → ``MDE_LOG_LEVEL`` env var → settings.log.level → default.
+
 Pin each branch so a misordered fallback or a typo doesn't silently
 demote a user's debug request to the default.
 """
@@ -10,7 +12,7 @@ import os
 
 import pytest
 
-from markdown_editor.markdown6.logger import resolve_level
+from markdown_editor.markdown6.logger import resolve_level, set_level, setup
 
 
 @pytest.fixture(autouse=True)
@@ -83,3 +85,64 @@ class TestPrecedence:
         value - treat it as "no choice" and fall through to env."""
         monkeypatch.setenv("MDE_LOG_LEVEL", "warning")
         assert resolve_level("") == logging.WARNING
+
+
+class TestSettingsLayer:
+    """The persisted ``log.level`` setting is the third tier - below
+    CLI flag and env var, above the built-in default. Surfaced via
+    Settings → Diagnostics so users can change log level without
+    touching shell config."""
+
+    def test_settings_value_used_when_no_cli_no_env(self):
+        assert resolve_level(settings_value="warning") == logging.WARNING
+
+    def test_settings_value_case_insensitive(self):
+        assert resolve_level(settings_value="DEBUG") == logging.DEBUG
+
+    def test_settings_value_unknown_falls_back_to_default(self):
+        assert resolve_level(settings_value="nonsense") == logging.INFO
+
+    def test_settings_value_none_falls_to_default(self):
+        assert resolve_level(settings_value=None) == logging.INFO
+
+    def test_env_beats_settings(self, monkeypatch):
+        """A user's shell env override should win over their persisted
+        choice - same logic as CLI > env."""
+        monkeypatch.setenv("MDE_LOG_LEVEL", "error")
+        assert resolve_level(settings_value="debug") == logging.ERROR
+
+    def test_cli_beats_settings(self):
+        assert resolve_level("error", settings_value="debug") == logging.ERROR
+
+    def test_cli_beats_env_beats_settings(self, monkeypatch):
+        """All three set: CLI wins."""
+        monkeypatch.setenv("MDE_LOG_LEVEL", "warning")
+        assert (
+            resolve_level("error", settings_value="debug") == logging.ERROR
+        )
+
+    def test_settings_layer_below_env(self, monkeypatch):
+        """No CLI, env present, settings present → env wins."""
+        monkeypatch.setenv("MDE_LOG_LEVEL", "warning")
+        assert resolve_level(settings_value="debug") == logging.WARNING
+
+
+class TestSetLevel:
+    """`set_level` updates installed handlers in place. Used after
+    AppContext loads to re-apply the level with the persisted setting
+    factored in (the initial setup() runs before settings load)."""
+
+    def test_set_level_updates_existing_handler(self):
+        # setup is idempotent; safe to call from a test.
+        setup(level=logging.INFO)
+        set_level(logging.WARNING)
+        root = logging.getLogger("mde")
+        for h in root.handlers:
+            assert h.level == logging.WARNING
+
+    def test_set_level_can_lower_threshold(self):
+        setup(level=logging.WARNING)
+        set_level(logging.DEBUG)
+        root = logging.getLogger("mde")
+        for h in root.handlers:
+            assert h.level == logging.DEBUG

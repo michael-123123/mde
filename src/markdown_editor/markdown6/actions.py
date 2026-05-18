@@ -243,6 +243,9 @@ MENU_STRUCTURE: list[MenuDef] = [
         ActionDef("view.toggle_zen_mode", "&Zen Mode", "_toggle_zen_mode",
                   checkable=True,
                   palette_name="Toggle Zen Mode", palette_category="View"),
+        ActionDef("view.toggle_read_only", "&Read-Only Mode", "_toggle_read_only",
+                  checkable=True,
+                  palette_name="Toggle Read-Only Mode", palette_category="View"),
         SEPARATOR,
         ActionDef("tabs.next", "&Next Tab", "_next_tab",
                   palette_name="Next Tab", palette_category="Tabs"),
@@ -257,6 +260,8 @@ MENU_STRUCTURE: list[MenuDef] = [
 
     MenuDef("&Help", [
         ActionDef("help.about", "&About", "_show_about"),
+        ActionDef("help.version", "&Version", "_show_version",
+                  palette_name="Show Version", palette_category="Help"),
     ]),
 ]
 

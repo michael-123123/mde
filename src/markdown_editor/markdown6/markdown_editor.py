@@ -3,22 +3,25 @@
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QColor,
     QDesktopServices,
     QIcon,
     QKeySequence,
     QPalette,
+    QPixmap,
     QShortcut,
     QTextCursor,
 )
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -29,6 +32,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QTabWidget,
     QToolButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -66,7 +70,11 @@ from markdown_editor.markdown6.html_renderer_core import (
     get_cached_html_formatter,
     wrap_html_in_full_template,
 )
-from markdown_editor.markdown6.logger import getLogger
+from markdown_editor.markdown6.logger import (
+    getLogger,
+    resolve_level,
+    set_level,
+)
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (
@@ -96,6 +104,142 @@ from markdown_editor.markdown6.theme import (
 )
 
 logger = getLogger(__name__)
+
+
+def get_app_version() -> str:
+    """Resolve the running mde version.
+
+    Reads from ``importlib.metadata`` (populated by setuptools-scm at
+    build / install time) so we never hard-code a version that would
+    drift behind the actual tag. Falls back to ``"dev"`` for editable
+    installs where the distribution metadata isn't registered.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            return version("markdown-editor")
+        except PackageNotFoundError:
+            return "dev"
+    except ImportError:
+        return "dev"
+
+
+def _about_text() -> str:
+    """Body of the Help → About dialog. Short intro + version. Kept
+    deliberately concise; the README is the long-form reference."""
+    return (
+        "mde - Markdown Editor\n\n"
+        "A feature-rich desktop Markdown editor built with Qt6 (PySide6). "
+        "Live preview, wiki links, diagrams, project management, and "
+        "export to HTML/PDF/DOCX.\n\n"
+        f"Version: {get_app_version()}"
+    )
+
+
+def _version_text() -> str:
+    """Body of the Help → Version popup - just the version."""
+    return f"Version: {get_app_version()}"
+
+
+def _brand_pixmap(target_px: int):
+    """Load the mde icon scaled to `target_px` square. Returns None if
+    the icon asset is missing (defensive: source installs always have
+    it, but bundled builds can occasionally drop assets)."""
+    icon_path = Path(__file__).parent / "icons" / "markdown-editor-256.png"
+    if not icon_path.exists():
+        return None
+    pix = QPixmap(str(icon_path))
+    if pix.isNull():
+        return None
+    return pix.scaled(
+        target_px, target_px,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+
+
+def _build_branded_dialog(parent, title: str, body: str, icon_px: int) -> QDialog:
+    """Compose a small modal dialog with the mde symbol centered above
+    centered body text and an OK button. Used for Help → About and
+    Help → Version so the brand presentation is consistent.
+
+    Idiomatic Qt: QVBoxLayout with the QLabels carrying AlignCenter.
+    QMessageBox would left-align the icon next to the text, which is
+    not what we want for a branded popup.
+    """
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(title)
+
+    layout = QVBoxLayout(dialog)
+    layout.setContentsMargins(24, 24, 24, 16)
+    layout.setSpacing(16)
+
+    icon_label = QLabel()
+    icon_label.setObjectName("brand_icon")
+    icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    pix = _brand_pixmap(icon_px)
+    if pix is not None:
+        icon_label.setPixmap(pix)
+    layout.addWidget(icon_label)
+
+    text_label = QLabel(body)
+    text_label.setObjectName("brand_text")
+    text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    text_label.setWordWrap(True)
+    text_label.setTextInteractionFlags(
+        Qt.TextInteractionFlag.TextSelectableByMouse
+    )
+    layout.addWidget(text_label)
+
+    buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+    buttons.accepted.connect(dialog.accept)
+    layout.addWidget(buttons)
+
+    return dialog
+
+
+def _build_about_dialog(parent) -> QDialog:
+    """About dialog: full intro + version, larger icon (128 px)."""
+    return _build_branded_dialog(parent, "About mde", _about_text(), icon_px=128)
+
+
+def _build_version_dialog(parent) -> QDialog:
+    """Version popup: just the version, smaller icon (64 px)."""
+    return _build_branded_dialog(parent, "Version", _version_text(), icon_px=64)
+
+
+class MutationPermit:
+    """One-shot, op-specific authorization to bypass the read-only gate
+    for a single mutation call.
+
+    Permits are issued by ``MarkdownEditor.allow_mutation(op)`` and
+    consumed by passing them to a mutation function as ``permit=...``.
+    The permit's identity (a Python object reference local to the
+    ``with`` block) is what gives this design its granularity: signal
+    handlers firing during the same window have no way to obtain a
+    reference to the permit, so they cannot use it.
+
+    The permit is one-shot - after a successful ``claim`` it cannot
+    authorize again. Leaking the permit out of the ``with`` block is
+    not catastrophic (one-shot still applies), but the block emits a
+    warning if the permit was never claimed, which usually signals a
+    bug in the caller.
+    """
+
+    __slots__ = ("op", "_used")
+
+    def __init__(self, op: str):
+        self.op = op
+        self._used = False
+
+    def claim(self, op: str) -> bool:
+        """Called from inside a gated mutation function. Returns True
+        iff this permit matches the operation name and hasn't been
+        claimed before. Marks the permit used on success."""
+        if self._used or self.op != op:
+            return False
+        self._used = True
+        return True
 
 
 # Two unhandled Esc presses within this window exit Zen mode. The
@@ -191,6 +335,9 @@ def apply_application_theme(dark_mode: bool):
 class MarkdownEditor(QMainWindow):
     """A tabbed Markdown editor with split-screen editing and preview."""
 
+    # Emitted when read-only mode flips. Carries the new state.
+    read_only_changed = Signal(bool)
+
     def __init__(self, extra_plugin_dirs: list[Path] | None = None):
         super().__init__()
         self.ctx = get_app_context()
@@ -207,6 +354,11 @@ class MarkdownEditor(QMainWindow):
         self._zen_mode_active = False
         self._zen_snapshot: _ZenSnapshot | None = None
         self._last_unhandled_esc_ms = 0
+        # Read-only mode: app-wide write lock. Transient (not persisted).
+        # The `_authorize` method is the single gate for every disk- or
+        # document-mutating function. See MutationPermit / allow_mutation
+        # for the granular bypass mechanism.
+        self._read_only_mode = False
         self._diagram_executor = ThreadPoolExecutor(max_workers=4)
         self._set_application_icon()
         # ``self.md`` is built inside ``_load_plugins`` (called by
@@ -386,6 +538,20 @@ class MarkdownEditor(QMainWindow):
 
         self.status_bar = self.statusBar()
 
+        # Read-only mode indicator. Hidden by default; flipped on by
+        # _apply_read_only_state when set_read_only_mode(True) runs.
+        # Clicking the label toggles RO via the same action so users
+        # have a one-click escape from the status bar.
+        self._read_only_indicator = QLabel("🔒 Read-Only")
+        self._read_only_indicator.setVisible(False)
+        self._read_only_indicator.setToolTip(
+            "App is in read-only mode. Click to toggle off."
+        )
+        self._read_only_indicator.mousePressEvent = (
+            lambda _e: self.set_read_only_mode(not self._read_only_mode)
+        )
+        self.status_bar.addPermanentWidget(self._read_only_indicator)
+
         # Word count label
         self.word_count_label = QLabel("Words: 0 | Chars: 0")
         self.status_bar.addPermanentWidget(self.word_count_label)
@@ -487,6 +653,13 @@ class MarkdownEditor(QMainWindow):
             self._configure_autosave()
         elif key == "plugins.disabled":
             self._refresh_plugin_enabled_state()
+        elif key == "log.level":
+            # Live-apply the new log level so the user doesn't have to
+            # restart to see the change take effect. The CLI flag and
+            # env var still win at startup; this only re-applies when
+            # nothing higher in the chain is set (i.e. the user's
+            # persisted value is the active source).
+            set_level(resolve_level(settings_value=value))
 
     def _refresh_plugin_enabled_state(self):
         """React to a toggle in Settings → Plugins without a restart.
@@ -519,15 +692,28 @@ class MarkdownEditor(QMainWindow):
         self._configure_autosave()
 
     def _configure_autosave(self):
-        """Start or stop the autosave timer based on settings."""
-        if self.ctx.get("editor.auto_save", False):
+        """Start or stop the autosave timer based on settings.
+
+        Refuses to start the timer while read-only mode is on - belt and
+        braces alongside the function-level gate in ``_auto_save_all``.
+        Without this, toggling ``editor.auto_save`` on while RO is on
+        would resurrect the timer; the next tick would then rely on the
+        gate alone."""
+        if self.ctx.get("editor.auto_save", False) and not self._read_only_mode:
             interval_s = self.ctx.get("editor.auto_save_interval", 60)
             self._autosave_timer.start(interval_s * 1000)
         else:
             self._autosave_timer.stop()
 
     def _auto_save_all(self):
-        """Save all tabs that have a file path and unsaved changes."""
+        """Save all tabs that have a file path and unsaved changes.
+
+        Autosave never bypasses read-only mode: pass no permit, so a
+        direct call here while RO is on bails immediately. The timer
+        itself is paused by ``_apply_read_only_state``; this guard
+        catches any non-timer caller."""
+        if not self._authorize('autosave', None):
+            return
         for i in range(self.tab_widget.count()):
             tab = self.tab_widget.widget(i)
             if tab and tab.file_path and tab.unsaved_changes:
@@ -988,6 +1174,10 @@ class MarkdownEditor(QMainWindow):
         self.tab_widget.setCurrentIndex(index)
         # Apply global visibility state to new tab
         self._apply_visibility_to_tab(tab)
+        # New tabs created while read-only mode is on must inherit the
+        # widget-level read-only flag; otherwise typing would slip in.
+        if self._read_only_mode:
+            tab.editor.setReadOnly(True)
         tab.editor.setFocus()
         self.status_bar.showMessage("New tab created")
         return tab
@@ -1069,8 +1259,12 @@ class MarkdownEditor(QMainWindow):
             logger.exception(f"Could not open file: {path}")
             QMessageBox.critical(self, "Error", f"Could not open file: {e}")
 
-    def save_file(self) -> bool:
-        """Save the current tab's file."""
+    def save_file(self, permit: MutationPermit | None = None) -> bool:
+        """Save the current tab's file. Gated by ``_authorize`` - returns
+        False if the app is in read-only mode and no valid permit was
+        passed. See ``allow_mutation`` for the in-band bypass."""
+        if not self._authorize('save_file', permit):
+            return False
         tab = self.current_tab()
         if not tab:
             return False
@@ -1094,8 +1288,11 @@ class MarkdownEditor(QMainWindow):
             QMessageBox.critical(self, "Error", f"Could not save file: {e}")
             return False
 
-    def save_file_as(self) -> bool:
-        """Save the current tab's file with a new name."""
+    def save_file_as(self, permit: MutationPermit | None = None) -> bool:
+        """Save the current tab's file with a new name. Gated by
+        ``_authorize``; pass a permit to bypass during RO."""
+        if not self._authorize('save_file_as', permit):
+            return False
         tab = self.current_tab()
         if not tab:
             return False
@@ -1111,9 +1308,15 @@ class MarkdownEditor(QMainWindow):
 
         tab.file_path = Path(file_path)
         tab.editor.set_file_path(tab.file_path)
-        return self.save_file()
+        # The chained save needs its own authorization. If we're in RO
+        # mode the user must already have issued a `save_file_as`
+        # permit (claimed above); for the chained call we issue an
+        # internal permit for `save_file` ourselves since the user
+        # already authorized the higher-level "save as" operation.
+        with self.allow_mutation('save_file') as chained:
+            return self.save_file(permit=chained)
 
-    def save_all(self) -> int:
+    def save_all(self, permit: MutationPermit | None = None) -> int:
         """Save every tab with unsaved changes; return the count saved.
 
         Tabs with a `file_path` are written inline. Untitled tabs are routed
@@ -1122,7 +1325,13 @@ class MarkdownEditor(QMainWindow):
         Per-file write errors are collected and surfaced in a single modal
         at the end so a user with many dirty tabs is not spammed with
         dialogs mid-operation.
+
+        Gated by ``_authorize`` - returns 0 if the app is in read-only
+        mode and no valid permit was passed. See ``allow_mutation`` for
+        the in-band bypass.
         """
+        if not self._authorize('save_all', permit):
+            return 0
         original_index = self.tab_widget.currentIndex()
         saved = 0
         skipped_untitled = 0
@@ -1135,7 +1344,12 @@ class MarkdownEditor(QMainWindow):
 
             if tab.file_path is None:
                 self.tab_widget.setCurrentIndex(i)
-                if self.save_file_as():
+                # The user authorized "save_all"; per-tab Save-As dialogs
+                # are chained under an internal permit so they don't
+                # re-prompt the user's RO authorization decision.
+                with self.allow_mutation('save_file_as') as inner:
+                    ok = self.save_file_as(permit=inner)
+                if ok:
                     saved += 1
                 else:
                     skipped_untitled += 1
@@ -1254,7 +1468,14 @@ class MarkdownEditor(QMainWindow):
         if reply == QMessageBox.StandardButton.Save:
             current_index = self.tab_widget.currentIndex()
             self.tab_widget.setCurrentWidget(tab)
-            result = self.save_file()
+            # Authorize the save explicitly via the granular permit
+            # mechanism. This is the close-handler escape: even if RO
+            # is on, the user just clicked Save in the close dialog,
+            # so we deliberately authorize this one call. The
+            # QMessageBox.question above ran OUTSIDE allow_mutation,
+            # so Ctrl+S during the dialog was correctly blocked.
+            with self.allow_mutation('save_file') as permit:
+                result = self.save_file(permit=permit)
             self.tab_widget.setCurrentIndex(current_index)
             return result
         elif reply == QMessageBox.StandardButton.Cancel:
@@ -1298,31 +1519,14 @@ class MarkdownEditor(QMainWindow):
         self.project_panel.save_tree_state()
 
     def _show_about(self):
-        """Show about dialog."""
-        QMessageBox.about(
-            self,
-            "About Markdown Editor",
-            "Markdown Editor (PySide6)\n\n"
-            "A feature-rich Markdown editor with live preview.\n\n"
-            "Features:\n"
-            "• Split-screen editing and preview\n"
-            "• Syntax highlighting\n"
-            "• Multiple tabs\n"
-            "• Find and replace\n"
-            "• Customizable shortcuts\n"
-            "• Dark/light themes\n"
-            "• Outline/TOC panel\n"
-            "• Command palette\n"
-            "• Section folding\n"
-            "• Math/LaTeX support\n"
-            "• Mermaid diagrams\n"
-            "• Callouts/admonitions\n"
-            "• Wiki-style links\n"
-            "• Snippets\n"
-            "• Table editor\n"
-            "• Project folders\n"
-            "• And more!"
-        )
+        """Show the About dialog - short intro and version. The full
+        feature list lives in the README; duplicating it here just
+        guarantees drift."""
+        _build_about_dialog(self).exec()
+
+    def _show_version(self):
+        """Show a minimal popup with just the version string."""
+        _build_version_dialog(self).exec()
 
     def _show_graph_export(self):
         """Show the document graph export dialog."""
@@ -1907,6 +2111,92 @@ class MarkdownEditor(QMainWindow):
             event.accept()
             return
         super().keyPressEvent(event)
+
+    # ───────────────────── Read-only mode ─────────────────────
+
+    def set_read_only_mode(self, on: bool) -> None:
+        """Flip the app-wide read-only state. Idempotent. Emits
+        ``read_only_changed`` on each genuine flip."""
+        if bool(on) == self._read_only_mode:
+            return
+        self._read_only_mode = bool(on)
+        self._apply_read_only_state()
+        self.read_only_changed.emit(self._read_only_mode)
+
+    def _apply_read_only_state(self) -> None:
+        """Propagate the current read-only state across all three
+        layers: widget read-only on every tab, write-action enable
+        flags, autosave timer."""
+        on = self._read_only_mode
+        # Layer 1: every open tab's editor widget.
+        for i in range(self.tab_widget.count()):
+            self.tab_widget.widget(i).editor.setReadOnly(on)
+        # Layer 3: action gates. Each is optional - the registry may
+        # not have wired every action yet during early init.
+        for attr in ("save_action", "save_as_action", "save_all_action", "new_action"):
+            action = getattr(self, attr, None)
+            if action is not None:
+                action.setEnabled(not on)
+        # Autosave timer: pause / resume.
+        timer = getattr(self, "_autosave_timer", None)
+        if timer is not None:
+            if on:
+                timer.stop()
+            elif self.ctx.get("editor.auto_save", False):
+                timer.start()
+        # Status-bar indicator visibility, if it's been built yet.
+        indicator = getattr(self, "_read_only_indicator", None)
+        if indicator is not None:
+            indicator.setVisible(on)
+        # Keep the toggle action's checked state in sync.
+        action = getattr(self, "toggle_read_only_action", None)
+        if action is not None and action.isChecked() != on:
+            action.setChecked(on)
+
+    def _toggle_read_only(self) -> None:
+        """Action handler for view.toggle_read_only - reads the action's
+        checked state and applies it."""
+        action = getattr(self, "toggle_read_only_action", None)
+        if action is None:
+            return
+        self.set_read_only_mode(action.isChecked())
+
+    @contextmanager
+    def allow_mutation(self, op: str):
+        """Issue a one-shot ``MutationPermit`` for the named operation.
+
+        Inside the ``with`` block, pass the yielded permit to the
+        single mutation function you intend to call. Other code paths
+        firing during the block (signal handlers, user keystrokes,
+        autosave callbacks) cannot reference this permit, so they
+        remain blocked by ``_authorize``.
+
+        Permits are one-shot - the same permit cannot authorize two
+        calls. Leaking the permit out of the block does not bypass
+        this. The block warns if the permit is never claimed.
+        """
+        permit = MutationPermit(op)
+        logger.info("read-only permit issued: op=%s", op)
+        try:
+            yield permit
+        finally:
+            if not permit._used:
+                logger.warning("permit issued but never claimed: op=%s", op)
+
+    def _authorize(self, op: str, permit: MutationPermit | None) -> bool:
+        """Single-source mutation gate. Returns True iff the call is
+        allowed: either read-only is off, or the caller presented a
+        valid one-shot permit for this op.
+
+        Mutation functions call this first and return early on False.
+        Internal callers that legitimately need to mutate during RO
+        wrap their call in ``allow_mutation`` and pass the permit."""
+        if permit is not None and permit.claim(op):
+            return True
+        if self._read_only_mode:
+            logger.info("blocked write: op=%s (read-only mode)", op)
+            return False
+        return True
 
     def _on_search_file_requested(self, file_path: str, line_number: int):
         """Handle search result click - open file at line."""

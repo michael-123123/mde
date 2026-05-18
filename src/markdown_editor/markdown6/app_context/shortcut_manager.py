@@ -91,6 +91,7 @@ DEFAULT_SHORTCUTS = {
     "view.toggle_whitespace": "Ctrl+Alt+W",
     "view.fullscreen": "F11",
     "view.toggle_zen_mode": "Ctrl+Alt+Z",
+    "view.toggle_read_only": "Ctrl+Alt+R",
     "view.zoom_in": "Ctrl++",
     "view.zoom_out": "Ctrl+-",
     "view.zoom_reset": "Ctrl+0",

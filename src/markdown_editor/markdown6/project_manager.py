@@ -503,8 +503,20 @@ class ProjectPanel(QWidget):
         if Path(path).is_file():
             self.file_double_clicked.emit(path)
 
+    def _is_writable(self, op: str) -> bool:
+        """Consult the parent MarkdownEditor's read-only gate. Defensive
+        for ProjectPanel uses outside the main window (e.g., tests
+        that construct a standalone panel) - those default to writable
+        because there's no gate to consult."""
+        main = self.window()
+        authorize = getattr(main, "_authorize", None)
+        if authorize is None:
+            return True
+        return authorize(op, None)
+
     def _show_context_menu(self, position):
-        """Show context menu."""
+        """Show context menu. Mutating actions (rename/delete/new) are
+        disabled when the app is in read-only mode."""
         index = self.tree_view.indexAt(position)
         if not index.isValid():
             return
@@ -520,20 +532,26 @@ class ProjectPanel(QWidget):
 
             rename_action = menu.addAction("Rename")
             rename_action.triggered.connect(lambda: self._rename_file(path))
+            rename_action.setEnabled(self._is_writable("rename_file"))
 
             delete_action = menu.addAction("Delete")
             delete_action.triggered.connect(lambda: self._delete_file(path))
+            delete_action.setEnabled(self._is_writable("delete_file"))
         else:
             new_file_action = menu.addAction("New File")
             new_file_action.triggered.connect(lambda: self._new_file(path))
+            new_file_action.setEnabled(self._is_writable("new_file"))
 
             new_folder_action = menu.addAction("New Folder")
             new_folder_action.triggered.connect(lambda: self._new_folder(path))
+            new_folder_action.setEnabled(self._is_writable("new_folder"))
 
         menu.exec(self.tree_view.viewport().mapToGlobal(position))
 
     def _new_file(self, folder: Path):
         """Create a new file in the folder."""
+        if not self._is_writable("new_file"):
+            return
         name, ok = QInputDialog.getText(
             self, "New File", "File name:", text="untitled.md"
         )
@@ -550,6 +568,8 @@ class ProjectPanel(QWidget):
 
     def _new_folder(self, parent: Path):
         """Create a new folder."""
+        if not self._is_writable("new_folder"):
+            return
         name, ok = QInputDialog.getText(
             self, "New Folder", "Folder name:"
         )
@@ -563,6 +583,8 @@ class ProjectPanel(QWidget):
 
     def _rename_file(self, path: Path):
         """Rename a file."""
+        if not self._is_writable("rename_file"):
+            return
         name, ok = QInputDialog.getText(
             self, "Rename", "New name:", text=path.name
         )
@@ -576,6 +598,8 @@ class ProjectPanel(QWidget):
 
     def _delete_file(self, path: Path):
         """Delete a file."""
+        if not self._is_writable("delete_file"):
+            return
         reply = QMessageBox.question(
             self,
             "Delete File",
