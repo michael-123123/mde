@@ -1625,7 +1625,17 @@ class EnhancedEditor(QPlainTextEdit):
             super().insertFromMimeData(source)
 
     def _paste_image(self, source: QMimeData):
-        """Paste an image from clipboard."""
+        """Paste an image from clipboard.
+
+        Gated by the editor's ``isReadOnly()`` state - paste-to-disk
+        is fundamentally user-driven (clipboard paste, not a
+        programmatic API), so we don't expose a permit-based bypass
+        here. When the app is in read-only mode every editor widget
+        is ``setReadOnly(True)`` (Layer 1 propagation), so checking
+        the widget flag is the right gate at this layer.
+        """
+        if self.isReadOnly():
+            return
         image = QImage(source.imageData())
         if image.isNull():
             return

@@ -289,6 +289,29 @@ def test_close_save_path_can_save_even_in_read_only(editor, tmp_path, monkeypatc
 
 
 @pytest.mark.timeout(15, method="thread")
+def test_paste_image_blocked_when_read_only(editor, tmp_path):
+    """The paste-image-to-disk handler must bail when the editor is
+    read-only. Since Layer 1 propagation calls setReadOnly(True) on
+    every tab's editor when RO is on, checking isReadOnly() is the
+    right gate at this layer (paste-image is user-driven; no permit
+    pathway needed)."""
+    from unittest.mock import MagicMock
+
+    tab = editor.current_tab()
+    editor.set_read_only_mode(True)
+    QApplication.processEvents()
+    assert tab.editor.isReadOnly()
+
+    # Spy on _resolve_paste_image_dir - it's called only when the gate
+    # passes. With RO on, _paste_image must bail before reaching it.
+    tab.editor._resolve_paste_image_dir = MagicMock(return_value=tmp_path)
+    fake_source = MagicMock()
+    fake_source.imageData.return_value = None
+    tab.editor._paste_image(fake_source)
+    tab.editor._resolve_paste_image_dir.assert_not_called()
+
+
+@pytest.mark.timeout(15, method="thread")
 def test_close_cancel_keeps_read_only(editor, tmp_path, monkeypatch):
     """If user picks Cancel at the close prompt, RO stays on (close
     aborted, app continues in the locked state)."""
