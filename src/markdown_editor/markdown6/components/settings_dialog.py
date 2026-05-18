@@ -111,6 +111,7 @@ class SettingsDialog(QDialog):
             ("External Tools", "tools"),
             ("Keyboard Shortcuts", "shortcuts"),
             ("Plugins", "plugins"),
+            ("Diagnostics", "diagnostics"),
         ]
 
         from PySide6.QtCore import QSize
@@ -132,6 +133,7 @@ class SettingsDialog(QDialog):
         self.stack.addWidget(self._create_tools_page())
         self.stack.addWidget(self._create_shortcuts_page())
         self.stack.addWidget(self._create_plugins_page())
+        self.stack.addWidget(self._create_diagnostics_page())
 
         splitter.addWidget(self.stack)
         splitter.setStretchFactor(0, 0)  # Category list doesn't stretch
@@ -583,6 +585,48 @@ class SettingsDialog(QDialog):
         self.plugins_page = PluginsSettingsPage(self.ctx)
         return self.plugins_page
 
+    def _create_diagnostics_page(self) -> QWidget:
+        """Diagnostics page - log level today, room to grow.
+
+        The page houses developer / power-user knobs that don't fit
+        the other pages (which are all user-facing functionality).
+        Log level joins the existing CLI flag and env var as the third
+        configuration surface.
+        """
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        info = QLabel(
+            "Diagnostics settings affect how mde logs its activity. "
+            "Useful when reporting bugs or investigating odd behavior."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        log_group = QGroupBox("Logging")
+        log_layout = QFormLayout(log_group)
+        self.log_level_combo = QComboBox()
+        # Order is least-to-most-noisy so the dropdown reads naturally.
+        self.log_level_combo.addItems(["error", "warning", "info", "debug"])
+        log_layout.addRow("Log level:", self.log_level_combo)
+        log_desc = QLabel(
+            "Overridden by the --log-level CLI flag and the MDE_LOG_LEVEL "
+            "environment variable when those are set."
+        )
+        log_desc.setWordWrap(True)
+        log_desc.setObjectName("MutedLabel")
+        log_layout.addRow("", log_desc)
+        layout.addWidget(log_group)
+
+        layout.addStretch()
+        scroll.setWidget(page)
+        return scroll
+
     def _create_shortcuts_page(self) -> QWidget:
         """Create the keyboard shortcuts page."""
         page = QWidget()
@@ -690,6 +734,12 @@ class SettingsDialog(QDialog):
         self.pandoc_path.setText(self.ctx.get("tools.pandoc_path", ""))
         self.dot_path.setText(self.ctx.get("tools.dot_path", ""))
         self.mmdc_path.setText(self.ctx.get("tools.mmdc_path", ""))
+
+        # Diagnostics
+        current_log = self.ctx.get("log.level", "info")
+        idx = self.log_level_combo.findText(current_log)
+        self.log_level_combo.setCurrentIndex(idx if idx >= 0 else
+                                              self.log_level_combo.findText("info"))
 
         # Appearance
         from PySide6.QtGui import QFont, QFontDatabase
@@ -902,6 +952,9 @@ class SettingsDialog(QDialog):
         self.ctx.set("tools.pandoc_path", self.pandoc_path.text().strip())
         self.ctx.set("tools.dot_path", self.dot_path.text().strip())
         self.ctx.set("tools.mmdc_path", self.mmdc_path.text().strip())
+
+        # Diagnostics
+        self.ctx.set("log.level", self.log_level_combo.currentText())
 
         # Appearance
         self.ctx.set("preview.body_font_family", self.preview_body_font.currentFont().family())
