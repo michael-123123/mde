@@ -1303,7 +1303,7 @@ class MarkdownEditor(QMainWindow):
         with self.allow_mutation('save_file') as chained:
             return self.save_file(permit=chained)
 
-    def save_all(self) -> int:
+    def save_all(self, permit: MutationPermit | None = None) -> int:
         """Save every tab with unsaved changes; return the count saved.
 
         Tabs with a `file_path` are written inline. Untitled tabs are routed
@@ -1312,7 +1312,13 @@ class MarkdownEditor(QMainWindow):
         Per-file write errors are collected and surfaced in a single modal
         at the end so a user with many dirty tabs is not spammed with
         dialogs mid-operation.
+
+        Gated by ``_authorize`` - returns 0 if the app is in read-only
+        mode and no valid permit was passed. See ``allow_mutation`` for
+        the in-band bypass.
         """
+        if not self._authorize('save_all', permit):
+            return 0
         original_index = self.tab_widget.currentIndex()
         saved = 0
         skipped_untitled = 0
@@ -1325,7 +1331,12 @@ class MarkdownEditor(QMainWindow):
 
             if tab.file_path is None:
                 self.tab_widget.setCurrentIndex(i)
-                if self.save_file_as():
+                # The user authorized "save_all"; per-tab Save-As dialogs
+                # are chained under an internal permit so they don't
+                # re-prompt the user's RO authorization decision.
+                with self.allow_mutation('save_file_as') as inner:
+                    ok = self.save_file_as(permit=inner)
+                if ok:
                     saved += 1
                 else:
                     skipped_untitled += 1
@@ -2109,7 +2120,7 @@ class MarkdownEditor(QMainWindow):
             self.tab_widget.widget(i).editor.setReadOnly(on)
         # Layer 3: action gates. Each is optional - the registry may
         # not have wired every action yet during early init.
-        for attr in ("save_action", "save_as_action", "new_action"):
+        for attr in ("save_action", "save_as_action", "save_all_action", "new_action"):
             action = getattr(self, attr, None)
             if action is not None:
                 action.setEnabled(not on)

@@ -369,3 +369,64 @@ def test_close_cancel_keeps_read_only(editor, tmp_path, monkeypatch):
     ok = editor._check_tab_unsaved_changes(tab)
     assert ok is False
     assert editor._read_only_mode is True, "cancel must not flip RO off"
+
+
+# ────────────────────── save_all + autosave (gaps from master rebase) ──────────────────────
+
+
+def _dirty_existing(editor, path: Path, mod_text: str = "modified"):
+    """Open ``path`` in a new tab and mark its editor buffer dirty."""
+    editor.open_file(path)
+    tab = editor.current_tab()
+    tab.editor.setPlainText(mod_text)
+    tab.editor.document().setModified(True)
+    return tab
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_save_all_blocked_in_read_only(editor, tmp_path):
+    """save_all() must not write any tab while RO is on. Without a
+    function gate, ``File → Save All`` silently bypasses the lock
+    because it writes via ``Path.write_text`` directly rather than
+    routing through ``save_file``."""
+    f1 = tmp_path / "a.md"
+    f2 = tmp_path / "b.md"
+    f1.write_text("orig1")
+    f2.write_text("orig2")
+    _dirty_existing(editor, f1, "mod1")
+    _dirty_existing(editor, f2, "mod2")
+
+    editor.set_read_only_mode(True)
+    saved = editor.save_all()
+    assert saved == 0
+    assert f1.read_text() == "orig1"
+    assert f2.read_text() == "orig2"
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_save_all_with_permit_succeeds_in_read_only(editor, tmp_path):
+    """save_all(permit=permit) with a valid permit writes despite RO -
+    same bypass model as save_file/save_file_as. Internal save_file_as
+    calls (for untitled tabs) must be chained with an internal permit."""
+    f = tmp_path / "x.md"
+    f.write_text("orig")
+    _dirty_existing(editor, f, "mod")
+
+    editor.set_read_only_mode(True)
+    with editor.allow_mutation('save_all') as permit:
+        saved = editor.save_all(permit=permit)
+    assert saved == 1
+    assert f.read_text() == "mod"
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_save_all_action_disabled_when_read_only(editor):
+    """Layer-3 (UX) gate: the Save All menu item / shortcut / palette
+    entry must be disabled while RO is on, so the user gets visible
+    feedback that the operation is unavailable."""
+    action = getattr(editor, "save_all_action", None)
+    assert action is not None, "save_all_action must be wired"
+    assert action.isEnabled()
+    editor.set_read_only_mode(True)
+    QApplication.processEvents()
+    assert not action.isEnabled()
