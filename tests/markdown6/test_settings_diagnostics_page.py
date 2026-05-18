@@ -81,3 +81,26 @@ def test_applying_dialog_persists_log_level(dialog):
     dialog.log_level_combo.setCurrentText("debug")
     dialog._apply()
     assert dialog.ctx.get("log.level") == "debug"
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_log_level_change_applies_live(qtbot):
+    """Changing log.level via Settings (or any other setter) should
+    take effect immediately - no restart required. MarkdownEditor
+    listens to ctx.settings_changed and calls logger.set_level."""
+    import logging
+    from markdown_editor.markdown6.logger import setup
+    from markdown_editor.markdown6.markdown_editor import MarkdownEditor
+
+    setup(level=logging.INFO)
+    editor = MarkdownEditor()
+    qtbot.addWidget(editor)
+
+    editor.ctx.set("log.level", "warning")
+    QApplication.processEvents()
+
+    root = logging.getLogger("mde")
+    # At least one handler should now be at WARNING.
+    assert any(h.level == logging.WARNING for h in root.handlers), (
+        "ctx.set('log.level', 'warning') should propagate to the logger"
+    )

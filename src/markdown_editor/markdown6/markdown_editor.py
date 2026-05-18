@@ -69,7 +69,11 @@ from markdown_editor.markdown6.html_renderer_core import (
     get_cached_html_formatter,
     wrap_html_in_full_template,
 )
-from markdown_editor.markdown6.logger import getLogger
+from markdown_editor.markdown6.logger import (
+    getLogger,
+    resolve_level,
+    set_level,
+)
 from markdown_editor.markdown6.plugins import api as plugin_api
 from markdown_editor.markdown6.plugins.document_handle import DocumentHandle
 from markdown_editor.markdown6.plugins.editor_integration import (
@@ -650,6 +654,13 @@ class MarkdownEditor(QMainWindow):
             self._configure_autosave()
         elif key == "plugins.disabled":
             self._refresh_plugin_enabled_state()
+        elif key == "log.level":
+            # Live-apply the new log level so the user doesn't have to
+            # restart to see the change take effect. The CLI flag and
+            # env var still win at startup; this only re-applies when
+            # nothing higher in the chain is set (i.e. the user's
+            # persisted value is the active source).
+            set_level(resolve_level(settings_value=value))
 
     def _refresh_plugin_enabled_state(self):
         """React to a toggle in Settings → Plugins without a restart.
