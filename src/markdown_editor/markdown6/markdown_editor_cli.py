@@ -1075,46 +1075,6 @@ def _uninstall_desktop_windows() -> int:
 _MACOS_APP_DIR = Path.home() / "Applications"
 _MACOS_APP_NAME = "Markdown Editor.app"
 
-_MACOS_INFO_PLIST = """\
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>Markdown Editor</string>
-    <key>CFBundleDisplayName</key>
-    <string>Markdown Editor</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.markdown-editor.mde</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleExecutable</key>
-    <string>mde-launcher</string>
-    <key>CFBundleIconFile</key>
-    <string>app.icns</string>
-    <key>CFBundleDocumentTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeExtensions</key>
-            <array>
-                <string>md</string>
-                <string>markdown</string>
-                <string>mkd</string>
-                <string>mdown</string>
-            </array>
-            <key>CFBundleTypeName</key>
-            <string>Markdown Document</string>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-        </dict>
-    </array>
-</dict>
-</plist>
-"""
-
 
 def _install_desktop_macos() -> int:
     """Install .app bundle in ~/Applications."""
@@ -1127,8 +1087,11 @@ def _install_desktop_macos() -> int:
     macos_dir.mkdir(parents=True, exist_ok=True)
     resources.mkdir(parents=True, exist_ok=True)
 
-    # Write Info.plist
-    (contents / "Info.plist").write_text(_MACOS_INFO_PLIST)
+    # Write Info.plist - bundled as an asset alongside the icons,
+    # matching the Linux .desktop file's treatment so the bundle
+    # metadata is editable from outside the Python source.
+    plist_text = (_icons_dir() / "Info.plist").read_text(encoding="utf-8")
+    (contents / "Info.plist").write_text(plist_text)
     print(f"Installed {contents / 'Info.plist'}")
 
     # Write launcher script that finds the pip-installed mde

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Markdown Editor</string>
+    <key>CFBundleDisplayName</key>
+    <string>Markdown Editor</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.markdown-editor.mde</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>mde-launcher</string>
+    <key>CFBundleIconFile</key>
+    <string>app.icns</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>md</string>
+                <string>markdown</string>
+                <string>mkd</string>
+                <string>mdown</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>Markdown Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+        </dict>
+    </array>
+</dict>
+</plist>
