@@ -20,6 +20,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from markdown_editor.markdown6.cli.cli_helpers import (
+    get_project_files,
+    read_stdin,
+)
 from markdown_editor.markdown6.cli.desktop_integration import (
     cmd_install_desktop,
     cmd_uninstall_desktop,
@@ -406,25 +410,6 @@ Examples:
     )
 
     return parser
-
-
-def read_stdin() -> str:
-    """Read content from stdin if available."""
-    try:
-        if not sys.stdin.isatty():
-            return sys.stdin.read()
-    except OSError:
-        # Handle pytest capture mode
-        pass
-    return ""
-
-
-def get_project_files(project_path: Path) -> list[Path]:
-    """Get all markdown files in a project."""
-    from markdown_editor.markdown6.app_context import (
-        get_project_markdown_files,
-    )
-    return get_project_markdown_files(project_path)
 
 
 def cmd_export(args: argparse.Namespace) -> int:
