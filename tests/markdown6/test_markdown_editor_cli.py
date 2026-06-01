@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from markdown_editor.markdown6.cli.cli_helpers import get_project_files
 from markdown_editor.markdown6.cli.desktop_integration import (
     _MACOS_APP_NAME,
     _create_windows_shortcut,
@@ -18,13 +19,12 @@ from markdown_editor.markdown6.cli.desktop_integration import (
     cmd_install_desktop,
     cmd_uninstall_desktop,
 )
+from markdown_editor.markdown6.cli.export import cmd_export
+from markdown_editor.markdown6.cli.graph import cmd_graph
+from markdown_editor.markdown6.cli.stats import cmd_stats
+from markdown_editor.markdown6.cli.validate import cmd_validate
 from markdown_editor.markdown6.markdown_editor_cli import (
-    cmd_export,
-    cmd_graph,
-    cmd_stats,
-    cmd_validate,
     create_parser,
-    get_project_files,
     main,
 )
 
