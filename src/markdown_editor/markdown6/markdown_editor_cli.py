@@ -13,7 +13,6 @@ Usage:
 import argparse
 import errno
 import json
-import os
 import shutil
 import sys
 from pathlib import Path

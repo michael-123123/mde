@@ -8,7 +8,6 @@ demote a user's debug request to the default.
 """
 
 import logging
-import os
 
 import pytest
 
