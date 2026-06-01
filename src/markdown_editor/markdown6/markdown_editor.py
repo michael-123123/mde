@@ -338,7 +338,22 @@ class MarkdownEditor(QMainWindow):
     # Emitted when read-only mode flips. Carries the new state.
     read_only_changed = Signal(bool)
 
-    def __init__(self, extra_plugin_dirs: list[Path] | None = None):
+    def __init__(
+        self,
+        extra_plugin_dirs: list[Path] | None = None,
+        project_path: Path | None = None,
+    ):
+        """Construct the main editor window.
+
+        ``project_path`` (if given) is loaded as the active project,
+        bypassing the persisted ``project.last_path`` restore step.
+        Pass it whenever the caller knows up front which project to
+        open (e.g. ``mde -p X``); leave it None for the bare-launch
+        path where the user expects their last project to come back.
+        Routing the choice through one constructor parameter avoids
+        the previous double-load where the constructor would restore
+        last_path and the CLI would immediately overwrite it.
+        """
         super().__init__()
         self.ctx = get_app_context()
         # Extra plugin roots layered on top of builtin + user dirs. CLI
@@ -374,7 +389,7 @@ class MarkdownEditor(QMainWindow):
         self._init_autosave()
         self.new_tab()
         self._update_recent_files_menu()
-        self._restore_last_project()
+        self._init_project(project_path)
         self._restore_sidebar_state()
         # Apply theme after all widgets are created
         self._apply_full_theme()
@@ -2403,17 +2418,28 @@ class MarkdownEditor(QMainWindow):
         self.editor_toggle_btn.blockSignals(False)
         self.preview_toggle_btn.blockSignals(False)
 
-    def _restore_last_project(self):
-        """Restore the last opened project on startup."""
-        last_path = self.ctx.get("project.last_path")
-        if last_path:
-            path = Path(last_path)
-            if path.exists() and path.is_dir():
-                self.project_panel.set_project_path(path)
-                self.references_panel.set_project_path(path)
-                self.search_panel.set_project_path(path)
-                self._update_wiki_links()
-                # Don't auto-show the dock, just load the project data
+    def _init_project(self, override: Path | None):
+        """Resolve which project the editor opens with and load it.
+
+        If ``override`` is provided (e.g. ``mde -p X``), it wins; the
+        persisted ``project.last_path`` is not consulted at all so we
+        don't pay for an rglob over the previous project before
+        replacing it. If no override is given, fall back to the saved
+        last_path - the bare ``mde`` use case. In either case, all
+        three project-aware panels (project / references / search)
+        plus the wiki-link completion list are populated from one
+        consistent path.
+        """
+        if override is not None:
+            path = override
+        else:
+            last_path = self.ctx.get("project.last_path")
+            path = Path(last_path) if last_path else None
+        if path and path.exists() and path.is_dir():
+            self.project_panel.set_project_path(path)
+            self.references_panel.set_project_path(path)
+            self.search_panel.set_project_path(path)
+            self._update_wiki_links()
 
     def restore_open_files(self):
         """Restore previously open files from the last session.
