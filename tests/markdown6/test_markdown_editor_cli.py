@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from markdown_editor.markdown6.markdown_editor_cli import (
+from markdown_editor.markdown6.cli.cli_helpers import get_project_files
+from markdown_editor.markdown6.cli.desktop_integration import (
     _MACOS_APP_NAME,
     _create_windows_shortcut,
     _install_desktop_linux,
@@ -15,14 +16,15 @@ from markdown_editor.markdown6.markdown_editor_cli import (
     _uninstall_desktop_linux,
     _uninstall_desktop_macos,
     _uninstall_desktop_windows,
-    cmd_export,
-    cmd_graph,
     cmd_install_desktop,
-    cmd_stats,
     cmd_uninstall_desktop,
-    cmd_validate,
+)
+from markdown_editor.markdown6.cli.export import cmd_export
+from markdown_editor.markdown6.cli.graph import cmd_graph
+from markdown_editor.markdown6.cli.stats import cmd_stats
+from markdown_editor.markdown6.cli.validate import cmd_validate
+from markdown_editor.markdown6.markdown_editor_cli import (
     create_parser,
-    get_project_files,
     main,
 )
 
@@ -565,8 +567,8 @@ class TestInstallDesktopDispatch:
     def test_install_dispatches_linux(self):
         """Test install-desktop dispatches to Linux on linux."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
-             patch("markdown_editor.markdown6.markdown_editor_cli._install_desktop_linux", return_value=0) as mock_linux:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.cli.desktop_integration._install_desktop_linux", return_value=0) as mock_linux:
             mock_sys.platform = "linux"
             result = cmd_install_desktop(args)
             assert result == 0
@@ -575,8 +577,8 @@ class TestInstallDesktopDispatch:
     def test_install_dispatches_win32(self):
         """Test install-desktop dispatches to Windows on win32."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
-             patch("markdown_editor.markdown6.markdown_editor_cli._install_desktop_windows", return_value=0) as mock_win:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.cli.desktop_integration._install_desktop_windows", return_value=0) as mock_win:
             mock_sys.platform = "win32"
             result = cmd_install_desktop(args)
             assert result == 0
@@ -585,8 +587,8 @@ class TestInstallDesktopDispatch:
     def test_install_dispatches_darwin(self):
         """Test install-desktop dispatches to macOS on darwin."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
-             patch("markdown_editor.markdown6.markdown_editor_cli._install_desktop_macos", return_value=0) as mock_mac:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.cli.desktop_integration._install_desktop_macos", return_value=0) as mock_mac:
             mock_sys.platform = "darwin"
             result = cmd_install_desktop(args)
             assert result == 0
@@ -595,7 +597,7 @@ class TestInstallDesktopDispatch:
     def test_install_unsupported_platform(self, capsys):
         """Test install-desktop fails on unsupported platform."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys:
             mock_sys.platform = "freebsd"
             mock_sys.stderr = __import__("sys").stderr
             result = cmd_install_desktop(args)
@@ -604,8 +606,8 @@ class TestInstallDesktopDispatch:
     def test_uninstall_dispatches_linux(self):
         """Test uninstall-desktop dispatches to Linux."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
-             patch("markdown_editor.markdown6.markdown_editor_cli._uninstall_desktop_linux", return_value=0) as mock_linux:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.cli.desktop_integration._uninstall_desktop_linux", return_value=0) as mock_linux:
             mock_sys.platform = "linux"
             result = cmd_uninstall_desktop(args)
             assert result == 0
@@ -614,8 +616,8 @@ class TestInstallDesktopDispatch:
     def test_uninstall_dispatches_win32(self):
         """Test uninstall-desktop dispatches to Windows."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
-             patch("markdown_editor.markdown6.markdown_editor_cli._uninstall_desktop_windows", return_value=0) as mock_win:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.cli.desktop_integration._uninstall_desktop_windows", return_value=0) as mock_win:
             mock_sys.platform = "win32"
             result = cmd_uninstall_desktop(args)
             assert result == 0
@@ -624,8 +626,8 @@ class TestInstallDesktopDispatch:
     def test_uninstall_dispatches_darwin(self):
         """Test uninstall-desktop dispatches to macOS."""
         args = MagicMock()
-        with patch("markdown_editor.markdown6.markdown_editor_cli.sys") as mock_sys, \
-             patch("markdown_editor.markdown6.markdown_editor_cli._uninstall_desktop_macos", return_value=0) as mock_mac:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.sys") as mock_sys, \
+             patch("markdown_editor.markdown6.cli.desktop_integration._uninstall_desktop_macos", return_value=0) as mock_mac:
             mock_sys.platform = "darwin"
             result = cmd_uninstall_desktop(args)
             assert result == 0
@@ -639,8 +641,8 @@ class TestInstallDesktopLinux:
         """Test that install creates .desktop file and icons."""
         data_home = tmp_path / "data"
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._data_home", return_value=data_home), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.shutil.which", return_value=None):
             result = _install_desktop_linux()
 
         assert result == 0
@@ -661,8 +663,8 @@ class TestInstallDesktopLinux:
             icon_dir.mkdir(parents=True)
             (icon_dir / "markdown-editor.png").write_bytes(b"PNG")
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._data_home", return_value=data_home), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.shutil.which", return_value=None):
             result = _uninstall_desktop_linux()
 
         assert result == 0
@@ -675,8 +677,8 @@ class TestInstallDesktopLinux:
         data_home = tmp_path / "data"
         data_home.mkdir()
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._data_home", return_value=data_home), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value=None):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._data_home", return_value=data_home), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.shutil.which", return_value=None):
             result = _uninstall_desktop_linux()
 
         assert result == 0
@@ -691,9 +693,9 @@ class TestInstallDesktopWindows:
         """Test that install creates Start Menu shortcut."""
         start_menu = tmp_path / "StartMenu"
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._windows_start_menu_dir", return_value=start_menu), \
-             patch("markdown_editor.markdown6.markdown_editor_cli._mde_executable", return_value="C:\\Python\\Scripts\\mde.exe"), \
-             patch("markdown_editor.markdown6.markdown_editor_cli._create_windows_shortcut") as mock_shortcut:
+        with patch("markdown_editor.markdown6.cli.desktop_integration._windows_start_menu_dir", return_value=start_menu), \
+             patch("markdown_editor.markdown6.cli.desktop_integration._mde_executable", return_value="C:\\Python\\Scripts\\mde.exe"), \
+             patch("markdown_editor.markdown6.cli.desktop_integration._create_windows_shortcut") as mock_shortcut:
             result = _install_desktop_windows()
 
         assert result == 0
@@ -709,7 +711,7 @@ class TestInstallDesktopWindows:
         lnk = start_menu / "Markdown Editor.lnk"
         lnk.write_bytes(b"LNK")
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._windows_start_menu_dir", return_value=start_menu):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._windows_start_menu_dir", return_value=start_menu):
             result = _uninstall_desktop_windows()
 
         assert result == 0
@@ -720,7 +722,7 @@ class TestInstallDesktopWindows:
         start_menu = tmp_path / "StartMenu"
         start_menu.mkdir(parents=True)
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._windows_start_menu_dir", return_value=start_menu):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._windows_start_menu_dir", return_value=start_menu):
             result = _uninstall_desktop_windows()
 
         assert result == 0
@@ -729,7 +731,7 @@ class TestInstallDesktopWindows:
 
     def test_create_shortcut_calls_powershell(self):
         """Test that _create_windows_shortcut invokes PowerShell."""
-        with patch("markdown_editor.markdown6.markdown_editor_cli.subprocess.run") as mock_run:
+        with patch("markdown_editor.markdown6.cli.desktop_integration.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             _create_windows_shortcut(
                 Path("C:/Users/test/Start Menu/test.lnk"),
@@ -750,9 +752,9 @@ class TestInstallDesktopMacOS:
         """Test that install creates .app bundle structure."""
         app_dir = tmp_path / "Applications"
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value="/usr/local/bin/mde"), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.subprocess.run") as mock_run:
+        with patch("markdown_editor.markdown6.cli.desktop_integration._MACOS_APP_DIR", app_dir), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.shutil.which", return_value="/usr/local/bin/mde"), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             result = _install_desktop_macos()
 
@@ -777,9 +779,9 @@ class TestInstallDesktopMacOS:
         """Test that install handles sips failure gracefully."""
         app_dir = tmp_path / "Applications"
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.shutil.which", return_value="/usr/local/bin/mde"), \
-             patch("markdown_editor.markdown6.markdown_editor_cli.subprocess.run") as mock_run:
+        with patch("markdown_editor.markdown6.cli.desktop_integration._MACOS_APP_DIR", app_dir), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.shutil.which", return_value="/usr/local/bin/mde"), \
+             patch("markdown_editor.markdown6.cli.desktop_integration.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1)
             result = _install_desktop_macos()
 
@@ -794,7 +796,7 @@ class TestInstallDesktopMacOS:
         app_path.mkdir(parents=True)
         (app_path / "mde-launcher").write_text("#!/bin/bash")
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._MACOS_APP_DIR", app_dir):
             result = _uninstall_desktop_macos()
 
         assert result == 0
@@ -805,7 +807,7 @@ class TestInstallDesktopMacOS:
         app_dir = tmp_path / "Applications"
         app_dir.mkdir()
 
-        with patch("markdown_editor.markdown6.markdown_editor_cli._MACOS_APP_DIR", app_dir):
+        with patch("markdown_editor.markdown6.cli.desktop_integration._MACOS_APP_DIR", app_dir):
             result = _uninstall_desktop_macos()
 
         assert result == 0

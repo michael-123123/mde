@@ -178,7 +178,6 @@ def test_permit_is_one_shot(editor, tmp_path):
     f = tmp_path / "x.md"
     f.write_text("original")
     editor.open_file(f)
-    tab = editor.current_tab()
     editor.set_read_only_mode(True)
 
     permit = MutationPermit('save_file')
