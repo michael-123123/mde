@@ -140,3 +140,53 @@ def test_explicit_path_propagates_to_references_panel(qtbot, two_dirs):
 # pointed at last_path. With this fix we have to choose: fall back, or
 # leave projectless. Deferring the decision; cmd_gui already filters
 # args.project through ``args.project.is_dir()`` before passing it.
+
+
+# ──────────────────── --clean ────────────────────
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_clean_skips_last_path_restore(qtbot, two_dirs):
+    """``MarkdownEditor(clean=True)`` opens with no project even when
+    ``project.last_path`` is saved. The whole point of the flag is to
+    bypass the slow auto-restore path."""
+    last, _ = two_dirs
+
+    from markdown_editor.markdown6.app_context import get_app_context
+    get_app_context().set("project.last_path", str(last))
+
+    editor = MarkdownEditor(clean=True)
+    qtbot.addWidget(editor)
+    assert editor.project_panel.project_path is None
+    assert editor.references_panel.project_path is None
+    assert editor.search_panel.project_path is None
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_clean_with_explicit_project_path_loads_the_override(qtbot, two_dirs):
+    """``--clean -p X`` keeps the override semantics: the user asked
+    for X, so open X. ``--clean`` only suppresses the implicit
+    last_path restore, not an explicit project."""
+    last, override = two_dirs
+
+    from markdown_editor.markdown6.app_context import get_app_context
+    get_app_context().set("project.last_path", str(last))
+
+    editor = MarkdownEditor(clean=True, project_path=override)
+    qtbot.addWidget(editor)
+    assert editor.project_panel.project_path == override
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_clean_default_is_false(qtbot, two_dirs):
+    """Sanity: omitting clean keeps today's restore-last behaviour
+    intact. Regression guard so the new kwarg doesn't accidentally
+    invert the default."""
+    last, _ = two_dirs
+
+    from markdown_editor.markdown6.app_context import get_app_context
+    get_app_context().set("project.last_path", str(last))
+
+    editor = MarkdownEditor()  # clean omitted
+    qtbot.addWidget(editor)
+    assert editor.project_panel.project_path == last

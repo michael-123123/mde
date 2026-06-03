@@ -342,6 +342,7 @@ class MarkdownEditor(QMainWindow):
         self,
         extra_plugin_dirs: list[Path] | None = None,
         project_path: Path | None = None,
+        clean: bool = False,
     ):
         """Construct the main editor window.
 
@@ -353,6 +354,11 @@ class MarkdownEditor(QMainWindow):
         Routing the choice through one constructor parameter avoids
         the previous double-load where the constructor would restore
         last_path and the CLI would immediately overwrite it.
+
+        ``clean=True`` suppresses the implicit ``project.last_path``
+        restore (the CLI maps this from ``mde --clean``). An explicit
+        ``project_path`` still wins - ``--clean`` only opts out of the
+        *implicit* auto-load, not of an override the caller asked for.
         """
         super().__init__()
         self.ctx = get_app_context()
@@ -389,7 +395,7 @@ class MarkdownEditor(QMainWindow):
         self._init_autosave()
         self.new_tab()
         self._update_recent_files_menu()
-        self._init_project(project_path)
+        self._init_project(project_path, clean=clean)
         self._restore_sidebar_state()
         # Apply theme after all widgets are created
         self._apply_full_theme()
@@ -2418,20 +2424,24 @@ class MarkdownEditor(QMainWindow):
         self.editor_toggle_btn.blockSignals(False)
         self.preview_toggle_btn.blockSignals(False)
 
-    def _init_project(self, override: Path | None):
+    def _init_project(self, override: Path | None, *, clean: bool = False):
         """Resolve which project the editor opens with and load it.
 
-        If ``override`` is provided (e.g. ``mde -p X``), it wins; the
-        persisted ``project.last_path`` is not consulted at all so we
-        don't pay for an rglob over the previous project before
-        replacing it. If no override is given, fall back to the saved
-        last_path - the bare ``mde`` use case. In either case, all
-        three project-aware panels (project / references / search)
-        plus the wiki-link completion list are populated from one
-        consistent path.
+        Resolution order:
+
+        1. ``override`` (e.g. ``mde -p X``) - explicit and always wins.
+        2. ``clean=True`` - opt out of the implicit auto-restore. Skip
+           the rest. The editor opens with no project.
+        3. Saved ``project.last_path`` - the bare ``mde`` default.
+
+        Either way, every project-aware panel (project / references /
+        search) plus the wiki-link completion list is populated from
+        one consistent path, or all stay empty.
         """
         if override is not None:
             path = override
+        elif clean:
+            return
         else:
             last_path = self.ctx.get("project.last_path")
             path = Path(last_path) if last_path else None

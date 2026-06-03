@@ -82,11 +82,14 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
     # Create editor. ``project_path`` makes the editor open this project
     # directly during __init__; without it the editor restores the
-    # previously saved project. Either way the choice is made once -
-    # no post-construction set_project_path call here.
+    # previously saved project. ``clean`` opts out of that implicit
+    # restore - the override still wins if both are passed. Either way
+    # the choice is made once - no post-construction set_project_path
+    # call here.
     editor = MarkdownEditor(
         extra_plugin_dirs=args.plugins_dir or None,
         project_path=project_override,
+        clean=args.clean,
     )
 
     # Apply theme override (also update settings if specified)
@@ -109,8 +112,9 @@ def cmd_gui(args: argparse.Namespace) -> int:
         # Ensure at least one new tab
         if editor.tab_widget.count() == 0:
             editor.new_tab()
-    else:
-        # No explicit files - restore previous session if project matches
+    elif not args.clean:
+        # No explicit files - restore previous session if project matches.
+        # --clean opts out entirely: no auto-restore of open tabs.
         last_path = ctx.get("project.last_path")
         project_path = str(args.project.resolve()) if args.project and args.project.is_dir() else None
         if last_path and (project_path is None or project_path == last_path):

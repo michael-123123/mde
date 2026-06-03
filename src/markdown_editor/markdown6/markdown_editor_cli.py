@@ -88,6 +88,16 @@ Examples:
         help="Open with a new untitled document",
     )
     parser.add_argument(
+        "--clean",
+        action="store_true",
+        help=(
+            "Skip auto-loading saved state: the previously opened "
+            "project and the previously open tabs are not restored. "
+            "Files and projects given explicitly on the command line "
+            "(``-p PATH``, positional files) still open as requested."
+        ),
+    )
+    parser.add_argument(
         "--line",
         type=int,
         metavar="N",
