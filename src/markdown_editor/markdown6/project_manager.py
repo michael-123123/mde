@@ -230,6 +230,23 @@ class ProjectPanel(QWidget):
 
         layout.addLayout(btn_layout)
 
+        # Default to the empty / "no project open" state. The whole
+        # point of this hide is QFileSystemModel: without setRootPath
+        # it defaults to displaying the filesystem root, which means
+        # an empty-state project panel would otherwise render '/'.
+        # set_project_path flips the chrome back on when a project is
+        # actually loaded.
+        self._set_chrome_visible(False)
+
+    def _set_chrome_visible(self, visible: bool):
+        """Toggle every project-specific widget. Hidden = blank pane
+        ('no project open'); visible = the normal project view."""
+        self.filter_input.setVisible(visible)
+        self.tree_view.setVisible(visible)
+        self.export_btn.setVisible(visible)
+        self.graph_btn.setVisible(visible)
+        self.sort_btn.setVisible(visible)
+
     def _build_sort_menu(self) -> QMenu:
         """Build the sort-options popup menu attached to the sort button.
 
@@ -382,6 +399,10 @@ class ProjectPanel(QWidget):
         )
         self.file_model.setRootPath(str(path))
         self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
+        # The panel may have been started in the empty / no-project
+        # state with its chrome hidden; reveal it now that a real
+        # project is loaded.
+        self._set_chrome_visible(True)
         # Remember last project
         self.ctx.set("project.last_path", str(path))
         # Clear filter

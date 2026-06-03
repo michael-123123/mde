@@ -190,3 +190,35 @@ def test_clean_default_is_false(qtbot, two_dirs):
     editor = MarkdownEditor()  # clean omitted
     qtbot.addWidget(editor)
     assert editor.project_panel.project_path == last
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_clean_leaves_project_panel_empty(qtbot):
+    """No-project state must show NOTHING in the project panel.
+    QFileSystemModel's default (no setRootPath) is to display the
+    filesystem root, so ``mde --clean`` would otherwise render '/'
+    in the left pane - exactly the wrong default. The fix is to hide
+    the project-panel chrome (filter input, file tree, action
+    buttons) until a project is actually loaded."""
+    editor = MarkdownEditor(clean=True)
+    qtbot.addWidget(editor)
+    panel = editor.project_panel
+    assert panel.filter_input.isHidden()
+    assert panel.tree_view.isHidden()
+    assert panel.export_btn.isHidden()
+    assert panel.graph_btn.isHidden()
+    assert panel.sort_btn.isHidden()
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_project_panel_chrome_shown_when_project_loaded(qtbot, tmp_path):
+    """Regression: when a project is set (via override here), the
+    panel chrome unhides so the user sees the normal project view."""
+    editor = MarkdownEditor(project_path=tmp_path)
+    qtbot.addWidget(editor)
+    panel = editor.project_panel
+    assert not panel.filter_input.isHidden()
+    assert not panel.tree_view.isHidden()
+    assert not panel.export_btn.isHidden()
+    assert not panel.graph_btn.isHidden()
+    assert not panel.sort_btn.isHidden()
