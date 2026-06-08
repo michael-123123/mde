@@ -266,6 +266,12 @@ class DocumentTab(QWidget):
         self._preview_needs_full_reload = True
         self._preview_zoom_factor = 1.0
         self._pending_render_generation = 0  # bumped on each render to discard stale results
+        # Per-tab key for the mde-preview:// URL scheme. The full-reload
+        # render path stores the rendered HTML in the singleton
+        # PreviewSchemeHandler under this key, then loads the matching
+        # URL; the handler responds with the stored bytes. This is what
+        # lets us ship HTML larger than the 2 MB ``setHtml`` cap.
+        self._preview_key = f"tab-{id(self)}"
 
         # ── Diagram-injection queue ────────────────────────────────
         # `setHtml` on QWebEngineView is async — the placeholder
@@ -796,15 +802,40 @@ class DocumentTab(QWidget):
             self.preview.setHtml(full_html, base_url)
             scrollbar.setValue(scroll_pos)
         else:
-            # Full reload for QWebEngineView (initial load or theme/font change)
-            # Re-arm the injection gate: setHtml is async and the placeholder
-            # DOM nodes won't exist until `loadFinished` fires. Mark the page
-            # not ready BEFORE calling setHtml so any in-flight future that
-            # completes before the load reaches its handler will queue.
+            # Full reload for QWebEngineView (initial load or theme/font
+            # change). We route through the ``mde-preview://`` URL
+            # scheme rather than ``setHtml`` because the latter is
+            # capped at ~2 MB by Chromium and silently drops content
+            # above that. The handler holds the full HTML in memory
+            # and serves it on request.
+            #
+            # ``base_url`` is no longer passed to a setHtml call, so
+            # relative URLs in the document (``<img src="foo.png">``)
+            # would otherwise resolve against ``mde-preview://<key>/``
+            # and 404 from the handler. Inject a ``<base href="...">``
+            # into the document so they resolve as ``file://`` URLs
+            # against the source directory, matching the previous
+            # ``setHtml(html, base_url)`` behaviour.
+            from markdown_editor.markdown6.preview_scheme import (
+                get_handler,
+                preview_url,
+            )
+            if not base_url.isEmpty():
+                full_html = full_html.replace(
+                    "<head>",
+                    f'<head><base href="{base_url.toString()}">',
+                    1,
+                )
+            # Re-arm the injection gate: the load is async and the
+            # placeholder DOM nodes won't exist until ``loadFinished``
+            # fires. Mark the page not ready BEFORE loading so any
+            # in-flight future that completes before the load handler
+            # reaches it will queue.
             self._page_ready = False
-            self.preview.setHtml(full_html, base_url)
+            get_handler().set_html(self._preview_key, full_html)
+            self.preview.setUrl(preview_url(self._preview_key))
             self._preview_needs_full_reload = False
-            # Re-apply zoom factor after setHtml
+            # Re-apply zoom factor after the load
             self._apply_preview_zoom()
             self._render_pending_diagrams(pending)
 
