@@ -67,19 +67,34 @@ def cmd_gui(args: argparse.Namespace) -> int:
     theme = args.theme if args.theme else ctx.get("view.theme", "light")
     apply_application_theme(theme == "dark")
 
-    # Create editor
-    editor = MarkdownEditor(extra_plugin_dirs=args.plugins_dir or None)
+    # Resolve --project once: a non-directory falls through to the
+    # last-saved project (constructor restores it when project_path
+    # is None), matching the prior behavior when cmd_gui used to
+    # filter args.project through is_dir() before applying it.
+    project_override = (
+        args.project if args.project and args.project.is_dir() else None
+    )
+    if args.project and project_override is None:
+        print(
+            f"Warning: Project path is not a directory: {args.project}",
+            file=sys.stderr,
+        )
+
+    # Create editor. ``project_path`` makes the editor open this project
+    # directly during __init__; without it the editor restores the
+    # previously saved project. ``clean`` opts out of that implicit
+    # restore - the override still wins if both are passed. Either way
+    # the choice is made once - no post-construction set_project_path
+    # call here.
+    editor = MarkdownEditor(
+        extra_plugin_dirs=args.plugins_dir or None,
+        project_path=project_override,
+        clean=args.clean,
+    )
 
     # Apply theme override (also update settings if specified)
     if args.theme:
         editor.ctx.set("view.theme", args.theme)
-
-    # Open project
-    if args.project:
-        if args.project.is_dir():
-            editor.project_panel.set_project_path(args.project)
-        else:
-            print(f"Warning: Project path is not a directory: {args.project}", file=sys.stderr)
 
     # Open files
     if args.files and not args.new:
@@ -97,8 +112,9 @@ def cmd_gui(args: argparse.Namespace) -> int:
         # Ensure at least one new tab
         if editor.tab_widget.count() == 0:
             editor.new_tab()
-    else:
-        # No explicit files - restore previous session if project matches
+    elif not args.clean:
+        # No explicit files - restore previous session if project matches.
+        # --clean opts out entirely: no auto-restore of open tabs.
         last_path = ctx.get("project.last_path")
         project_path = str(args.project.resolve()) if args.project and args.project.is_dir() else None
         if last_path and (project_path is None or project_path == last_path):

@@ -179,7 +179,14 @@ class ProjectPanel(QWidget):
         self._apply_sort_from_settings()
 
         self.tree_view = QTreeView()
-        self.tree_view.setModel(self.proxy)
+        # NB: model is NOT bound here. ``QTreeView.setModel(proxy)``
+        # triggers Qt to query ``rowCount(QModelIndex())`` on the
+        # proxy, which delegates to QFileSystemModel, which answers by
+        # enumerating its current root - the filesystem root if
+        # setRootPath was never called. Binding here would defeat the
+        # whole "no scan" point of the empty / --clean state. The bind
+        # is deferred to set_project_path, where it pairs with the
+        # setRootPath that actually anchors the model to a tree.
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setAnimated(True)
 
@@ -229,6 +236,23 @@ class ProjectPanel(QWidget):
         btn_layout.addWidget(self.sort_btn)
 
         layout.addLayout(btn_layout)
+
+        # Default to the empty / "no project open" state. The whole
+        # point of this hide is QFileSystemModel: without setRootPath
+        # it defaults to displaying the filesystem root, which means
+        # an empty-state project panel would otherwise render '/'.
+        # set_project_path flips the chrome back on when a project is
+        # actually loaded.
+        self._set_chrome_visible(False)
+
+    def _set_chrome_visible(self, visible: bool):
+        """Toggle every project-specific widget. Hidden = blank pane
+        ('no project open'); visible = the normal project view."""
+        self.filter_input.setVisible(visible)
+        self.tree_view.setVisible(visible)
+        self.export_btn.setVisible(visible)
+        self.graph_btn.setVisible(visible)
+        self.sort_btn.setVisible(visible)
 
     def _build_sort_menu(self) -> QMenu:
         """Build the sort-options popup menu attached to the sort button.
@@ -381,7 +405,16 @@ class ProjectPanel(QWidget):
             "Project root: %s%s", path, " (lazy mode)" if self._lazy else "",
         )
         self.file_model.setRootPath(str(path))
+        # Bind the model on first project load (deferred from _init_ui
+        # to avoid the implicit '/' enumeration). Subsequent
+        # set_project_path calls re-call setModel; Qt treats that as a
+        # no-op when the model is unchanged.
+        self.tree_view.setModel(self.proxy)
         self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
+        # The panel may have been started in the empty / no-project
+        # state with its chrome hidden; reveal it now that a real
+        # project is loaded.
+        self._set_chrome_visible(True)
         # Remember last project
         self.ctx.set("project.last_path", str(path))
         # Clear filter
