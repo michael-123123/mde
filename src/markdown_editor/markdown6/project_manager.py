@@ -179,7 +179,14 @@ class ProjectPanel(QWidget):
         self._apply_sort_from_settings()
 
         self.tree_view = QTreeView()
-        self.tree_view.setModel(self.proxy)
+        # NB: model is NOT bound here. ``QTreeView.setModel(proxy)``
+        # triggers Qt to query ``rowCount(QModelIndex())`` on the
+        # proxy, which delegates to QFileSystemModel, which answers by
+        # enumerating its current root - the filesystem root if
+        # setRootPath was never called. Binding here would defeat the
+        # whole "no scan" point of the empty / --clean state. The bind
+        # is deferred to set_project_path, where it pairs with the
+        # setRootPath that actually anchors the model to a tree.
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setAnimated(True)
 
@@ -398,6 +405,11 @@ class ProjectPanel(QWidget):
             "Project root: %s%s", path, " (lazy mode)" if self._lazy else "",
         )
         self.file_model.setRootPath(str(path))
+        # Bind the model on first project load (deferred from _init_ui
+        # to avoid the implicit '/' enumeration). Subsequent
+        # set_project_path calls re-call setModel; Qt treats that as a
+        # no-op when the model is unchanged.
+        self.tree_view.setModel(self.proxy)
         self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
         # The panel may have been started in the empty / no-project
         # state with its chrome hidden; reveal it now that a real

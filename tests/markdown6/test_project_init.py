@@ -222,3 +222,28 @@ def test_project_panel_chrome_shown_when_project_loaded(qtbot, tmp_path):
     assert not panel.export_btn.isHidden()
     assert not panel.graph_btn.isHidden()
     assert not panel.sort_btn.isHidden()
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_clean_does_not_bind_model_to_tree_view(qtbot):
+    """``--clean`` must not bind QFileSystemModel to the tree view.
+
+    ``QTreeView.setModel(...)`` makes Qt query the model for
+    ``rowCount(QModelIndex())`` to set up the layout. QFileSystemModel
+    answers that by enumerating its current root (filesystem ``/`` if
+    setRootPath was never called). That's one readdir of '/' on every
+    --clean launch - small but counter to the flag's promise. Defer
+    the bind until set_project_path runs."""
+    editor = MarkdownEditor(clean=True)
+    qtbot.addWidget(editor)
+    assert editor.project_panel.tree_view.model() is None
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_set_project_path_binds_model(qtbot, tmp_path):
+    """Regression for the deferred-bind: once a project is loaded,
+    the tree view must be bound to the proxy (which wraps
+    QFileSystemModel) so the user can navigate the tree."""
+    editor = MarkdownEditor(project_path=tmp_path)
+    qtbot.addWidget(editor)
+    assert editor.project_panel.tree_view.model() is editor.project_panel.proxy
