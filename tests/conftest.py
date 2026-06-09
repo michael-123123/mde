@@ -30,6 +30,14 @@ import pytest
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+# Importing preview_scheme runs its top-level ``registerScheme`` call.
+# Qt requires that to happen before any ``QWebEngineProfile`` (which
+# is itself constructed lazily on the first ``QWebEngineView``).
+# pytest-qt creates ``QApplication`` lazily via the ``qapp`` fixture,
+# so this import sitting at the top of conftest.py guarantees the
+# scheme is registered before any test triggers Qt initialisation.
+from markdown_editor.markdown6 import preview_scheme  # noqa: F401  (import for side effect)
+
 
 @pytest.fixture(autouse=True)
 def _auto_dismiss_qmessagebox(monkeypatch):

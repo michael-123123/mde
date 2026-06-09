@@ -39,9 +39,17 @@ def cmd_gui(args: argparse.Namespace) -> int:
     elif args.config:
         init_app_context(config_dir=args.config)
 
-    # Import Qt and editor
+    # Import Qt and editor.
+    #
+    # ``preview_scheme`` is imported BEFORE ``QApplication`` is
+    # constructed. Its module-level code calls
+    # ``QWebEngineUrlScheme.registerScheme``, which Qt requires to
+    # happen before any ``QWebEngineProfile`` exists. (The default
+    # profile is constructed lazily on the first ``QWebEngineView``;
+    # this order ensures the scheme is registered first.)
     from PySide6.QtWidgets import QApplication
 
+    from markdown_editor.markdown6 import preview_scheme  # noqa: F401  (import for side effect)
     from markdown_editor.markdown6.app_context import get_app_context
     from markdown_editor.markdown6.logger import resolve_level, set_level
     from markdown_editor.markdown6.markdown_editor import (
