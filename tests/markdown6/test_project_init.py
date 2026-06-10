@@ -247,3 +247,30 @@ def test_set_project_path_binds_model(qtbot, tmp_path):
     editor = MarkdownEditor(project_path=tmp_path)
     qtbot.addWidget(editor)
     assert editor.project_panel.tree_view.model() is editor.project_panel.proxy
+
+
+@pytest.mark.timeout(15, method="thread")
+def test_set_project_path_hides_non_name_columns(qtbot, tmp_path):
+    """Regression: the file explorer must show ONLY the Name column.
+    The other QFileSystemModel columns (Size, Type, Date Modified)
+    must be hidden so the name column gets the full pane width.
+
+    Bug history: the hideColumn loop used to live in _init_ui and ran
+    AFTER ``setModel(self.proxy)``. After ``setModel`` was deferred to
+    set_project_path (so empty / --clean state doesn't trigger a
+    filesystem-root enumeration), the hideColumn loop in _init_ui now
+    runs BEFORE any model is bound. Qt's QHeaderView reinitialises
+    its sections on setModel and the prior hide flags are discarded -
+    so all four columns end up visible, squeezing the Name column to
+    a width that truncates every filename to ~3 characters."""
+    editor = MarkdownEditor(project_path=tmp_path)
+    qtbot.addWidget(editor)
+    panel = editor.project_panel
+    assert not panel.tree_view.isColumnHidden(0), (
+        "Name column (0) must be visible"
+    )
+    for i in range(1, panel.file_model.columnCount()):
+        assert panel.tree_view.isColumnHidden(i), (
+            f"non-name column {i} must be hidden so the Name column "
+            f"gets the full pane width"
+        )
