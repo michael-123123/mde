@@ -190,9 +190,12 @@ class ProjectPanel(QWidget):
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setAnimated(True)
 
-        # Hide all columns except name
-        for i in range(1, self.file_model.columnCount()):
-            self.tree_view.hideColumn(i)
+        # Column visibility (hide Size / Type / Date Modified, keep
+        # only Name) is set AFTER ``setModel`` because Qt's QHeaderView
+        # reinitialises its sections whenever the model changes and
+        # discards prior hideColumn flags. Since setModel is deferred
+        # to set_project_path (see the deferred-bind commit), the
+        # hide loop also lives there.
 
         self.tree_view.clicked.connect(self._on_item_clicked)
         self.tree_view.doubleClicked.connect(self._on_item_double_clicked)
@@ -410,6 +413,12 @@ class ProjectPanel(QWidget):
         # set_project_path calls re-call setModel; Qt treats that as a
         # no-op when the model is unchanged.
         self.tree_view.setModel(self.proxy)
+        # Hide Size / Type / Date Modified - we only want Name. Has to
+        # run AFTER setModel (Qt's QHeaderView resets section state on
+        # model change) and is idempotent across subsequent project
+        # switches.
+        for i in range(1, self.file_model.columnCount()):
+            self.tree_view.hideColumn(i)
         self.tree_view.setRootIndex(self.proxy.mapFromSource(self.file_model.index(str(path))))
         # The panel may have been started in the empty / no-project
         # state with its chrome hidden; reveal it now that a real
