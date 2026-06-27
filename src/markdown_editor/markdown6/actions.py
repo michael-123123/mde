@@ -280,11 +280,22 @@ PALETTE_ONLY: list[ActionDef] = [
 # ---------------------------------------------------------------------------
 
 def _make_callback(editor: MarkdownEditor, method_name: str, args: tuple):
-    """Create a callback, wrapping in a lambda if args are needed."""
+    """Create a callback for an ActionDef.
+
+    Always swallows positional arguments from the caller. ``QAction.
+    triggered`` is connected to the returned callable and emits a
+    ``bool`` (the action's checked state) - leaking that bool into the
+    target method would silently bind it as the first positional
+    argument. That was harmless for old methods that took no args but
+    is dangerous for methods like ``save_file(self, permit=None)``
+    where ``permit=False`` then crashes inside ``_authorize`` with
+    ``'bool' object has no attribute 'claim'``.
+
+    The fix is uniform: every callback discards its incoming args and
+    invokes the bound method with exactly the ``args`` declared on the
+    ActionDef (empty tuple = no-arg call)."""
     method = getattr(editor, method_name)
-    if args:
-        return lambda *_a, _m=method, _args=args: _m(*_args)
-    return method
+    return lambda *_a, _m=method, _args=args: _m(*_args)
 
 
 def _build_items(editor: MarkdownEditor, menu, items: list) -> list[ActionDef]:
